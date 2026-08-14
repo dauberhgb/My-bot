@@ -1,7 +1,6 @@
 import sqlite3
 import json
 
-# إنشاء الاتصال بقاعدة البيانات وحفظ البيانات تلقائياً لكل سيرفر
 DB_NAME = "bot_settings.db"
 
 def init_db():
@@ -60,7 +59,26 @@ def get_settings(guild_id):
             "auto_role": row[16] or "",
             "auto_nickname": row[17] or ""
         }
-    return None
+    return {
+        "guild_id": str(guild_id),
+        "media_channels": [],
+        "media_warning": "عذراً {user}، هذه القناة مخصصة للميديا فقط!",
+        "banned_words": [],
+        "max_violations": 3,
+        "punishment_type": "timeout",
+        "timeout_minutes": 10,
+        "warning_title": "⚠️ تحذير نظام الحماية",
+        "warning_msg_1": "تنبيه أول يا {user}، يرجى الالتزام بالقوانين.",
+        "warning_msg_2": "تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!",
+        "farewell_channel": "",
+        "farewell_title": "وداعاً!",
+        "farewell_desc": "غادر العضو {user} السيرفر نتمنى له التوفيق.",
+        "farewell_img": "",
+        "farewell_action": "none",
+        "auto_responses": {},
+        "auto_role": "",
+        "auto_nickname": ""
+    }
 
 def save_settings(guild_id, settings):
     conn = sqlite3.connect(DB_NAME)
@@ -93,4 +111,3 @@ def save_settings(guild_id, settings):
     conn.close()
 
 init_db()
-
