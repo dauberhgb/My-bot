@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم البوت الاحترافية</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hero-section { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 40px 20px; border-radius: 20px; margin-bottom: 30px; text-align: center; border: 1px solid #4338ca; }
+        .verified-badge { background: #065f46; color: #34d399; padding: 8px 18px; border-radius: 50px; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; border: 1px solid #059669; box-shadow: 0 0 15px rgba(52, 211, 153, 0.2); }
+        .card-custom { background: #1e293b; border: 1px solid #334155; border-radius: 16px; margin-bottom: 25px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+        .card-header-custom { background: #0f172a; border-bottom: 1px solid #334155; padding: 15px 20px; font-weight: bold; color: #38bdf8; border-radius: 16px 16px 0 0; display: flex; align-items: center; gap: 10px; }
+        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 8px; }
+        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25); }
+        .btn-submit { background: linear-gradient(90deg, #2563eb, #3b82f6); border: none; color: white; padding: 12px 30px; font-weight: bold; border-radius: 10px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .btn-submit:hover { background: linear-gradient(90deg, #1d4ed8, #2563eb); }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <!-- Hero Header -->
+    <div class="hero-section">
+        <h1 class="fw-bold mb-3">لوحة إدارة البوت</h1>
+        <div class="verified-badge">
+            <i class="fa-solid fa-circle-check fs-5"></i> البوت موثق على الديسكورد
+        </div>
+    </div>
+
+    <form method="POST" action="/save">
+        <div class="mb-4">
+            <label class="form-label fw-bold text-warning">أدخل معرّف السيرفر (Server ID) للتحكم فيه:</label>
+            <input type="text" name="guild_id" class="form-control form-control-lg" placeholder="مثال: 123456789012345678" required>
+        </div>
+
+        <!-- Option 1: Media Channels -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-photo-film"></i> الخيار الأول: [ قنوات الميديا فقط ]</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">أسماء/معرفات قنوات الميديا (افصل بينها بـ فاصلة ,)</label>
+                    <input type="text" name="media_channels" class="form-control" placeholder="media-only, صور-فقط">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رسالة التحذير بعد حذف الرسالة:</label>
+                    <input type="text" name="media_warning" class="form-control" value="عذراً {user}، هذه القناة مخصصة للميديا فقط!">
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 2: Banned Words -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-ban"></i> الخيار الثاني: [ الكلمات المحظورة والعقوبات ]</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">الكلمات المحظورة (افصل بينها بـ فاصلة ,)</label>
+                    <input type="text" name="banned_words" class="form-control" placeholder="كلمة1, كلمة2, كلمة3">
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">عدد المخالفات قبل العقوبة:</label>
+                        <input type="number" name="max_violations" class="form-control" value="3">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">نوع العقوبة:</label>
+                        <select name="punishment_type" class="form-select">
+                            <option value="timeout">تايم أوت (Timeout)</option>
+                            <option value="kick">طرد (Kick)</option>
+                            <option value="mute">كتم (Mute)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">مدة Timeout (بالدقائق):</label>
+                        <input type="number" name="timeout_minutes" class="form-control" value="10">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان موحد لرسائل التحذير:</label>
+                    <input type="text" name="warning_title" class="form-control" value="⚠️ تحذير نظام الحماية">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رسالة التحذير للمخالفة الأولى:</label>
+                    <input type="text" name="warning_msg_1" class="form-control" value="تنبيه أول يا {user}، يرجى الالتزام بالقوانين.">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رسالة التحذير للمخالفة الثانية:</label>
+                    <input type="text" name="warning_msg_2" class="form-control" value="تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!">
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 3: Farewell Messages -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-door-open"></i> الخيار الثالث: [ رسائل الوداع ]</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">اسم/معرّف قناة الوداع:</label>
+                    <input type="text" name="farewell_channel" class="form-control" placeholder="farewell">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان الرسالة المضمنة (Embed):</label>
+                    <input type="text" name="farewell_title" class="form-control" value="وداعاً!">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">وصف الرسالة (استخدم {user} لمنشن الشخص المغادر):</label>
+                    <input type="text" name="farewell_desc" class="form-control" value="غادر العضو {user} السيرفر نتمنى له التوفيق.">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رابط الصورة المضمنة (Image URL):</label>
+                    <input type="text" name="farewell_img" class="form-control" placeholder="https://example.com/image.png">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">أمر الزر السفلي (Button Action):</label>
+                    <select name="farewell_action" class="form-select">
+                        <option value="none">بدون زر</option>
+                        <option value="ban">حظر (Ban)</option>
+                        <option value="timeout">تايم أوت (Timeout)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 4: Auto Responses -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-comments"></i> الخيار الرابع: [ الردود التلقائية ]</div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6"><input type="text" name="word1" class="form-control" placeholder="الكلمة 1 (مثال: السلام عليكم)"></div>
+                    <div class="col-md-6"><input type="text" name="resp1" class="form-control" placeholder="الرد المخصص 1 (مثال: وعليكم السلام ورهمة الله)"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><input type="text" name="word2" class="form-control" placeholder="الكلمة 2"></div>
+                    <div class="col-md-6"><input type="text" name="resp2" class="form-control" placeholder="الرد المخصص 2"></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6"><input type="text" name="word3" class="form-control" placeholder="الكلمة 3"></div>
+                    <div class="col-md-6"><input type="text" name="resp3" class="form-control" placeholder="الرد المخصص 3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 5: Auto Roles -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-user-tag"></i> الخيار الخامس: [ الأدوار التلقائية ]</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">اسم الرول المنح لإعطائه للأعضاء/المنظمين الجدد:</label>
+                    <input type="text" name="auto_role" class="form-control" placeholder="مثال: Member أو منظم">
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 6: Auto Nickname -->
+        <div class="card card-custom">
+            <div class="card-header-custom"><i class="fa-solid fa-id-card"></i> الخيار السادس: [ اللقب التلقائي ]</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">اللقب المراد اختياره وتعيينه تلقائياً لأي شخص يدخل السيرفر:</label>
+                    <input type="text" name="auto_nickname" class="form-control" placeholder="مثال: لاعب ببجي">
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 mb-5">
+            <button type="submit" class="btn btn-submit btn-lg"><i class="fa-solid fa-floppy-disk"></i> حفظ كافة الإعدادات للسيرفر</button>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>
