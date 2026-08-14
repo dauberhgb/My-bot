@@ -245,12 +245,15 @@ async def on_message(message):
                 await message.channel.send(warn_msg, delete_after=5)
                 return
 
-    # 2. الكلمات المحظورة (إذا كانت مفعلة)
+    # 2. الكلمات المحظورة والعقوبات الذكية (إذا كانت مفعلة)
     if settings.get("banned_enabled", True):
         banned_words = settings.get("banned_words", [])
         msg_content = message.content.lower()
         if any(word in msg_content for word in banned_words):
-            await message.delete()
+            try:
+                await message.delete()
+            except Exception as e:
+                print(f"تعذر حذف الرسالة: {e}")
             
             g_id = str(message.guild.id)
             u_id = str(message.author.id)
@@ -258,28 +261,67 @@ async def on_message(message):
             violations[g_id][u_id] += 1
             
             count = violations[g_id][u_id]
-            max_v = settings.get("max_violations", 3)
+            
+            # تحويل القيم لأرقام لضمان المقارنة الصحيحة 100%
+            try:
+                max_v = int(settings.get("max_violations", 3))
+            except (ValueError, TypeError):
+                max_v = 3
 
+            # إذا كان عدد المخالفات أقل من الحد الأقصى
             if count < max_v:
-                title = settings.get("warning_title", "تحذير")
-                msg_text = settings.get("warning_msg_1") if count == 1 else settings.get("warning_msg_2")
+                title = settings.get("warning_title", "تحذير مخالفة")
+                
+                # المرة الأولى -> التحذير الأول، المرات التالية -> التحذير الثاني
+                if count == 1:
+                    msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
+                else:
+                    msg_text = settings.get("warning_msg_2", "هذا هو الإنذار المتقدم يا {user}!")
+                
                 msg_text = msg_text.replace("{user}", message.author.mention)
                 embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
-                await message.channel.send(embed=embed)
+                
+                # إرسال الرسالة وجعلها تختفي تلقائياً بعد 5 ثوانٍ
+                await message.channel.send(embed=embed, delete_after=5)
+            
+            # إذا وصل أو تجاوز الحد الأقصى للمخالفات -> تطبيق العقوبة
             else:
                 p_type = settings.get("punishment_type", "timeout")
-                t_min = settings.get("timeout_minutes", 10)
+                try:
+                    t_min = int(settings.get("timeout_minutes", 10))
+                except (ValueError, TypeError):
+                    t_min = 10
+
+                applied = False
                 try:
                     if p_type == "timeout":
-                        await message.author.timeout(timedelta(minutes=t_min), reason="مخالفة القوانين")
+                        await message.author.timeout(timedelta(minutes=t_min), reason="تجاوز حد الكلمات المحظورة")
+                        applied = True
                     elif p_type == "kick":
-                        await message.author.kick(reason="مخالفة القوانين")
+                        await message.author.kick(reason="تجاوز حد الكلمات المحظورة")
+                        applied = True
                     elif p_type == "mute":
-                        await message.author.timeout(timedelta(days=7), reason="كتم كامل")
-                    await message.channel.send(f"تم تطبيق ({p_type}) على {message.author.mention}.")
+                        await message.author.timeout(timedelta(days=7), reason="تجاوز حد الكلمات المحظورة")
+                        applied = True
+
+                    if applied:
+                        embed_punish = discord.Embed(
+                            title="⛔ تم تطبيق العقوبة",
+                            description=f"تم تطبيق عقوبة ({p_type.upper()}) على {message.author.mention} لتجاوزه الحد الأقصى للمخالفات ({max_v}).",
+                            color=discord.Color.red()
+                        )
+                        await message.channel.send(embed=embed_punish, delete_after=5)
+                        
+                        # تصفير عدد مخالفات العضو بعد عقابه
+                        violations[g_id][u_id] = 0
+
                 except Exception as e:
-                    print(f"خطأ في العقوبة: {e}")
-                violations[g_id][u_id] = 0
+                    print(f"خطأ في تطبيق العقوبة: {e}")
+                    # في حال فشل العقوبة لعدم وجود صلاحيات، يرسل تنبيه للأدمن ويختفي
+                    await message.channel.send(
+                        f"⚠️ تعذر تطبيق العقوبة على {message.author.mention}. يرجى التأكد من منح البوت صلاحية إدارة الأعضاء وأن رتبته أعلى من العضو!", 
+                        delete_after=7
+                    )
             return
 
     # 3. الردود التلقائية
