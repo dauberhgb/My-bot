@@ -117,8 +117,9 @@ async def on_ready():
         
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
-# أمر السلاش /setup
+# أمر السلاش /setup مع حماية Cooldown
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر")
+@app_commands.checks.cooldown(1, 5.0)  # مهلة 5 ثوانٍ بين الاستخدامات لمنع الحظر
 async def setup(interaction: discord.Interaction):
     guild_id = str(interaction.guild_id)
     
@@ -139,6 +140,15 @@ async def setup(interaction: discord.Interaction):
     )
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+# معالجة خطأ الـ Cooldown
+@setup.error
+async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(
+            f"⏳ يرجى الانتظار {round(error.retry_after, 1)} ثانية قبل استخدام الأمر مرة أخرى!", 
+            ephemeral=True
+        )
 
 # الرول واللقب التلقائي
 @bot.event
