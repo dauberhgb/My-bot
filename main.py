@@ -150,13 +150,14 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
             ephemeral=True
         )
 
-# الرول واللقب التلقائي
+# الرول واللقب التلقائي الذكي
 @bot.event
 async def on_member_join(member):
     settings = database.get_settings(member.guild.id)
     if not settings:
         return
 
+    # 1. إعطاء الرول التلقائي
     if settings.get("auto_role"):
         role = discord.utils.get(member.guild.roles, name=settings["auto_role"])
         if role:
@@ -165,9 +166,19 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"تعذر إعطاء الرول: {e}")
 
-    if settings.get("auto_nickname"):
+    # 2. اللقب التلقائي الذكي (Auto-Nickname)
+    auto_nick = settings.get("auto_nickname", "").strip()
+    if auto_nick:
         try:
-            await member.edit(nick=settings["auto_nickname"])
+            # إذا كتب في اللوحة {user} سيضع اسم العضو مكانها
+            if "{user}" in auto_nick:
+                new_nick = auto_nick.replace("{user}", member.display_name)
+            else:
+                # إذا لم يكتب {user}، سيضيف الكلمة كبادئة قبل اسمه الأصلي تلقائياً
+                new_nick = f"{auto_nick} {member.display_name}"
+
+            # ديسكورد يقبل ألقاب حتى 32 حرفاً فقط
+            await member.edit(nick=new_nick[:32])
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
 
