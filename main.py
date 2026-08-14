@@ -49,7 +49,7 @@ def dashboard(guild_id):
     channels = [{"id": str(c.id), "name": c.name} for c in guild.text_channels]
     roles = [{"id": str(r.id), "name": r.name} for r in guild.roles if not r.is_default()]
     
-    # جلب إحصائيات السيرفر الفخمة
+    # جلب إحصائيات السيرفر
     stats = {
         "member_count": guild.member_count,
         "channel_count": len(guild.channels),
@@ -262,30 +262,27 @@ async def on_message(message):
             
             count = violations[g_id][u_id]
             
-            # تحويل القيم لأرقام لضمان المقارنة الصحيحة 100%
             try:
                 max_v = int(settings.get("max_violations", 3))
             except (ValueError, TypeError):
                 max_v = 3
 
-            # إذا كان عدد المخالفات أقل من الحد الأقصى
-            if count < max_v:
-                title = settings.get("warning_title", "تحذير مخالفة")
-                
-                # المرة الأولى -> التحذير الأول، المرات التالية -> التحذير الثاني
-                if count == 1:
-                    msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
-                else:
-                    msg_text = settings.get("warning_msg_2", "هذا هو الإنذار المتقدم يا {user}!")
-                
-                msg_text = msg_text.replace("{user}", message.author.mention)
-                embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
-                
-                # إرسال الرسالة وجعلها تختفي تلقائياً بعد 5 ثوانٍ
-                await message.channel.send(embed=embed, delete_after=5)
+            title = settings.get("warning_title", "تحذير مخالفة")
             
-            # إذا وصل أو تجاوز الحد الأقصى للمخالفات -> تطبيق العقوبة
+            # تحديد نص التحذير: المرة الأولى -> التحذير 1 / المرات التالية -> التحذير 2
+            if count == 1:
+                msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
             else:
+                msg_text = settings.get("warning_msg_2", "هذا هو الإنذار المتقدم يا {user}!")
+            
+            msg_text = msg_text.replace("{user}", message.author.mention)
+            embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
+            
+            # 1. إرسال رسالة التحذير دائمًا أولاً وتختفي بعد 5 ثوانٍ
+            await message.channel.send(embed=embed, delete_after=5)
+
+            # 2. إذا وصل العضو للحد الأقصى أو تجاوز -> تطبيق العقوبة فوراً
+            if count >= max_v:
                 p_type = settings.get("punishment_type", "timeout")
                 try:
                     t_min = int(settings.get("timeout_minutes", 10))
@@ -312,12 +309,11 @@ async def on_message(message):
                         )
                         await message.channel.send(embed=embed_punish, delete_after=5)
                         
-                        # تصفير عدد مخالفات العضو بعد عقابه
+                        # تصفير عدد مخالفات العضو بعد العقوبة
                         violations[g_id][u_id] = 0
 
                 except Exception as e:
                     print(f"خطأ في تطبيق العقوبة: {e}")
-                    # في حال فشل العقوبة لعدم وجود صلاحيات، يرسل تنبيه للأدمن ويختفي
                     await message.channel.send(
                         f"⚠️ تعذر تطبيق العقوبة على {message.author.mention}. يرجى التأكد من منح البوت صلاحية إدارة الأعضاء وأن رتبته أعلى من العضو!", 
                         delete_after=7
