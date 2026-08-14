@@ -3,183 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إعدادات {{ guild.name }} | لوحة التحكم</title>
+    <title>لوحة التحكم | {{ guild.name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .hero-section { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 30px 20px; border-radius: 20px; margin-bottom: 30px; text-align: center; border: 1px solid #4338ca; }
-        .verified-badge { background: #065f46; color: #34d399; padding: 6px 16px; border-radius: 50px; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; border: 1px solid #059669; }
-        .card-custom { background: #1e293b; border: 1px solid #334155; border-radius: 16px; margin-bottom: 25px; }
-        .card-header-custom { background: #0f172a; border-bottom: 1px solid #334155; padding: 15px 20px; font-weight: bold; color: #38bdf8; border-radius: 16px 16px 0 0; display: flex; align-items: center; gap: 10px; }
-        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 8px; }
-        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; }
-        .btn-submit { background: linear-gradient(90deg, #2563eb, #3b82f6); border: none; color: white; padding: 12px 30px; font-weight: bold; border-radius: 10px; }
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-color: #5865F2;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        /* Glassmorphism Styling */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        /* Sidebar Styling */
+        .sidebar {
+            position: sticky;
+            top: 20px;
+        }
+        .nav-pills .nav-link {
+            color: #94a3b8;
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+        .nav-pills .nav-link:hover, .nav-pills .nav-link.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        /* Toggle Switch */
+        .form-check-input:checked {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+        /* Live Discord Embed Preview */
+        .discord-preview {
+            background-color: #2b2d31;
+            border-right: 4px solid #ed4245;
+            border-radius: 4px;
+            padding: 16px;
+            color: #dcddde;
+        }
+        .discord-title { color: #ffffff; font-weight: bold; margin-bottom: 8px; }
+        .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; }
     </style>
 </head>
-<body>
+<body class="p-4">
+    <div class="container-fluid">
+        <!-- Header & Guild Title -->
+        <div class="glass-card p-4 mb-4 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                {% if guild.icon %}
+                    <img src="{{ guild.icon.url }}" class="rounded-circle" width="60">
+                {% else %}
+                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width:60px; height:60px;">
+                        <i class="fa-solid me-0 fa-server fs-3"></i>
+                    </div>
+                {% endif %}
+                <div>
+                    <h2 class="m-0 fw-bold">{{ guild.name }}</h2>
+                    <span class="text-muted">لوحة التحكم الاحترافية</span>
+                </div>
+            </div>
+            <a href="/guilds" class="btn btn-outline-light rounded-pill"><i class="fa-solid fa-arrow-right ms-2"></i>تغيير السيرفر</a>
+        </div>
 
-<div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <a href="/guilds" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-right"></i> العودة لسيرفراتي</a>
-        <div class="verified-badge">
-            <i class="fa-solid fa-circle-check fs-5"></i> البوت موثق على الديسكورد
+        <!-- Server Stats Counter Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="glass-card p-3 d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-users text-primary fs-1"></i>
+                    <div>
+                        <h4 class="m-0 fw-bold">{{ stats.member_count }}</h4>
+                        <small class="text-muted">إجمالي الأعضاء</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card p-3 d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-hashtag text-success fs-1"></i>
+                    <div>
+                        <h4 class="m-0 fw-bold">{{ stats.channel_count }}</h4>
+                        <small class="text-muted">القنوات</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card p-3 d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-shield-halved text-warning fs-1"></i>
+                    <div>
+                        <h4 class="m-0 fw-bold">{{ stats.role_count }}</h4>
+                        <small class="text-muted">الرولات</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form & Sections -->
+        <form id="dashboardForm" action="/save/{{ guild.id }}" method="POST">
+            <div class="row g-4">
+                <!-- Sidebar Nav -->
+                <div class="col-md-3">
+                    <div class="glass-card p-3 sidebar">
+                        <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
+                            <button class="nav-link active text-start" id="general-tab" data-bs-toggle="pill" data-bs-target="#general" type="button"><i class="fa-solid fa-sliders me-2"></i>الإعدادات العامة</button>
+                            <button class="nav-link text-start" id="media-tab" data-bs-toggle="pill" data-bs-target="#media" type="button"><i class="fa-solid fa-photo-film me-2"></i>حماية الميديا</button>
+                            <button class="nav-link text-start" id="banned-tab" data-bs-toggle="pill" data-bs-target="#banned" type="button"><i class="fa-solid fa-ban me-2"></i>الكلمات المحظورة</button>
+                            <button class="nav-link text-start" id="farewell-tab" data-bs-toggle="pill" data-bs-target="#farewell" type="button"><i class="fa-solid fa-door-open me-2"></i>رسالة الوداع</button>
+                            <button class="nav-link text-start" id="responses-tab" data-bs-toggle="pill" data-bs-target="#responses" type="button"><i class="fa-solid fa-robot me-2"></i>الردود التلقائية</button>
+                        </div>
+                        <hr class="border-secondary">
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold"><i class="fa-solid fa-floppy-disk me-2"></i>حفظ جميع التغييرات</button>
+                    </div>
+                </div>
+
+                <!-- Tab Content Sections -->
+                <div class="col-md-9">
+                    <div class="tab-content" id="v-pills-tabContent">
+                        
+                        <!-- 1. General Settings -->
+                        <div class="tab-pane fade show active glass-card p-4" id="general">
+                            <h4 class="fw-bold mb-3"><i class="fa-solid fa-sliders text-primary me-2"></i>الإعدادات العامة</h4>
+                            <div class="mb-3">
+                                <label class="form-label">الرول التلقائي عند الدخول:</label>
+                                <select class="form-select bg-dark text-white border-secondary" name="auto_role">
+                                    <option value="">بدون رول</option>
+                                    {% for role in roles %}
+                                        <option value="{{ role.name }}" {% if settings and settings.auto_role == role.name %}selected{% endif %}>{{ role.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">اللقب التلقائي (Auto-Nickname):</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="auto_nickname" value="{{ settings.auto_nickname if settings else '' }}" placeholder="مثال: [VIP] {user}">
+                                <small class="text-muted">استخدم {user} لتمثيل اسم العضو، أو اترك البادئة ليتم وضعها قبل اسمه.</small>
+                            </div>
+                        </div>
+
+                        <!-- 2. Media Channels Protection -->
+                        <div class="tab-pane fade glass-card p-4" id="media">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="fw-bold m-0"><i class="fa-solid fa-photo-film text-info me-2"></i>حماية قنوات الميديا</h4>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="media_enabled" id="media_enabled" {% if not settings or settings.get('media_enabled', True) %}checked{% endif %}>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">حدد قنوات الميديا فقط:</label>
+                                <select class="form-select bg-dark text-white border-secondary" name="media_channels" multiple style="height: 120px;">
+                                    {% for channel in channels %}
+                                        <option value="{{ channel.id }}" {% if settings and channel.id in settings.media_channels %}selected{% endif %}># {{ channel.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">رسالة التنبيه عند كتابة نص فقط:</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="media_warning" value="{{ settings.media_warning if settings else 'عذراً هذه القناة للميديا فقط!' }}">
+                            </div>
+                        </div>
+
+                        <!-- 3. Banned Words -->
+                        <div class="tab-pane fade glass-card p-4" id="banned">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="fw-bold m-0"><i class="fa-solid fa-ban text-danger me-2"></i>الكلمات المحظورة والعقوبات</h4>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="banned_enabled" id="banned_enabled" {% if not settings or settings.get('banned_enabled', True) %}checked{% endif %}>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">الكلمات المحظورة (افصل بينها بفاصلة ,):</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="banned_words" value="{{ settings.banned_words|join(', ') if settings else '' }}">
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">حد المخالفات قبل العقوبة:</label>
+                                    <input type="number" class="form-control bg-dark text-white border-secondary" name="max_violations" value="{{ settings.max_violations if settings else 3 }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">نوع العقوبة:</label>
+                                    <select class="form-select bg-dark text-white border-secondary" name="punishment_type">
+                                        <option value="timeout" {% if settings and settings.punishment_type == 'timeout' %}selected{% endif %}>Timeout (تايم أوت)</option>
+                                        <option value="kick" {% if settings and settings.punishment_type == 'kick' %}selected{% endif %}>Kick (طرد)</option>
+                                        <option value="mute" {% if settings and settings.punishment_type == 'mute' %}selected{% endif %}>Mute (كتم 7 أيام)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">مدة التايم أوت (بالدقائق):</label>
+                                <input type="number" class="form-control bg-dark text-white border-secondary" name="timeout_minutes" value="{{ settings.timeout_minutes if settings else 10 }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">عنوان رسالة التحذير:</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="warning_title" value="{{ settings.warning_title if settings else 'تحذير مخالفة' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">رسالة التحذير الأول:</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="warning_msg_1" value="{{ settings.warning_msg_1 if settings else 'انتبه يا {user}، الكلمة محظورة! (الإنذار الأول)' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">رسالة التحذير الثاني:</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="warning_msg_2" value="{{ settings.warning_msg_2 if settings else 'هذا هو الإنذار الأخير يا {user}!' }}">
+                            </div>
+                        </div>
+
+                        <!-- 4. Farewell Settings + Discord Live Preview -->
+                        <div class="tab-pane fade glass-card p-4" id="farewell">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="fw-bold m-0"><i class="fa-solid fa-door-open text-warning me-2"></i>إعدادات الوداع</h4>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="farewell_enabled" id="farewell_enabled" {% if not settings or settings.get('farewell_enabled', True) %}checked{% endif %}>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">قناة الوداع:</label>
+                                <select class="form-select bg-dark text-white border-secondary" name="farewell_channel">
+                                    <option value="">تعطيل</option>
+                                    {% for channel in channels %}
+                                        <option value="{{ channel.id }}" {% if settings and settings.farewell_channel == channel.id %}selected{% endif %}># {{ channel.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">عنوان الوداع:</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" id="preview_title_input" name="farewell_title" value="{{ settings.farewell_title if settings else 'وداعاً!' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">وصف الرسالة ({user} لذكر العضو):</label>
+                                <textarea class="form-control bg-dark text-white border-secondary" id="preview_desc_input" name="farewell_desc" rows="3">{{ settings.farewell_desc if settings else 'لقد غادر {user} السيرفر.' }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">رابط صورة Embed (اختياري):</label>
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="farewell_img" value="{{ settings.farewell_img if settings else '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">إجراء الأزرار التفاعلية:</label>
+                                <select class="form-select bg-dark text-white border-secondary" name="farewell_action">
+                                    <option value="none" {% if settings and settings.farewell_action == 'none' %}selected{% endif %}>بدون زر</option>
+                                    <option value="ban" {% if settings and settings.farewell_action == 'ban' %}selected{% endif %}>زر Ban حظر تلقائي</option>
+                                    <option value="timeout" {% if settings and settings.farewell_action == 'timeout' %}selected{% endif %}>زر Timeout تايم أوت</option>
+                                </select>
+                            </div>
+
+                            <!-- Discord Live Preview Container -->
+                            <hr class="border-secondary my-4">
+                            <h6 class="text-muted mb-3"><i class="fa-brands fa-discord me-2"></i>معاينة حية لرسالة الوداع (Discord Live Preview)</h6>
+                            <div class="discord-preview">
+                                <div class="discord-title" id="preview_title">وداعاً!</div>
+                                <div id="preview_desc">لقد غادر @User السيرفر.</div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Auto Responses -->
+                        <div class="tab-pane fade glass-card p-4" id="responses">
+                            <h4 class="fw-bold mb-3"><i class="fa-solid fa-robot text-success me-2"></i>الردود التلقائية</h4>
+                            {% for i in range(1, 4) %}
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-5">
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" name="word{{ i }}" placeholder="الكلمة المفتاحية {{ i }}" value="{{ settings.auto_responses.keys()|list|getitem(i-1) if settings and settings.auto_responses and settings.auto_responses.keys()|length >= i else '' }}">
+                                </div>
+                                <div class="col-md-7">
+                                    <input type="text" class="form-control bg-dark text-white border-secondary" name="resp{{ i }}" placeholder="الرد التلقائي للبوت {{ i }}" value="{{ settings.auto_responses.values()|list|getitem(i-1) if settings and settings.auto_responses and settings.auto_responses.values()|length >= i else '' }}">
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Toast Notification for AJAX Save -->
+    <div class="toast-container">
+        <div id="saveToast" class="toast align-items-center text-bg-success border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body fs-6">
+                    <i class="fa-solid fa-circle-check me-2"></i><span id="toastMsg">تم حفظ الإعدادات بنجاح!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
         </div>
     </div>
 
-    <div class="hero-section">
-        <h2 class="fw-bold m-0">إعدادات سيرفر: <span class="text-info">{{ guild.name }}</span></h2>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Live Discord Embed Preview Script
+        const titleInput = document.getElementById('preview_title_input');
+        const descInput = document.getElementById('preview_desc_input');
+        const previewTitle = document.getElementById('preview_title');
+        const previewDesc = document.getElementById('preview_desc');
 
-    <form method="POST" action="/save/{{ guild.id }}">
-        <!-- Option 1: Media Channels -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-photo-film"></i> الخيار الأول: [ قنوات الميديا فقط ]</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">اختر قنوات الميديا (يمكنك تحديد أكثر من قناة بالضغط على Ctrl / Cmd):</label>
-                    <select name="media_channels" class="form-select" multiple size="4">
-                        {% for channel in channels %}
-                            <option value="{{ channel.id }}" {% if channel.id|string in settings.media_channels %}selected{% endif %}># {{ channel.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">رسالة التحذير بعد حذف الرسالة:</label>
-                    <input type="text" name="media_warning" class="form-control" value="{{ settings.media_warning }}">
-                </div>
-            </div>
-        </div>
+        function updatePreview() {
+            previewTitle.innerText = titleInput.value || 'وداعاً!';
+            previewDesc.innerText = (descInput.value || 'لقد غادر {user} السيرفر.').replace('{user}', '@User');
+        }
 
-        <!-- Option 2: Banned Words -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-ban"></i> الخيار الثاني: [ الكلمات المحظورة والعقوبات ]</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">الكلمات المحظورة (افصل بينها بـ فاصلة ,)</label>
-                    <input type="text" name="banned_words" class="form-control" value="{{ settings.banned_words|join(', ') }}">
-                </div>
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">عدد المخالفات قبل العقوبة:</label>
-                        <input type="number" name="max_violations" class="form-control" value="{{ settings.max_violations }}">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">نوع العقوبة:</label>
-                        <select name="punishment_type" class="form-select">
-                            <option value="timeout" {% if settings.punishment_type == 'timeout' %}selected{% endif %}>تايم أوت (Timeout)</option>
-                            <option value="kick" {% if settings.punishment_type == 'kick' %}selected{% endif %}>طرد (Kick)</option>
-                            <option value="mute" {% if settings.punishment_type == 'mute' %}selected{% endif %}>كتم (Mute)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">مدة Timeout (بالدقائق):</label>
-                        <input type="number" name="timeout_minutes" class="form-control" value="{{ settings.timeout_minutes }}">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">عنوان موحد لرسائل التحذير:</label>
-                    <input type="text" name="warning_title" class="form-control" value="{{ settings.warning_title }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">رسالة التحذير للمخالفة الأولى:</label>
-                    <input type="text" name="warning_msg_1" class="form-control" value="{{ settings.warning_msg_1 }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">رسالة التحذير للمخالفة الثانية:</label>
-                    <input type="text" name="warning_msg_2" class="form-control" value="{{ settings.warning_msg_2 }}">
-                </div>
-            </div>
-        </div>
+        titleInput.addEventListener('input', updatePreview);
+        descInput.addEventListener('input', updatePreview);
+        updatePreview();
 
-        <!-- Option 3: Farewell Messages -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-door-open"></i> الخيار الثالث: [ رسائل الوداع ]</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">اختر قناة إرسال رسالة الوداع:</label>
-                    <select name="farewell_channel" class="form-select">
-                        <option value="">-- اختر قناة --</option>
-                        {% for channel in channels %}
-                            <option value="{{ channel.id }}" {% if channel.id|string == settings.farewell_channel %}selected{% endif %}># {{ channel.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">عنوان الرسالة المضمنة (Embed):</label>
-                    <input type="text" name="farewell_title" class="form-control" value="{{ settings.farewell_title }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">وصف الرسالة (استخدم {user} لمنشن المغادر):</label>
-                    <input type="text" name="farewell_desc" class="form-control" value="{{ settings.farewell_desc }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">رابط الصورة المضمنة:</label>
-                    <input type="text" name="farewell_img" class="form-control" value="{{ settings.farewell_img }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">أمر الزر السفلي:</label>
-                    <select name="farewell_action" class="form-select">
-                        <option value="none" {% if settings.farewell_action == 'none' %}selected{% endif %}>بدون زر</option>
-                        <option value="ban" {% if settings.farewell_action == 'ban' %}selected{% endif %}>حظر (Ban)</option>
-                        <option value="timeout" {% if settings.farewell_action == 'timeout' %}selected{% endif %}>تايم أوت (Timeout)</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Option 4: Auto Responses -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-comments"></i> الخيار الرابع: [ الردود التلقائية ]</div>
-            <div class="card-body">
-                {% set keys = settings.auto_responses.keys()|list %}
-                <div class="row mb-3">
-                    <div class="col-md-6"><input type="text" name="word1" class="form-control" value="{{ keys[0] if keys|length > 0 else '' }}" placeholder="الكلمة 1"></div>
-                    <div class="col-md-6"><input type="text" name="resp1" class="form-control" value="{{ settings.auto_responses[keys[0]] if keys|length > 0 else '' }}" placeholder="الرد المخصص 1"></div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-6"><input type="text" name="word2" class="form-control" value="{{ keys[1] if keys|length > 1 else '' }}" placeholder="الكلمة 2"></div>
-                    <div class="col-md-6"><input type="text" name="resp2" class="form-control" value="{{ settings.auto_responses[keys[1]] if keys|length > 1 else '' }}" placeholder="الرد المخصص 2"></div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-6"><input type="text" name="word3" class="form-control" value="{{ keys[2] if keys|length > 2 else '' }}" placeholder="الكلمة 3"></div>
-                    <div class="col-md-6"><input type="text" name="resp3" class="form-control" value="{{ settings.auto_responses[keys[2]] if keys|length > 2 else '' }}" placeholder="الرد المخصص 3"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Option 5: Auto Roles -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-user-tag"></i> الخيار الخامس: [ الأدوار التلقائية ]</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">اختر الرول لمنحه تلقائياً للمنظمين/الأعضاء الجدد:</label>
-                    <select name="auto_role" class="form-select">
-                        <option value="">-- اختر رول --</option>
-                        {% for role in roles %}
-                            <option value="{{ role.name }}" {% if role.name == settings.auto_role %}selected{% endif %}>@{{ role.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Option 6: Auto Nickname -->
-        <div class="card card-custom">
-            <div class="card-header-custom"><i class="fa-solid fa-id-card"></i> الخيار السادس: [ اللقب التلقائي ]</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">اللقب المراد اختياره وتعيينه تلقائياً:</label>
-                    <input type="text" name="auto_nickname" class="form-control" value="{{ settings.auto_nickname }}" placeholder="مثال: لاعب ببجي">
-                </div>
-            </div>
-        </div>
-
-        <div class="text-center mt-4 mb-5">
-            <button type="submit" class="btn btn-submit btn-lg"><i class="fa-solid fa-floppy-disk"></i> حفظ كافة الإعدادات للسيرفر</button>
-        </div>
-    </form>
-</div>
-
+        // AJAX Form Save tanpa Reload
+        document.getElementById('dashboardForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    document.getElementById('toastMsg').innerText = data.message;
+                    const toast = new bootstrap.Toast(document.getElementById('saveToast'));
+                    toast.show();
+                }
+            })
+            .catch(err => console.error(err));
+        });
+    </script>
 </body>
 </html>
