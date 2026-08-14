@@ -120,15 +120,17 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 @bot.event
 async def on_ready():
-    try:
-        for guild in bot.guilds:
-            bot.tree.copy_global_to(guild=guild)
-            await bot.tree.sync(guild=guild)
-        print("تمت مزامنة أوامر السلاش فورياً مع جميع السيرفرات!")
-    except Exception as e:
-        print(f"خطأ في مزامنة أوامر السلاش: {e}")
-        
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
+
+# أمر يديوي خاص بمالك البوت لمزامنة الأوامر عالمياً (Global Sync) لإظهار الشارة الخضراء
+@bot.command(name="sync")
+@commands.is_owner()
+async def sync(ctx):
+    try:
+        synced = await bot.tree.sync()
+        await ctx.send(f"✅ تم تسجيل {len(synced)} أمر بشكل عالمي (Global) بنجاح! ستظهر الشارة الخضراء خلال وقت قصير.")
+    except Exception as e:
+        await ctx.send(f"❌ حدث خطأ أثناء المزامنة: {e}")
 
 # أمر السلاش /setup مخصص فقط لمن يمتلك صلاحيات الأدمن administrator
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (للإدارة فقط)")
