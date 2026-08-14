@@ -4,6 +4,7 @@ import threading
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, url_for
 import discord
+from discord import app_commands
 from discord.ext import commands
 import database
 
@@ -101,11 +102,43 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # ==========================================
-# 3. أحداث البوت (Discord Events)
+# 3. أحداث وأوامر البوت (Discord Events & Commands)
 # ==========================================
 @bot.event
 async def on_ready():
+    # مزامنة أوامر السلاش فوراً مع كل السيرفرات المتواجد فيها البوت
+    try:
+        for guild in bot.guilds:
+            bot.tree.copy_global_to(guild=guild)
+            await bot.tree.sync(guild=guild)
+        print("تمت مزامنة أوامر السلاش فورياً مع جميع السيرفرات!")
+    except Exception as e:
+        print(f"خطأ في مزامنة أوامر السلاش: {e}")
+        
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
+
+# أمر السلاش /setup
+@bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر")
+async def setup(interaction: discord.Interaction):
+    guild_id = str(interaction.guild_id)
+    
+    base_url = os.getenv("DASHBOARD_URL", "").rstrip('/')
+    if not base_url:
+        dashboard_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/dashboard/{guild_id}"
+    else:
+        dashboard_link = f"{base_url}/dashboard/{guild_id}"
+
+    view = discord.ui.View()
+    button = discord.ui.Button(label="فتح لوحة التحكم ⚙️", url=dashboard_link, style=discord.ButtonStyle.link)
+    view.add_item(button)
+
+    embed = discord.Embed(
+        title="🛠️ لوحة تحكم السيرفر",
+        description=f"مرحباً بك! يمكنك ضبط جميع إعدادات البوت لسيرفر **{interaction.guild.name}** عبر الضغط على الزر أدناه:",
+        color=discord.Color.blue()
+    )
+    
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 # الرول واللقب التلقائي
 @bot.event
