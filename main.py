@@ -9,6 +9,118 @@ from discord.ext import commands
 import database
 
 # ==========================================
+# 0. قاموس الترجمة للغات (العربية والإنجليزية)
+# ==========================================
+TRANSLATIONS = {
+    'ar': {
+        'title': 'لوحة التحكم',
+        'dashboard_subtitle': 'لوحة التحكم الاحترافية',
+        'change_guild': 'تغيير السيرفر',
+        'total_members': 'إجمالي الأعضاء',
+        'channels': 'القنوات',
+        'roles': 'الرولات',
+        'tab_general': 'الإعدادات العامة',
+        'tab_media': 'حماية الميديا',
+        'tab_banned': 'الكلمات المحظورة',
+        'tab_farewell': 'رسالة الوداع',
+        'tab_responses': 'الردود التلقائية',
+        'save_btn': 'حفظ جميع التغييرات',
+        'auto_role': 'الرول التلقائي عند الدخول:',
+        'no_role': 'بدون رول',
+        'auto_nickname': 'اللقب التلقائي (Auto-Nickname):',
+        'auto_nick_placeholder': 'مثال: [VIP] {user}',
+        'auto_nick_help': 'استخدم {user} لتمثيل اسم العضو، أو اترك البادئة ليتم وضعها قبل اسمه.',
+        'media_title': 'حماية قنوات الميديا',
+        'select_media_channels': 'حدد قنوات الميديا فقط:',
+        'media_warn_msg': 'رسالة التنبيه عند كتابة نص فقط:',
+        'default_media_warn': 'عذراً هذه القناة للميديا فقط!',
+        'banned_title': 'الكلمات المحظورة والعقوبات',
+        'banned_words_label': 'الكلمات المحظورة (افصل بينها بفاصلة ,):',
+        'max_violations_label': 'حد المخالفات قبل العقوبة:',
+        'punishment_type_label': 'نوع العقوبة:',
+        'timeout_opt': 'تايم أوت',
+        'kick_opt': 'طرد',
+        'mute_opt': 'كتم 7 أيام',
+        'timeout_mins_label': 'مدة التايم أوت (بالدقائق):',
+        'warn_title_label': 'عنوان رسالة التحذير:',
+        'default_warn_title': 'تحذير مخالفة',
+        'warn_msg_1_label': 'رسالة التحذير الأول:',
+        'default_warn_1': 'انتبه يا {user}، الكلمة محظورة! (الإنذار الأول)',
+        'warn_msg_2_label': 'رسالة التحذير الثاني:',
+        'default_warn_2': 'هذا هو الإنذار الأخير يا {user}!',
+        'farewell_title': 'إعدادات الوداع',
+        'farewell_channel_label': 'قناة الوداع:',
+        'disable_opt': 'تعطيل',
+        'farewell_title_label': 'عنوان الوداع:',
+        'default_farewell_title': 'وداعاً!',
+        'farewell_desc_label': 'وصف الرسالة ({user} لذكر العضو):',
+        'default_farewell_desc': 'لقد غادر {user} السيرفر.',
+        'farewell_img_label': 'رابط صورة Embed (اختياري):',
+        'farewell_action_label': 'إجراء الأزرار التفاعلية:',
+        'action_none': 'بدون زر',
+        'action_ban': 'زر Ban حظر تلقائي',
+        'action_timeout': 'زر Timeout تايم أوت',
+        'discord_preview_title': 'معاينة حية لرسالة الوداع (Discord Live Preview)',
+        'keyword_placeholder': 'الكلمة المفتاحية',
+        'response_placeholder': 'الرد التلقائي للبوت',
+        'save_success': 'تم حفظ الإعدادات بنجاح!'
+    },
+    'en': {
+        'title': 'Dashboard',
+        'dashboard_subtitle': 'Professional Control Panel',
+        'change_guild': 'Switch Server',
+        'total_members': 'Total Members',
+        'channels': 'Channels',
+        'roles': 'Roles',
+        'tab_general': 'General Settings',
+        'tab_media': 'Media Protection',
+        'tab_banned': 'Banned Words',
+        'tab_farewell': 'Farewell Message',
+        'tab_responses': 'Auto Responses',
+        'save_btn': 'Save All Changes',
+        'auto_role': 'Auto Role on Join:',
+        'no_role': 'No Role',
+        'auto_nickname': 'Auto-Nickname:',
+        'auto_nick_placeholder': 'Ex: [VIP] {user}',
+        'auto_nick_help': 'Use {user} to represent the member\'s name, or leave a prefix to place before their name.',
+        'media_title': 'Media Channels Protection',
+        'select_media_channels': 'Select Media Channels Only:',
+        'media_warn_msg': 'Warning message when text-only is sent:',
+        'default_media_warn': 'Sorry, this channel is for media only!',
+        'banned_title': 'Banned Words & Punishments',
+        'banned_words_label': 'Banned Words (separate with commas ,):',
+        'max_violations_label': 'Violation Limit Before Punishment:',
+        'punishment_type_label': 'Punishment Type:',
+        'timeout_opt': 'Timeout',
+        'kick_opt': 'Kick',
+        'mute_opt': 'Mute 7 Days',
+        'timeout_mins_label': 'Timeout Duration (minutes):',
+        'warn_title_label': 'Warning Message Title:',
+        'default_warn_title': 'Violation Warning',
+        'warn_msg_1_label': 'First Warning Message:',
+        'default_warn_1': 'Be careful {user}, that word is banned! (First Warning)',
+        'warn_msg_2_label': 'Second Warning Message:',
+        'default_warn_2': 'This is your final warning {user}!',
+        'farewell_title': 'Farewell Settings',
+        'farewell_channel_label': 'Farewell Channel:',
+        'disable_opt': 'Disable',
+        'farewell_title_label': 'Farewell Title:',
+        'default_farewell_title': 'Goodbye!',
+        'farewell_desc_label': 'Message Description ({user} to mention member):',
+        'default_farewell_desc': '{user} has left the server.',
+        'farewell_img_label': 'Embed Image URL (Optional):',
+        'farewell_action_label': 'Interactive Button Action:',
+        'action_none': 'No Button',
+        'action_ban': 'Auto Ban Button',
+        'action_timeout': 'Timeout Button',
+        'discord_preview_title': 'Discord Live Preview',
+        'keyword_placeholder': 'Keyword',
+        'response_placeholder': 'Auto Bot Response',
+        'save_success': 'Settings saved successfully!'
+    }
+}
+
+# ==========================================
 # 1. إعداد وتشغيل بوت ديسكورد
 # ==========================================
 intents = discord.Intents.default()
@@ -58,7 +170,11 @@ def dashboard(guild_id):
 
     settings = database.get_settings(guild_id)
 
-    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats)
+    # جلب اللغة المطلوبة من الرابط (الافتراضي: ar)
+    lang = request.args.get('lang', 'ar')
+    t = TRANSLATIONS.get(lang, TRANSLATIONS['ar'])
+
+    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, t=t, lang=lang)
 
 # حفظ الإعدادات مع دعم AJAX لتجنب إعادة تحميل الصفحة
 @app.route('/save/<guild_id>', methods=['POST'])
