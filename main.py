@@ -20,6 +20,7 @@ TRANSLATIONS = {
         'channels': 'القنوات',
         'roles': 'الرولات',
         'tab_general': 'الإعدادات العامة',
+        'tab_analytics': 'التحليلات والإحصائيات',
         'tab_media': 'حماية الميديا',
         'tab_banned': 'الكلمات المحظورة',
         'tab_farewell': 'رسالة الوداع',
@@ -30,6 +31,10 @@ TRANSLATIONS = {
         'auto_nickname': 'اللقب التلقائي (Auto-Nickname):',
         'auto_nick_placeholder': 'مثال: [VIP] {user}',
         'auto_nick_help': 'استخدم {user} لتمثيل اسم العضو، أو اترك البادئة ليتم وضعها قبل اسمه.',
+        'analytics_title': 'تحليلات نشاط البوت والحماية',
+        'stat_banned': 'الكلمات المحظورة المحذوفة',
+        'stat_media': 'مخالفات قنوات الميديا',
+        'stat_responses': 'الردود التلقائية المرسلة',
         'media_title': 'حماية قنوات الميديا',
         'select_media_channels': 'حدد قنوات الميديا فقط:',
         'media_warn_msg': 'رسالة التنبيه عند كتابة نص فقط:',
@@ -73,6 +78,7 @@ TRANSLATIONS = {
         'channels': 'Channels',
         'roles': 'Roles',
         'tab_general': 'General Settings',
+        'tab_analytics': 'Analytics & Stats',
         'tab_media': 'Media Protection',
         'tab_banned': 'Banned Words',
         'tab_farewell': 'Farewell Message',
@@ -83,6 +89,10 @@ TRANSLATIONS = {
         'auto_nickname': 'Auto-Nickname:',
         'auto_nick_placeholder': 'Ex: [VIP] {user}',
         'auto_nick_help': 'Use {user} to represent the member\'s name, or leave a prefix to place before their name.',
+        'analytics_title': 'Bot Activity & Protection Analytics',
+        'stat_banned': 'Deleted Banned Words',
+        'stat_media': 'Media Channel Violations',
+        'stat_responses': 'Sent Auto Responses',
         'media_title': 'Media Channels Protection',
         'select_media_channels': 'Select Media Channels Only:',
         'media_warn_msg': 'Warning message when text-only is sent:',
@@ -151,7 +161,7 @@ def guild_list():
         })
     return render_template('guilds.html', guilds=bot_guilds)
 
-# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب الإحصائيات والقنوات والرولات
+# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب الإحصائيات والقنوات والرولات والتحليلات
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
     guild = bot.get_guild(int(guild_id))
@@ -169,12 +179,15 @@ def dashboard(guild_id):
     }
 
     settings = database.get_settings(guild_id)
+    
+    # جلب بيانات التحليلات والإحصائيات الخاصة بالسيرفر
+    analytics = database.get_analytics(guild_id)
 
     # جلب اللغة المطلوبة من الرابط (الافتراضي: ar)
     lang = request.args.get('lang', 'ar')
     t = TRANSLATIONS.get(lang, TRANSLATIONS['ar'])
 
-    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, t=t, lang=lang)
+    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, analytics=analytics, t=t, lang=lang)
 
 # حفظ الإعدادات مع دعم AJAX لتجنب إعادة تحميل الصفحة
 @app.route('/save/<guild_id>', methods=['POST'])
@@ -238,7 +251,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 async def on_ready():
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
-# أمر يديوي خاص بمالك البوت لمزامنة الأوامر عالمياً (Global Sync) لإظهار الشارة الخضراء
+# أمر يدوي خاص بمالك البوت لمزامنة الأوامر عالمياً (Global Sync)
 @bot.command(name="sync")
 @commands.is_owner()
 async def sync(ctx):
@@ -361,7 +374,7 @@ async def on_member_remove(member):
 
         await channel.send(embed=embed, view=view)
 
-# الميديا والكلمات والردود
+# الميديا والكلمات والردود مع تسجيل الإحصائيات (Analytics)
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild:
@@ -379,6 +392,7 @@ async def on_message(message):
             has_media = len(message.attachments) > 0 or any(ext in message.content.lower() for ext in ['.jpg', '.png', '.gif', '.mp4', 'http://', 'https://'])
             if not has_media:
                 await message.delete()
+                database.log_event(message.guild.id, "media_deleted")  # تسجيل حدث الميديا
                 warn_msg = settings.get("media_warning", "عذراً هذه القناة للميديا فقط!").replace("{user}", message.author.mention)
                 await message.channel.send(warn_msg, delete_after=5)
                 return
@@ -390,6 +404,7 @@ async def on_message(message):
         if any(word in msg_content for word in banned_words):
             try:
                 await message.delete()
+                database.log_event(message.guild.id, "banned_blocked")  # تسجيل حدث حذف الكلمة
             except Exception as e:
                 print(f"تعذر حذف الرسالة: {e}")
             
@@ -462,6 +477,7 @@ async def on_message(message):
     auto_resp = settings.get("auto_responses", {})
     if message.content.lower() in auto_resp:
         await message.channel.send(auto_resp[message.content.lower()])
+        database.log_event(message.guild.id, "auto_replies")  # تسجيل حدث الرد التلقائي
         return
 
     await bot.process_commands(message)
