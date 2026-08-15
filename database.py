@@ -6,6 +6,8 @@ DB_NAME = "bot_settings.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    
+    # جدول إعدادات السيرفر
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guild_settings (
             guild_id TEXT PRIMARY KEY,
@@ -28,6 +30,17 @@ def init_db():
             auto_nickname TEXT
         )
     ''')
+    
+    # جدول إحصائيات التحليلات (جديد)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS guild_analytics (
+            guild_id TEXT PRIMARY KEY,
+            banned_blocked INTEGER DEFAULT 0,
+            media_deleted INTEGER DEFAULT 0,
+            auto_replies INTEGER DEFAULT 0
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -109,5 +122,47 @@ def save_settings(guild_id, settings):
     ))
     conn.commit()
     conn.close()
+
+# ==========================================
+# دوال ميزة التحليلات (Analytics) الجديدة
+# ==========================================
+
+def increment_stat(guild_id, stat_name):
+    """زيادة العداد لميزة معينة (banned_blocked / media_deleted / auto_replies)"""
+    if stat_name not in ['banned_blocked', 'media_deleted', 'auto_replies']:
+        return
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # التأكد من وجود سجل للسيرفر
+    cursor.execute("INSERT IGNORE INTO guild_analytics (guild_id) VALUES (?)", (str(guild_id),)) if False else None
+    cursor.execute("INSERT OR IGNORE INTO guild_analytics (guild_id, banned_blocked, media_deleted, auto_replies) VALUES (?, 0, 0, 0)", (str(guild_id),))
+    
+    # زيادة العداد بمقدار 1
+    cursor.execute(f"UPDATE guild_analytics SET {stat_name} = {stat_name} + 1 WHERE guild_id = ?", (str(guild_id),))
+    
+    conn.commit()
+    conn.close()
+
+def get_analytics(guild_id):
+    """جلب إحصائيات التحليلات للسيرفر"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT banned_blocked, media_deleted, auto_replies FROM guild_analytics WHERE guild_id = ?", (str(guild_id),))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "banned_blocked": row[0],
+            "media_deleted": row[1],
+            "auto_replies": row[2]
+        }
+    return {
+        "banned_blocked": 0,
+        "media_deleted": 0,
+        "auto_replies": 0
+    }
 
 init_db()
