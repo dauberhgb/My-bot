@@ -10,6 +10,8 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {% endif %}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js Library for Analytics Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -135,6 +137,7 @@
                     <div class="glass-card p-3 sidebar">
                         <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist">
                             <button class="nav-link active text-start" id="general-tab" data-bs-toggle="pill" data-bs-target="#general" type="button"><i class="fa-solid fa-sliders me-2 ms-2"></i>{{ t.tab_general if t else 'الإعدادات العامة' }}</button>
+                            <button class="nav-link text-start" id="analytics-tab" data-bs-toggle="pill" data-bs-target="#analytics" type="button"><i class="fa-solid fa-chart-pie me-2 ms-2"></i>{{ t.tab_analytics if t else 'التحليلات والإحصائيات' }}</button>
                             <button class="nav-link text-start" id="media-tab" data-bs-toggle="pill" data-bs-target="#media" type="button"><i class="fa-solid fa-photo-film me-2 ms-2"></i>{{ t.tab_media if t else 'حماية الميديا' }}</button>
                             <button class="nav-link text-start" id="banned-tab" data-bs-toggle="pill" data-bs-target="#banned" type="button"><i class="fa-solid fa-ban me-2 ms-2"></i>{{ t.tab_banned if t else 'الكلمات المحظورة' }}</button>
                             <button class="nav-link text-start" id="farewell-tab" data-bs-toggle="pill" data-bs-target="#farewell" type="button"><i class="fa-solid fa-door-open me-2 ms-2"></i>{{ t.tab_farewell if t else 'رسالة الوداع' }}</button>
@@ -165,6 +168,47 @@
                                 <label class="form-label">{{ t.auto_nickname if t else 'اللقب التلقائي (Auto-Nickname):' }}</label>
                                 <input type="text" class="form-control bg-dark text-white border-secondary" name="auto_nickname" value="{{ settings.auto_nickname if settings else '' }}" placeholder="{{ t.auto_nick_placeholder if t else 'مثال: [VIP] {user}' }}">
                                 <small class="text-muted">{{ t.auto_nick_help if t else 'استخدم {user} لتمثيل اسم العضو، أو اترك البادئة ليتم وضعها قبل اسمه.' }}</small>
+                            </div>
+                        </div>
+
+                        <!-- NEW: Analytics & Statistics Tab -->
+                        <div class="tab-pane fade glass-card p-4" id="analytics">
+                            <h4 class="fw-bold mb-4"><i class="fa-solid fa-chart-pie text-info me-2 ms-2"></i>{{ t.analytics_title if t else 'تحليلات نشاط البوت والحماية' }}</h4>
+                            
+                            <div class="row align-items-center g-4">
+                                <!-- Doughnut Chart Canvas Container -->
+                                <div class="col-md-6 text-center">
+                                    <div style="max-width: 320px; margin: 0 auto; position: relative;">
+                                        <canvas id="analyticsDoughnutChart"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <!-- Analytics Counter List -->
+                                <div class="col-md-6">
+                                    <div class="d-flex flex-column gap-3">
+                                        <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fa-solid fa-ban text-danger me-2 ms-2"></i>
+                                                <span>{{ t.stat_banned if t else 'الكلمات المحظورة المحذوفة' }}</span>
+                                            </div>
+                                            <span class="badge bg-danger fs-6">{{ analytics.banned_blocked if analytics else 0 }}</span>
+                                        </div>
+                                        <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fa-solid fa-photo-film text-warning me-2 ms-2"></i>
+                                                <span>{{ t.stat_media if t else 'مخالفات قنوات الميديا' }}</span>
+                                            </div>
+                                            <span class="badge bg-warning text-dark fs-6">{{ analytics.media_deleted if analytics else 0 }}</span>
+                                        </div>
+                                        <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fa-solid fa-robot text-primary me-2 ms-2"></i>
+                                                <span>{{ t.stat_responses if t else 'الردود التلقائية المرسلة' }}</span>
+                                            </div>
+                                            <span class="badge bg-primary fs-6">{{ analytics.auto_replies if analytics else 0 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -320,6 +364,48 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Analytics Doughnut Chart Initialization
+        const bannedVal = {{ analytics.banned_blocked if analytics else 0 }};
+        const mediaVal = {{ analytics.media_deleted if analytics else 0 }};
+        const repliesVal = {{ analytics.auto_replies if analytics else 0 }};
+
+        const ctx = document.getElementById('analyticsDoughnutChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    '{{ t.stat_banned if t else "الكلمات المحظورة" }}', 
+                    '{{ t.stat_media if t else "مخالفات الميديا" }}', 
+                    '{{ t.stat_responses if t else "الردود التلقائية" }}'
+                ],
+                datasets: [{
+                    data: [bannedVal, mediaVal, repliesVal],
+                    backgroundColor: [
+                        '#dc3545', // Red
+                        '#ffc107', // Yellow
+                        '#0d6efd'  # Blue
+                    ],
+                    borderColor: '#0f172a',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { size: 12 },
+                            padding: 15
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+
         // Live Discord Embed Preview Script
         const titleInput = document.getElementById('preview_title_input');
         const descInput = document.getElementById('preview_desc_input');
