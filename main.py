@@ -460,5 +460,12 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-TOKEN = os.getenv("TOKEN")
-bot.run(TOKEN)
+if __name__ == "__main__":
+    token = os.getenv("TOKEN")
+    if not token:
+        print("❌ خطأ: لم يتم العثور على TOKEN في متغيرات البيئة!")
+    else:
+        try:
+            bot.run(token)
+        except Exception as e:
+            print(f"❌ حدث خطأ أثناء تشغيل البوت: {e}")
