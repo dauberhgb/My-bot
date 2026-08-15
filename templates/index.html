@@ -210,14 +210,14 @@
                                         <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary d-flex justify-content-between align-items-center">
                                             <div>
                                                 <i class="fa-solid fa-clock text-info me-2 ms-2"></i>
-                                                <span>{{ t.stat_timeouts if t else 'حالات التايم أوت' }}</span>
+                                                <span>{{ t.stat_timeout if t else 'عقوبات التايم أوت' }}</span>
                                             </div>
                                             <span class="badge bg-info text-dark fs-6">{{ analytics.timeout_count if analytics else 0 }}</span>
                                         </div>
                                         <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary d-flex justify-content-between align-items-center">
                                             <div>
                                                 <i class="fa-solid fa-user-slash me-2 ms-2" style="color: #a855f7;"></i>
-                                                <span>{{ t.stat_bans if t else 'حالات الحظر التلقائي' }}</span>
+                                                <span>{{ t.stat_ban if t else 'عقوبات الحظر النهائيات' }}</span>
                                             </div>
                                             <span class="badge fs-6" style="background-color: #a855f7;">{{ analytics.ban_count if analytics else 0 }}</span>
                                         </div>
@@ -393,8 +393,8 @@
                     '{{ t.stat_banned if t else "الكلمات المحظورة" }}', 
                     '{{ t.stat_media if t else "مخالفات الميديا" }}', 
                     '{{ t.stat_responses if t else "الردود التلقائية" }}',
-                    '{{ t.stat_timeouts if t else "حالات التايم أوت" }}',
-                    '{{ t.stat_bans if t else "حالات الحظر التلقائي" }}'
+                    '{{ t.stat_timeout if t else "عقوبات التايم أوت" }}',
+                    '{{ t.stat_ban if t else "عقوبات الحظر النهائيات" }}'
                 ],
                 datasets: [{
                     data: [bannedVal, mediaVal, repliesVal, timeoutsVal, bansVal],
