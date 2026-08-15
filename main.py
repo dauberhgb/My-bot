@@ -149,7 +149,6 @@ app = Flask(__name__)
 def home():
     return redirect(url_for('guild_list'))
 
-# صفحة عرض كافة السيرفرات المتواجد فيها البوت تلقائياً
 @app.route('/guilds')
 def guild_list():
     bot_guilds = []
@@ -161,7 +160,6 @@ def guild_list():
         })
     return render_template('guilds.html', guilds=bot_guilds)
 
-# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب الإحصائيات والقنوات والرولات والتحليلات
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
     guild = bot.get_guild(int(guild_id))
@@ -171,7 +169,6 @@ def dashboard(guild_id):
     channels = [{"id": str(c.id), "name": c.name} for c in guild.text_channels]
     roles = [{"id": str(r.id), "name": r.name} for r in guild.roles if not r.is_default()]
     
-    # جلب إحصائيات السيرفر
     stats = {
         "member_count": guild.member_count,
         "channel_count": len(guild.channels),
@@ -179,17 +176,13 @@ def dashboard(guild_id):
     }
 
     settings = database.get_settings(guild_id)
-    
-    # جلب بيانات التحليلات والإحصائيات الخاصة بالسيرفر
     analytics = database.get_analytics(guild_id)
 
-    # جلب اللغة المطلوبة من الرابط (الافتراضي: ar)
     lang = request.args.get('lang', 'ar')
     t = TRANSLATIONS.get(lang, TRANSLATIONS['ar'])
 
     return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, analytics=analytics, t=t, lang=lang)
 
-# حفظ الإعدادات مع دعم AJAX لتجنب إعادة تحميل الصفحة
 @app.route('/save/<guild_id>', methods=['POST'])
 def save(guild_id):
     guild = bot.get_guild(int(guild_id))
@@ -208,10 +201,8 @@ def save(guild_id):
 
     settings = {
         "guild_id": guild_id,
-        "media_enabled": request.form.get('media_enabled') == 'on',
         "media_channels": media_channels,
         "media_warning": request.form.get('media_warning', ''),
-        "banned_enabled": request.form.get('banned_enabled') == 'on',
         "banned_words": banned_words,
         "max_violations": int(request.form.get('max_violations', 3)),
         "punishment_type": request.form.get('punishment_type', 'timeout'),
@@ -219,7 +210,6 @@ def save(guild_id):
         "warning_title": request.form.get('warning_title', ''),
         "warning_msg_1": request.form.get('warning_msg_1', ''),
         "warning_msg_2": request.form.get('warning_msg_2', ''),
-        "farewell_enabled": request.form.get('farewell_enabled') == 'on',
         "farewell_channel": request.form.get('farewell_channel', ''),
         "farewell_title": request.form.get('farewell_title', ''),
         "farewell_desc": request.form.get('farewell_desc', ''),
@@ -232,7 +222,6 @@ def save(guild_id):
 
     database.save_settings(guild_id, settings)
     
-    # إذا كان الطلب AJAX يرجع JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({"status": "success", "message": "تم حفظ الإعدادات بنجاح!"})
         
@@ -251,17 +240,15 @@ threading.Thread(target=run_web_server, daemon=True).start()
 async def on_ready():
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
-# أمر يدوي خاص بمالك البوت لمزامنة الأوامر عالمياً (Global Sync)
 @bot.command(name="sync")
 @commands.is_owner()
 async def sync(ctx):
     try:
         synced = await bot.tree.sync()
-        await ctx.send(f"✅ تم تسجيل {len(synced)} أمر بشكل عالمي (Global) بنجاح! ستظهر الشارة الخضراء خلال وقت قصير.")
+        await ctx.send(f"✅ تم تسجيل {len(synced)} أمر بشكل عالمي (Global) بنجاح!")
     except Exception as e:
         await ctx.send(f"❌ حدث خطأ أثناء المزامنة: {e}")
 
-# أمر السلاش /setup مخصص فقط لمن يمتلك صلاحيات الأدمن administrator
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (للإدارة فقط)")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.checks.cooldown(1, 5.0)
@@ -286,7 +273,6 @@ async def setup(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-# معالجة أخطاء الصلاحيات والـ Cooldown لأمر Setup
 @setup.error
 async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
@@ -300,7 +286,6 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
             ephemeral=True
         )
 
-# الرول واللقب التلقائي الذكي
 @bot.event
 async def on_member_join(member):
     settings = database.get_settings(member.guild.id)
@@ -327,11 +312,10 @@ async def on_member_join(member):
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
 
-# رسالة الوداع والزر
 @bot.event
 async def on_member_remove(member):
     settings = database.get_settings(member.guild.id)
-    if not settings or not settings.get("farewell_enabled", True) or not settings.get("farewell_channel"):
+    if not settings or not settings.get("farewell_channel"):
         return
 
     channel = member.guild.get_channel(int(settings["farewell_channel"])) if settings["farewell_channel"].isdigit() else discord.utils.get(member.guild.text_channels, name=settings["farewell_channel"])
@@ -359,11 +343,13 @@ async def on_member_remove(member):
                         if action == "ban":
                             user_to_ban = await interaction.client.fetch_user(self.user_id)
                             await interaction.guild.ban(user_to_ban, reason="عن طريق زر الوداع")
+                            database.increment_stat(interaction.guild.id, "ban_count")
                             await interaction.response.send_message("تم حظر العضو بنجاح.", ephemeral=True)
                         elif action == "timeout":
                             target_member = interaction.guild.get_member(self.user_id)
                             if target_member:
                                 await target_member.timeout(timedelta(minutes=10), reason="عن طريق زر الوداع")
+                                database.increment_stat(interaction.guild.id, "timeout_count")
                                 await interaction.response.send_message("تم إعطاء تايم أوت.", ephemeral=True)
                             else:
                                 await interaction.response.send_message("⚠️ تعذر إعطاء تايم أوت لأن العضو غادر السيرفر بالفعل.", ephemeral=True)
@@ -374,7 +360,6 @@ async def on_member_remove(member):
 
         await channel.send(embed=embed, view=view)
 
-# الميديا والكلمات والردود مع تسجيل الإحصائيات (Analytics)
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild:
@@ -385,99 +370,88 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    # 1. قنوات الميديا (إذا كانت مفعلة)
-    if settings.get("media_enabled", True):
-        media_channels = settings.get("media_channels", [])
-        if str(message.channel.id) in media_channels or message.channel.name in media_channels:
-            has_media = len(message.attachments) > 0 or any(ext in message.content.lower() for ext in ['.jpg', '.png', '.gif', '.mp4', 'http://', 'https://'])
-            if not has_media:
-                await message.delete()
-                database.log_event(message.guild.id, "media_deleted")  # تسجيل حدث الميديا
-                warn_msg = settings.get("media_warning", "عذراً هذه القناة للميديا فقط!").replace("{user}", message.author.mention)
-                await message.channel.send(warn_msg, delete_after=5)
-                return
-
-    # 2. الكلمات المحظورة والعقوبات الذكية (إذا كانت مفعلة)
-    if settings.get("banned_enabled", True):
-        banned_words = settings.get("banned_words", [])
-        msg_content = message.content.lower()
-        if any(word in msg_content for word in banned_words):
-            try:
-                await message.delete()
-                database.log_event(message.guild.id, "banned_blocked")  # تسجيل حدث حذف الكلمة
-            except Exception as e:
-                print(f"تعذر حذف الرسالة: {e}")
-            
-            g_id = str(message.guild.id)
-            u_id = str(message.author.id)
-            violations.setdefault(g_id, {}).setdefault(u_id, 0)
-            violations[g_id][u_id] += 1
-            
-            count = violations[g_id][u_id]
-            
-            try:
-                max_v = int(settings.get("max_violations", 3))
-            except (ValueError, TypeError):
-                max_v = 3
-
-            title = settings.get("warning_title", "تحذير مخالفة")
-            
-            # تحديد نص التحذير: المرة الأولى -> التحذير 1 / المرات التالية -> التحذير 2
-            if count == 1:
-                msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
-            else:
-                msg_text = settings.get("warning_msg_2", "هذا هو الإنذار المتقدم يا {user}!")
-            
-            msg_text = msg_text.replace("{user}", message.author.mention)
-            embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
-            
-            # 1. إرسال رسالة التحذير دائمًا أولاً وتختفي بعد 5 ثوانٍ
-            await message.channel.send(embed=embed, delete_after=5)
-
-            # 2. إذا وصل العضو للحد الأقصى أو تجاوز -> تطبيق العقوبة فوراً
-            if count >= max_v:
-                p_type = settings.get("punishment_type", "timeout")
-                try:
-                    t_min = int(settings.get("timeout_minutes", 10))
-                except (ValueError, TypeError):
-                    t_min = 10
-
-                applied = False
-                try:
-                    if p_type == "timeout":
-                        await message.author.timeout(timedelta(minutes=t_min), reason="تجاوز حد الكلمات المحظورة")
-                        applied = True
-                    elif p_type == "kick":
-                        await message.author.kick(reason="تجاوز حد الكلمات المحظورة")
-                        applied = True
-                    elif p_type == "mute":
-                        await message.author.timeout(timedelta(days=7), reason="تجاوز حد الكلمات المحظورة")
-                        applied = True
-
-                    if applied:
-                        embed_punish = discord.Embed(
-                            title="⛔ تم تطبيق العقوبة",
-                            description=f"تم تطبيق عقوبة ({p_type.upper()}) على {message.author.mention} لتجاوزه الحد الأقصى للمخالفات ({max_v}).",
-                            color=discord.Color.red()
-                        )
-                        await message.channel.send(embed_punish, delete_after=5)
-                        
-                        # تصفير عدد مخالفات العضو بعد العقوبة
-                        violations[g_id][u_id] = 0
-
-                except Exception as e:
-                    print(f"خطأ في تطبيق العقوبة: {e}")
-                    await message.channel.send(
-                        f"⚠️ تعذر تطبيق العقوبة على {message.author.mention}. يرجى التأكد من منح البوت صلاحية إدارة الأعضاء وأن رتبته أعلى من العضو!", 
-                        delete_after=7
-                    )
+    # 1. فحص قنوات الميديا
+    media_channels = settings.get("media_channels", [])
+    if str(message.channel.id) in media_channels or message.channel.name in media_channels:
+        has_media = len(message.attachments) > 0 or any(ext in message.content.lower() for ext in ['.jpg', '.png', '.gif', '.mp4', 'http://', 'https://'])
+        if not has_media:
+            await message.delete()
+            database.increment_stat(message.guild.id, "media_deleted")
+            warn_msg = settings.get("media_warning", "عذراً هذه القناة للميديا فقط!").replace("{user}", message.author.mention)
+            await message.channel.send(warn_msg, delete_after=5)
             return
+
+    # 2. فحص الكلمات المحظورة والعقوبات
+    banned_words = settings.get("banned_words", [])
+    msg_content = message.content.lower()
+    if any(word in msg_content for word in banned_words):
+        try:
+            await message.delete()
+            database.increment_stat(message.guild.id, "banned_blocked")
+        except Exception as e:
+            print(f"تعذر حذف الرسالة: {e}")
+        
+        g_id = str(message.guild.id)
+        u_id = str(message.author.id)
+        violations.setdefault(g_id, {}).setdefault(u_id, 0)
+        violations[g_id][u_id] += 1
+        
+        count = violations[g_id][u_id]
+        
+        try:
+            max_v = int(settings.get("max_violations", 3))
+        except (ValueError, TypeError):
+            max_v = 3
+
+        title = settings.get("warning_title", "تحذير مخالفة")
+        
+        if count == 1:
+            msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
+        else:
+            msg_text = settings.get("warning_msg_2", "هذا هو الإنذار المتقدم يا {user}!")
+        
+        msg_text = msg_text.replace("{user}", message.author.mention)
+        embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
+        await message.channel.send(embed=embed, delete_after=5)
+
+        if count >= max_v:
+            p_type = settings.get("punishment_type", "timeout")
+            try:
+                t_min = int(settings.get("timeout_minutes", 10))
+            except (ValueError, TypeError):
+                t_min = 10
+
+            try:
+                if p_type == "timeout":
+                    await message.author.timeout(timedelta(minutes=t_min), reason="تجاوز حد الكلمات المحظورة")
+                    database.increment_stat(message.guild.id, "timeout_count")
+                elif p_type == "kick":
+                    await message.author.kick(reason="تجاوز حد الكلمات المحظورة")
+                elif p_type == "mute":
+                    await message.author.timeout(timedelta(days=7), reason="تجاوز حد الكلمات المحظورة")
+                    database.increment_stat(message.guild.id, "timeout_count")
+
+                embed_punish = discord.Embed(
+                    title="⛔ تم تطبيق العقوبة",
+                    description=f"تم تطبيق عقوبة ({p_type.upper()}) على {message.author.mention} لتجاوزه الحد الأقصى للمخالفات ({max_v}).",
+                    color=discord.Color.red()
+                )
+                await message.channel.send(embed_punish, delete_after=5)
+                violations[g_id][u_id] = 0
+
+            except Exception as e:
+                print(f"خطأ في تطبيق العقوبة: {e}")
+                await message.channel.send(
+                    f"⚠️ تعذر تطبيق العقوبة على {message.author.mention}. يرجى التأكد من صلاحيات البوت!", 
+                    delete_after=7
+                )
+        return
 
     # 3. الردود التلقائية
     auto_resp = settings.get("auto_responses", {})
     if message.content.lower() in auto_resp:
         await message.channel.send(auto_resp[message.content.lower()])
-        database.log_event(message.guild.id, "auto_replies")  # تسجيل حدث الرد التلقائي
+        database.increment_stat(message.guild.id, "auto_replies")
         return
 
     await bot.process_commands(message)
