@@ -178,7 +178,7 @@
                             <div class="row align-items-center g-4">
                                 <!-- Doughnut Chart Canvas Container -->
                                 <div class="col-md-6 text-center">
-                                    <div style="max-width: 320px; margin: 0 auto; position: relative;">
+                                    <div style="max-width: 340px; width: 100%; margin: 0 auto; min-height: 380px; position: relative;">
                                         <canvas id="analyticsDoughnutChart"></canvas>
                                     </div>
                                 </div>
@@ -412,17 +412,19 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'bottom',
                         labels: {
                             color: '#94a3b8',
                             font: { size: 12 },
-                            padding: 15
+                            padding: 10,
+                            boxWidth: 12
                         }
                     }
                 },
-                cutout: '70%'
+                cutout: '65%'
             }
         });
 
