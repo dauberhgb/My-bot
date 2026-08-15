@@ -31,15 +31,28 @@ def init_db():
         )
     ''')
     
-    # جدول إحصائيات التحليلات (جديد)
+    # جدول إحصائيات التحليلات (مُحدّث ليشمل حالات التايم أوت والحظر)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guild_analytics (
             guild_id TEXT PRIMARY KEY,
             banned_blocked INTEGER DEFAULT 0,
             media_deleted INTEGER DEFAULT 0,
-            auto_replies INTEGER DEFAULT 0
+            auto_replies INTEGER DEFAULT 0,
+            timeout_count INTEGER DEFAULT 0,
+            ban_count INTEGER DEFAULT 0
         )
     ''')
+    
+    # التأكد من إضافة الأعمدة الجديدة في حال كان الجدول قديم بدون فقدان البيانات
+    try:
+        cursor.execute("ALTER TABLE guild_analytics ADD COLUMN timeout_count INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE guild_analytics ADD COLUMN ban_count INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     
     conn.commit()
     conn.close()
@@ -124,20 +137,20 @@ def save_settings(guild_id, settings):
     conn.close()
 
 # ==========================================
-# دوال ميزة التحليلات (Analytics) الجديدة
+# دوال ميزة التحليلات (Analytics) المحدثة
 # ==========================================
 
 def increment_stat(guild_id, stat_name):
-    """زيادة العداد لميزة معينة (banned_blocked / media_deleted / auto_replies)"""
-    if stat_name not in ['banned_blocked', 'media_deleted', 'auto_replies']:
+    """زيادة العداد لميزة معينة (banned_blocked / media_deleted / auto_replies / timeout_count / ban_count)"""
+    allowed_stats = ['banned_blocked', 'media_deleted', 'auto_replies', 'timeout_count', 'ban_count']
+    if stat_name not in allowed_stats:
         return
 
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
     # التأكد من وجود سجل للسيرفر
-    cursor.execute("INSERT IGNORE INTO guild_analytics (guild_id) VALUES (?)", (str(guild_id),)) if False else None
-    cursor.execute("INSERT OR IGNORE INTO guild_analytics (guild_id, banned_blocked, media_deleted, auto_replies) VALUES (?, 0, 0, 0)", (str(guild_id),))
+    cursor.execute("INSERT OR IGNORE INTO guild_analytics (guild_id, banned_blocked, media_deleted, auto_replies, timeout_count, ban_count) VALUES (?, 0, 0, 0, 0, 0)", (str(guild_id),))
     
     # زيادة العداد بمقدار 1
     cursor.execute(f"UPDATE guild_analytics SET {stat_name} = {stat_name} + 1 WHERE guild_id = ?", (str(guild_id),))
@@ -149,7 +162,7 @@ def get_analytics(guild_id):
     """جلب إحصائيات التحليلات للسيرفر"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT banned_blocked, media_deleted, auto_replies FROM guild_analytics WHERE guild_id = ?", (str(guild_id),))
+    cursor.execute("SELECT banned_blocked, media_deleted, auto_replies, timeout_count, ban_count FROM guild_analytics WHERE guild_id = ?", (str(guild_id),))
     row = cursor.fetchone()
     conn.close()
     
@@ -157,12 +170,16 @@ def get_analytics(guild_id):
         return {
             "banned_blocked": row[0],
             "media_deleted": row[1],
-            "auto_replies": row[2]
+            "auto_replies": row[2],
+            "timeout_count": row[3],
+            "ban_count": row[4]
         }
     return {
         "banned_blocked": 0,
         "media_deleted": 0,
-        "auto_replies": 0
+        "auto_replies": 0,
+        "timeout_count": 0,
+        "ban_count": 0
     }
 
 init_db()
