@@ -220,15 +220,28 @@ async def on_member_remove(member):
         action = settings.get("farewell_action")
         if action in ["ban", "timeout"]:
             class FarewellView(discord.ui.View):
+                def __init__(self, user_id):
+                    super().__init__(timeout=None)
+                    self.user_id = user_id
+
                 @discord.ui.button(label=f"تطبيق {action.upper()}", style=discord.ButtonStyle.danger)
-                async def btn_callback(self, interaction, button):
-                    if action == "ban":
-                        await member.ban(reason="عن طريق زر الوداع")
-                        await interaction.response.send_message("تم حظر العضو.", ephemeral=True)
-                    elif action == "timeout":
-                        await member.timeout(timedelta(minutes=10), reason="عن طريق زر الوداع")
-                        await interaction.response.send_message("تم إعطاء تايم أوت.", ephemeral=True)
-            view = FarewellView()
+                async def btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+                    try:
+                        if action == "ban":
+                            user_to_ban = await interaction.client.fetch_user(self.user_id)
+                            await interaction.guild.ban(user_to_ban, reason="عن طريق زر الوداع")
+                            await interaction.response.send_message("تم حظر العضو بنجاح.", ephemeral=True)
+                        elif action == "timeout":
+                            target_member = interaction.guild.get_member(self.user_id)
+                            if target_member:
+                                await target_member.timeout(timedelta(minutes=10), reason="عن طريق زر الوداع")
+                                await interaction.response.send_message("تم إعطاء تايم أوت.", ephemeral=True)
+                            else:
+                                await interaction.response.send_message("⚠️ تعذر إعطاء تايم أوت لأن العضو غادر السيرفر بالفعل.", ephemeral=True)
+                    except Exception as e:
+                        await interaction.response.send_message(f"❌ حدث خطأ أثناء تطبيق الإجراء: {e}", ephemeral=True)
+
+            view = FarewellView(user_id=member.id)
 
         await channel.send(embed=embed, view=view)
 
@@ -316,7 +329,7 @@ async def on_message(message):
                             description=f"تم تطبيق عقوبة ({p_type.upper()}) على {message.author.mention} لتجاوزه الحد الأقصى للمخالفات ({max_v}).",
                             color=discord.Color.red()
                         )
-                        await message.channel.send(embed=embed_punish, delete_after=5)
+                        await message.channel.send(embed_punish, delete_after=5)
                         
                         # تصفير عدد مخالفات العضو بعد العقوبة
                         violations[g_id][u_id] = 0
