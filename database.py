@@ -31,7 +31,7 @@ def init_db():
         )
     ''')
     
-    # جدول إحصائيات التحليلات (مُحدّث ليشمل حالات التايم أوت والحظر)
+    # جدول إحصائيات التحليلات
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guild_analytics (
             guild_id TEXT PRIMARY KEY,
@@ -43,7 +43,7 @@ def init_db():
         )
     ''')
     
-    # التأكد من إضافة الأعمدة الجديدة في حال كان الجدول قديم بدون فقدان البيانات
+    # التأكد من إضافة الأعمدة في حال كان الجدول قديم دون فقدان البيانات
     try:
         cursor.execute("ALTER TABLE guild_analytics ADD COLUMN timeout_count INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
@@ -55,7 +55,7 @@ def init_db():
         pass
 
     # ==========================================
-    # إضافة حقول الميزات الجديدة (بدون المساس بالقديم)
+    # إضافة حقول الميزات الجديدة (تضمين قناة أرشيف التذاكر)
     # ==========================================
     new_columns = [
         ("welcome_channel", "TEXT DEFAULT ''"),
@@ -64,7 +64,7 @@ def init_db():
         ("welcome_img", "TEXT DEFAULT ''"),
         ("log_channel", "TEXT DEFAULT ''"),
         ("ticket_channel", "TEXT DEFAULT ''"),
-        ("ticket_category", "TEXT DEFAULT ''")
+        ("ticket_archive_channel", "TEXT DEFAULT ''")
     ]
 
     for col_name, col_type in new_columns:
@@ -82,7 +82,6 @@ def get_settings(guild_id):
     cursor.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
     row = cursor.fetchone()
     
-    # جلب أسماء الأعمدة ديناميكياً لضمان التوافق وقراءة الميزات الجديدة
     colnames = [desc[0] for desc in cursor.description]
     conn.close()
     
@@ -107,14 +106,13 @@ def get_settings(guild_id):
             "auto_responses": json.loads(data.get("auto_responses")) if data.get("auto_responses") else {},
             "auto_role": data.get("auto_role") or "",
             "auto_nickname": data.get("auto_nickname") or "",
-            # الميزات الجديدة
             "welcome_channel": data.get("welcome_channel") or "",
             "welcome_title": data.get("welcome_title") or "مرحباً بك!",
             "welcome_desc": data.get("welcome_desc") or "أهلاً بك يا {user} في السيرفر!",
             "welcome_img": data.get("welcome_img") or "",
             "log_channel": data.get("log_channel") or "",
             "ticket_channel": data.get("ticket_channel") or "",
-            "ticket_category": data.get("ticket_category") or ""
+            "ticket_archive_channel": data.get("ticket_archive_channel") or ""
         }
     return {
         "guild_id": str(guild_id),
@@ -135,24 +133,20 @@ def get_settings(guild_id):
         "auto_responses": {},
         "auto_role": "",
         "auto_nickname": "",
-        # الميزات الجديدة الافتراضية
         "welcome_channel": "",
         "welcome_title": "أهلاً وسهلاً بك! 🎉",
         "welcome_desc": "مرحباً بك يا {user} في سيرفرنا، نتمنى لك وقتاً ممتعاً!",
         "welcome_img": "",
         "log_channel": "",
         "ticket_channel": "",
-        "ticket_category": ""
+        "ticket_archive_channel": ""
     }
 
 def save_settings(guild_id, settings):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # الحصول على الإعدادات الحالية لعدم مسح أي بيانات سابقة
     current = get_settings(guild_id)
-    
-    # دمج البيانات
     updated = {**current, **settings}
     
     cursor.execute('''
@@ -162,7 +156,7 @@ def save_settings(guild_id, settings):
             farewell_channel, farewell_title, farewell_desc, farewell_img, farewell_action,
             auto_responses, auto_role, auto_nickname,
             welcome_channel, welcome_title, welcome_desc, welcome_img,
-            log_channel, ticket_channel, ticket_category
+            log_channel, ticket_channel, ticket_archive_channel
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
@@ -191,17 +185,12 @@ def save_settings(guild_id, settings):
         updated.get("welcome_img", ""),
         updated.get("log_channel", ""),
         updated.get("ticket_channel", ""),
-        updated.get("ticket_category", "")
+        updated.get("ticket_archive_channel", "")
     ))
     conn.commit()
     conn.close()
 
-# ==========================================
-# دوال ميزة التحليلات (Analytics) المحدثة
-# ==========================================
-
 def increment_stat(guild_id, stat_name):
-    """زيادة العداد لميزة معينة (banned_blocked / media_deleted / auto_replies / timeout_count / ban_count)"""
     allowed_stats = ['banned_blocked', 'media_deleted', 'auto_replies', 'timeout_count', 'ban_count']
     if stat_name not in allowed_stats:
         return
@@ -209,17 +198,13 @@ def increment_stat(guild_id, stat_name):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # التأكد من وجود سجل للسيرفر
     cursor.execute("INSERT OR IGNORE INTO guild_analytics (guild_id, banned_blocked, media_deleted, auto_replies, timeout_count, ban_count) VALUES (?, 0, 0, 0, 0, 0)", (str(guild_id),))
-    
-    # زيادة العداد بمقدار 1
     cursor.execute(f"UPDATE guild_analytics SET {stat_name} = {stat_name} + 1 WHERE guild_id = ?", (str(guild_id),))
     
     conn.commit()
     conn.close()
 
 def get_analytics(guild_id):
-    """جلب إحصائيات التحليلات للسيرفر"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT banned_blocked, media_deleted, auto_replies, timeout_count, ban_count FROM guild_analytics WHERE guild_id = ?", (str(guild_id),))
