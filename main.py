@@ -290,6 +290,109 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
             ephemeral=True
         )
 
+# ==========================================
+# 4. أوامر السلاش الإضافية (Slash Commands)
+# ==========================================
+
+@bot.tree.command(name="stats", description="عرض إحصائيات الحماية والنشاط للسيرفر")
+async def stats_command(interaction: discord.Interaction):
+    analytics = database.get_analytics(interaction.guild_id)
+    
+    embed = discord.Embed(
+        title=f"📊 إحصائيات حماية {interaction.guild.name}",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="🚫 كلمات محظورة محذوفة", value=str(analytics.get("banned_blocked", 0)), inline=True)
+    embed.add_field(name="🖼️ مخالفات الميديا", value=str(analytics.get("media_deleted", 0)), inline=True)
+    embed.add_field(name="🤖 ردود تلقائية أُرسلت", value=str(analytics.get("auto_replies", 0)), inline=True)
+    embed.add_field(name="⏰ عقوبات تايم أوت", value=str(analytics.get("timeout_count", 0)), inline=True)
+    embed.add_field(name="🔨 عقوبات حظر", value=str(analytics.get("ban_count", 0)), inline=True)
+    embed.set_footer(text="يتم التحديث تلقائياً عبر نظام التحليلات")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="settings", description="عرض الإعدادات الحالية المطبقة من لوحة التحكم")
+@app_commands.checks.has_permissions(administrator=True)
+async def settings_command(interaction: discord.Interaction):
+    settings = database.get_settings(interaction.guild_id)
+    
+    embed = discord.Embed(
+        title=f"⚙️ إعدادات البوت الحالية - {interaction.guild.name}",
+        color=discord.Color.green()
+    )
+    
+    banned_words_count = len(settings.get("banned_words", []))
+    media_channels_count = len(settings.get("media_channels", []))
+    auto_role = settings.get("auto_role") or "غير مفعل"
+    auto_nick = settings.get("auto_nickname") or "غير مفعل"
+    
+    embed.add_field(name="🛡️ الكلمات المحظورة", value=f"{banned_words_count} كلمة", inline=True)
+    embed.add_field(name="📁 قنوات الميديا", value=f"{media_channels_count} قناة", inline=True)
+    embed.add_field(name="👤 الرول التلقائي", value=auto_role, inline=True)
+    embed.add_field(name="🏷️ اللقب التلقائي", value=auto_nick, inline=True)
+    embed.add_field(name="⚖️ نوع العقوبة", value=settings.get("punishment_type", "timeout").upper(), inline=True)
+    embed.add_field(name="⚠️ حد المخالفات", value=str(settings.get("max_violations", 3)), inline=True)
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="warn", description="إعطاء تحذير يدوي لعضو")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def warn_command(interaction: discord.Interaction, member: discord.Member, reason: str = "مخالفة القوانين"):
+    g_id = str(interaction.guild_id)
+    u_id = str(member.id)
+    
+    violations.setdefault(g_id, {}).setdefault(u_id, 0)
+    violations[g_id][u_id] += 1
+    
+    count = violations[g_id][u_id]
+    settings = database.get_settings(g_id)
+    max_v = int(settings.get("max_violations", 3))
+    
+    embed = discord.Embed(
+        title="⚠️ تحذير يدوي من الإدارة",
+        description=f"تم تحذير {member.mention}.\n**السبب:** {reason}\n**عدد المخالفات الحالي:** ({count}/{max_v})",
+        color=discord.Color.gold()
+    )
+    await interaction.response.send_message(embed=embed)
+    
+    if count >= max_v:
+        p_type = settings.get("punishment_type", "timeout")
+        t_min = int(settings.get("timeout_minutes", 10))
+        
+        try:
+            if p_type == "timeout":
+                await member.timeout(timedelta(minutes=t_min), reason=reason)
+                database.increment_stat(g_id, "timeout_count")
+            elif p_type == "kick":
+                await member.kick(reason=reason)
+            elif p_type == "mute":
+                await member.timeout(timedelta(days=7), reason=reason)
+                database.increment_stat(g_id, "timeout_count")
+
+            await interaction.followup.send(f"⛔ تم تطبيق عقوبة ({p_type.upper()}) على {member.mention} لتجاوزه حد التحذيرات.")
+            violations[g_id][u_id] = 0
+        except Exception as e:
+            await interaction.followup.send(f"❌ تعذر تطبيق العقوبة: {e}")
+
+
+@bot.tree.command(name="clear-warns", description="تصفير تحذيرات عضو معين")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def clear_warns_command(interaction: discord.Interaction, member: discord.Member):
+    g_id = str(interaction.guild_id)
+    u_id = str(member.id)
+    
+    if g_id in violations and u_id in violations[g_id]:
+        violations[g_id][u_id] = 0
+        await interaction.response.send_message(f"✅ تم تصفير مخالفات {member.mention} بنجاح.", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"ℹ️ {member.mention} لا يملك أي مخالفات مسجلة.", ephemeral=True)
+
+# ==========================================
+# 5. الأحداث التلقائية للبوت (Events)
+# ==========================================
+
 @bot.event
 async def on_member_join(member):
     settings = database.get_settings(member.guild.id)
