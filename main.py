@@ -460,6 +460,9 @@ class TicketLaunchView(discord.ui.View):
 
     @discord.ui.button(label="فتح تكت دعم 📩", style=discord.ButtonStyle.primary, custom_id="open_ticket_btn")
     async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 1. إعطاء إشارة لديسكورد فوراً لمنع خطأ "Didn't respond in time"
+        await interaction.response.defer(ephemeral=True)
+
         settings = database.get_settings(interaction.guild_id)
         category_id = settings.get("ticket_category")
         category = interaction.guild.get_channel(int(category_id)) if str(category_id).isdigit() else None
@@ -470,21 +473,27 @@ class TicketLaunchView(discord.ui.View):
             interaction.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
-        ticket_channel = await interaction.guild.create_text_channel(
-            name=f"ticket-{interaction.user.name}",
-            category=category,
-            overwrites=overwrites
-        )
+        try:
+            ticket_channel = await interaction.guild.create_text_channel(
+                name=f"ticket-{interaction.user.name}",
+                category=category,
+                overwrites=overwrites
+            )
 
-        embed = discord.Embed(
-            title="🎫 تكت دعم جديد",
-            description=f"مرحباً بك {interaction.user.mention}، يرجى كتابة استفسارك هنا وسيقوم فريق الدعم بالرد عليك قريباً.",
-            color=discord.Color.blue()
-        )
-        
-        await ticket_channel.send(embed=embed, view=TicketCloseView())
-        await interaction.response.send_message(f"✅ تم إنشاء التكت بنجاح: {ticket_channel.mention}", ephemeral=True)
-        await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {ticket_channel.mention}")
+            embed = discord.Embed(
+                title="🎫 تكت دعم جديد",
+                description=f"مرحباً بك {interaction.user.mention}، يرجى كتابة استفسارك هنا وسيقوم فريق الدعم بالرد عليك قريباً.",
+                color=discord.Color.blue()
+            )
+            
+            await ticket_channel.send(embed=embed, view=TicketCloseView())
+            
+            # 2. استخدام followup للرد بعد تأكيده
+            await interaction.followup.send(f"✅ تم إنشاء التكت بنجاح: {ticket_channel.mention}", ephemeral=True)
+            await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {ticket_channel.mention}")
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ أثناء إنشاء التكت: {e}", ephemeral=True)
 
 @bot.tree.command(name="setup-tickets", description="إرسال لوحة التذاكر المباشرة إلى القناة المحددة")
 @app_commands.checks.has_permissions(administrator=True)
