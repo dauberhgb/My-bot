@@ -1,7 +1,8 @@
 import os
 import json
 import threading
-from datetime import timedelta
+import io
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import discord
 from discord import app_commands
@@ -81,7 +82,7 @@ TRANSLATIONS = {
         'response_placeholder': 'الرد التلقائي للبوت',
         'log_channel': 'قناة الإدارة لإرسال السجلات والتنبيهات:',
         'ticket_channel': 'قناة لوحة التذاكر (التي يظهر فيها زر فتح تكت):',
-        'ticket_category': 'معرف القسم (Category ID) لإنشاء التذاكر بداخله:',
+        'ticket_archive_channel': 'قناة أرشيف التذاكر (التي تُنقل إليها التذاكر المغلقة):',
         'save_success': 'تم حفظ الإعدادات بنجاح!'
     },
     'en': {
@@ -153,7 +154,7 @@ TRANSLATIONS = {
         'response_placeholder': 'Auto Bot Response',
         'log_channel': 'Admin Log Channel:',
         'ticket_channel': 'Ticket Panel Channel:',
-        'ticket_category': 'Category ID to create tickets inside:',
+        'ticket_archive_channel': 'Ticket Archive Channel:',
         'save_success': 'Settings saved successfully!'
     }
 }
@@ -268,7 +269,7 @@ def save(guild_id):
         "auto_nickname": request.form.get('auto_nickname', ''),
         "log_channel": request.form.get('log_channel', ''),
         "ticket_channel": request.form.get('ticket_channel', ''),
-        "ticket_category": request.form.get('ticket_category', '')
+        "ticket_archive_channel": request.form.get('ticket_archive_channel', '')
     }
 
     database.save_settings(guild_id, settings)
@@ -289,6 +290,8 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 @bot.event
 async def on_ready():
+    bot.add_view(TicketLaunchView())
+    bot.add_view(TicketCloseView())
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
 @bot.command(name="sync")
@@ -440,19 +443,49 @@ async def clear_warns_command(interaction: discord.Interaction, member: discord.
         await interaction.response.send_message(f"ℹ️ {member.mention} لا يملك أي مخالفات مسجلة.", ephemeral=True)
 
 # ==========================================
-# 5. نظام التذاكر (Ticket System Interactive View & Command)
+# 5. نظام التذاكر المطور (Private Threads & Transcripts)
 # ==========================================
 class TicketCloseView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="إغلاق التكت 🔒", style=discord.ButtonStyle.danger, custom_id="close_ticket_btn")
+    @discord.ui.button(label="إغلاق التكت والأرشفة 🔒", style=discord.ButtonStyle.danger, custom_id="close_ticket_btn")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("سيتم إغلاق التكت وحذف القناة بعد 5 ثوانٍ...", ephemeral=False)
-        await send_audit_log(interaction.guild, "إغلاق تكت", f"قام {interaction.user.mention} بإغلاق التكت: #{interaction.channel.name}")
+        await interaction.response.send_message("جاري استخراج الترانسكريبت وأرشفة التكت...", ephemeral=True)
+
+        thread = interaction.channel
+        settings = database.get_settings(interaction.guild_id)
+        archive_ch_id = settings.get("ticket_archive_channel")
+
+        # 1. جمع جميع المحادثات لتوليد ملف الترانسكريبت
+        messages = []
+        async for msg in thread.history(limit=500, oldest_first=True):
+            time_str = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            messages.append(f"[{time_str}] {msg.author} ({msg.author.id}): {msg.clean_content}")
+
+        transcript_text = "\n".join(messages)
+        file_data = io.BytesIO(transcript_text.encode('utf-8'))
+        transcript_file = discord.File(file_data, filename=f"transcript-{thread.name}.txt")
+
+        # 2. إرسال الترانسكريبت لقناة الأرشيف المحددة
+        archive_channel = interaction.guild.get_channel(int(archive_ch_id)) if str(archive_ch_id).isdigit() else None
+        if archive_channel:
+            embed_archive = discord.Embed(
+                title="📁 أرشيف تكت مغلق",
+                description=f"**اسم التكت:** {thread.name}\n**تم الإغلاق بواسطة:** {interaction.user.mention}",
+                color=discord.Color.dark_grey()
+            )
+            try:
+                await archive_channel.send(embed=embed_archive, file=transcript_file)
+            except Exception as e:
+                print(f"تعذر إرسال الترانسكريبت لقناة الأرشيف: {e}")
+
+        await send_audit_log(interaction.guild, "إغلاق تكت", f"قام {interaction.user.mention} بإغلاق التكت: {thread.name}")
+        
+        # 3. إغلاق الخيط وأرشفته
         import asyncio
-        await asyncio.sleep(5)
-        await interaction.channel.delete()
+        await asyncio.sleep(2)
+        await thread.edit(archived=True, locked=True)
 
 class TicketLaunchView(discord.ui.View):
     def __init__(self):
@@ -460,25 +493,17 @@ class TicketLaunchView(discord.ui.View):
 
     @discord.ui.button(label="فتح تكت دعم 📩", style=discord.ButtonStyle.primary, custom_id="open_ticket_btn")
     async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # 1. إعطاء إشارة لديسكورد فوراً لمنع خطأ "Didn't respond in time"
         await interaction.response.defer(ephemeral=True)
 
-        settings = database.get_settings(interaction.guild_id)
-        category_id = settings.get("ticket_category")
-        category = interaction.guild.get_channel(int(category_id)) if str(category_id).isdigit() else None
-        
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            interaction.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-
+        # إنشاء خيط خاص (Private Thread) داخل نفس القناة المخصصة للتذاكر
         try:
-            ticket_channel = await interaction.guild.create_text_channel(
+            thread = await interaction.channel.create_thread(
                 name=f"ticket-{interaction.user.name}",
-                category=category,
-                overwrites=overwrites
+                type=discord.ChannelType.private_thread,
+                invitable=False
             )
+            
+            await thread.add_user(interaction.user)
 
             embed = discord.Embed(
                 title="🎫 تكت دعم جديد",
@@ -486,14 +511,12 @@ class TicketLaunchView(discord.ui.View):
                 color=discord.Color.blue()
             )
             
-            await ticket_channel.send(embed=embed, view=TicketCloseView())
-            
-            # 2. استخدام followup للرد بعد تأكيده
-            await interaction.followup.send(f"✅ تم إنشاء التكت بنجاح: {ticket_channel.mention}", ephemeral=True)
-            await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {ticket_channel.mention}")
+            await thread.send(embed=embed, view=TicketCloseView())
+            await interaction.followup.send(f"✅ تم إنشاء التكت بنجاح: {thread.mention}", ephemeral=True)
+            await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {thread.mention}")
 
         except Exception as e:
-            await interaction.followup.send(f"❌ حدث خطأ أثناء إنشاء التكت: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ حدث خطأ أثناء إنشاء التكت (تأكد من تفعيل صلاحيات Private Threads للبوت): {e}", ephemeral=True)
 
 @bot.tree.command(name="setup-tickets", description="إرسال لوحة التذاكر المباشرة إلى القناة المحددة")
 @app_commands.checks.has_permissions(administrator=True)
