@@ -21,10 +21,13 @@ TRANSLATIONS = {
         'roles': 'الرولات',
         'tab_general': 'الإعدادات العامة',
         'tab_analytics': 'التحليلات والإحصائيات',
+        'tab_welcome': 'رسائل الترحيب',
         'tab_media': 'حماية الميديا',
         'tab_banned': 'الكلمات المحظورة',
         'tab_farewell': 'رسالة الوداع',
         'tab_responses': 'الردود التلقائية',
+        'tab_logs': 'سجلات الرقابة',
+        'tab_tickets': 'نظام التذاكر',
         'save_btn': 'حفظ جميع التغييرات',
         'auto_role': 'الرول التلقائي عند الدخول:',
         'no_role': 'بدون رول',
@@ -37,6 +40,12 @@ TRANSLATIONS = {
         'stat_responses': 'الردود التلقائية المرسلة',
         'stat_timeout': 'عقوبات التايم أوت',
         'stat_ban': 'عقوبات الحظر النهائيات',
+        'welcome_channel': 'قناة الترحيب:',
+        'welcome_title': 'عنوان رسالة الترحيب:',
+        'default_welcome_title': 'مرحباً بك!',
+        'welcome_desc': 'نص الرسالة ({user} لذكر العضو):',
+        'default_welcome_desc': 'أهلاً بك يا {user} في السيرفر!',
+        'welcome_img': 'رابط صورة/بانر الترحيب (Embed Image):',
         'media_title': 'حماية قنوات الميديا',
         'select_media_channels': 'حدد قنوات الميديا فقط:',
         'media_warn_msg': 'رسالة التنبيه عند كتابة نص فقط:',
@@ -70,6 +79,9 @@ TRANSLATIONS = {
         'discord_preview_title': 'معاينة حية لرسالة الوداع (Discord Live Preview)',
         'keyword_placeholder': 'الكلمة المفتاحية',
         'response_placeholder': 'الرد التلقائي للبوت',
+        'log_channel': 'قناة الإدارة لإرسال السجلات والتنبيهات:',
+        'ticket_channel': 'قناة لوحة التذاكر (التي يظهر فيها زر فتح تكت):',
+        'ticket_category': 'معرف القسم (Category ID) لإنشاء التذاكر بداخله:',
         'save_success': 'تم حفظ الإعدادات بنجاح!'
     },
     'en': {
@@ -81,10 +93,13 @@ TRANSLATIONS = {
         'roles': 'Roles',
         'tab_general': 'General Settings',
         'tab_analytics': 'Analytics & Stats',
+        'tab_welcome': 'Welcome Messages',
         'tab_media': 'Media Protection',
         'tab_banned': 'Banned Words',
         'tab_farewell': 'Farewell Message',
         'tab_responses': 'Auto Responses',
+        'tab_logs': 'Audit Logs',
+        'tab_tickets': 'Ticket System',
         'save_btn': 'Save All Changes',
         'auto_role': 'Auto Role on Join:',
         'no_role': 'No Role',
@@ -97,6 +112,12 @@ TRANSLATIONS = {
         'stat_responses': 'Sent Auto Responses',
         'stat_timeout': 'Applied Timeouts',
         'stat_ban': 'Applied Bans',
+        'welcome_channel': 'Welcome Channel:',
+        'welcome_title': 'Welcome Message Title:',
+        'default_welcome_title': 'Welcome!',
+        'welcome_desc': 'Message Text ({user} to mention member):',
+        'default_welcome_desc': 'Welcome {user} to the server!',
+        'welcome_img': 'Welcome Image/Banner URL (Embed Image):',
         'media_title': 'Media Channels Protection',
         'select_media_channels': 'Select Media Channels Only:',
         'media_warn_msg': 'Warning message when text-only is sent:',
@@ -130,6 +151,9 @@ TRANSLATIONS = {
         'discord_preview_title': 'Discord Live Preview',
         'keyword_placeholder': 'Keyword',
         'response_placeholder': 'Auto Bot Response',
+        'log_channel': 'Admin Log Channel:',
+        'ticket_channel': 'Ticket Panel Channel:',
+        'ticket_category': 'Category ID to create tickets inside:',
         'save_success': 'Settings saved successfully!'
     }
 }
@@ -143,6 +167,22 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
+
+# دالة مساعدة لإرسال سجلات الرقابة (Audit Logs)
+async def send_audit_log(guild, title, description, color=discord.Color.orange()):
+    settings = database.get_settings(guild.id)
+    if not settings or not settings.get("log_channel"):
+        return
+    
+    log_ch_id = settings.get("log_channel")
+    channel = guild.get_channel(int(log_ch_id)) if str(log_ch_id).isdigit() else discord.utils.get(guild.text_channels, name=log_ch_id)
+    if channel:
+        embed = discord.Embed(title=f"📜 {title}", description=description, color=color)
+        embed.set_footer(text="نظام سجلات الرقابة والتنبيهات")
+        try:
+            await channel.send(embed=embed)
+        except Exception as e:
+            print(f"تعذر إرسال السجل: {e}")
 
 # ==========================================
 # 2. إعداد خادم الويب (Flask Dashboard)
@@ -214,6 +254,10 @@ def save(guild_id):
         "warning_title": request.form.get('warning_title', ''),
         "warning_msg_1": request.form.get('warning_msg_1', ''),
         "warning_msg_2": request.form.get('warning_msg_2', ''),
+        "welcome_channel": request.form.get('welcome_channel', ''),
+        "welcome_title": request.form.get('welcome_title', ''),
+        "welcome_desc": request.form.get('welcome_desc', ''),
+        "welcome_img": request.form.get('welcome_img', ''),
         "farewell_channel": request.form.get('farewell_channel', ''),
         "farewell_title": request.form.get('farewell_title', ''),
         "farewell_desc": request.form.get('farewell_desc', ''),
@@ -221,7 +265,10 @@ def save(guild_id):
         "farewell_action": request.form.get('farewell_action', 'none'),
         "auto_responses": auto_responses,
         "auto_role": request.form.get('auto_role', ''),
-        "auto_nickname": request.form.get('auto_nickname', '')
+        "auto_nickname": request.form.get('auto_nickname', ''),
+        "log_channel": request.form.get('log_channel', ''),
+        "ticket_channel": request.form.get('ticket_channel', ''),
+        "ticket_category": request.form.get('ticket_category', '')
     }
 
     database.save_settings(guild_id, settings)
@@ -357,6 +404,8 @@ async def warn_command(interaction: discord.Interaction, member: discord.Member,
     )
     await interaction.response.send_message(embed=embed)
     
+    await send_audit_log(interaction.guild, "تحذير يدوي", f"قام {interaction.user.mention} بتحذير {member.mention}.\nالسبب: {reason}")
+
     if count >= max_v:
         p_type = settings.get("punishment_type", "timeout")
         t_min = int(settings.get("timeout_minutes", 10))
@@ -373,6 +422,7 @@ async def warn_command(interaction: discord.Interaction, member: discord.Member,
 
             await interaction.followup.send(f"⛔ تم تطبيق عقوبة ({p_type.upper()}) على {member.mention} لتجاوزه حد التحذيرات.")
             violations[g_id][u_id] = 0
+            await send_audit_log(interaction.guild, "تطبيق عقوبة تلقائية", f"تم تطبيق عقوبة ({p_type}) على {member.mention} لتجاوز حد التحذيرات.", discord.Color.red())
         except Exception as e:
             await interaction.followup.send(f"❌ تعذر تطبيق العقوبة: {e}")
 
@@ -390,7 +440,77 @@ async def clear_warns_command(interaction: discord.Interaction, member: discord.
         await interaction.response.send_message(f"ℹ️ {member.mention} لا يملك أي مخالفات مسجلة.", ephemeral=True)
 
 # ==========================================
-# 5. الأحداث التلقائية للبوت (Events)
+# 5. نظام التذاكر (Ticket System Interactive View & Command)
+# ==========================================
+class TicketCloseView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="إغلاق التكت 🔒", style=discord.ButtonStyle.danger, custom_id="close_ticket_btn")
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("سيتم إغلاق التكت وحذف القناة بعد 5 ثوانٍ...", ephemeral=False)
+        await send_audit_log(interaction.guild, "إغلاق تكت", f"قام {interaction.user.mention} بإغلاق التكت: #{interaction.channel.name}")
+        import asyncio
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+
+class TicketLaunchView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="فتح تكت دعم 📩", style=discord.ButtonStyle.primary, custom_id="open_ticket_btn")
+    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        settings = database.get_settings(interaction.guild_id)
+        category_id = settings.get("ticket_category")
+        category = interaction.guild.get_channel(int(category_id)) if str(category_id).isdigit() else None
+        
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            interaction.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+
+        ticket_channel = await interaction.guild.create_text_channel(
+            name=f"ticket-{interaction.user.name}",
+            category=category,
+            overwrites=overwrites
+        )
+
+        embed = discord.Embed(
+            title="🎫 تكت دعم جديد",
+            description=f"مرحباً بك {interaction.user.mention}، يرجى كتابة استفسارك هنا وسيقوم فريق الدعم بالرد عليك قريباً.",
+            color=discord.Color.blue()
+        )
+        
+        await ticket_channel.send(embed=embed, view=TicketCloseView())
+        await interaction.response.send_message(f"✅ تم إنشاء التكت بنجاح: {ticket_channel.mention}", ephemeral=True)
+        await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {ticket_channel.mention}")
+
+@bot.tree.command(name="setup-tickets", description="إرسال لوحة التذاكر المباشرة إلى القناة المحددة")
+@app_commands.checks.has_permissions(administrator=True)
+async def setup_tickets_command(interaction: discord.Interaction):
+    settings = database.get_settings(interaction.guild_id)
+    ticket_ch_id = settings.get("ticket_channel")
+    
+    if not ticket_ch_id:
+        await interaction.response.send_message("❌ يرجى تحديد قناة التذاكر من لوحة التحكم أولاً!", ephemeral=True)
+        return
+
+    channel = interaction.guild.get_channel(int(ticket_ch_id)) if str(ticket_ch_id).isdigit() else discord.utils.get(interaction.guild.text_channels, name=ticket_ch_id)
+    if not channel:
+        await interaction.response.send_message("❌ القناة المحددة غير موجودة!", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="🎫 مركز الدعم والتعليمات",
+        description="اضغط على الزر أدناه لفتح تكت جديد للتواصل المباشر مع فريق الإدارة والدعم الفني.",
+        color=discord.Color.green()
+    )
+    await channel.send(embed=embed, view=TicketLaunchView())
+    await interaction.response.send_message(f"✅ تم إرسال لوحة التذاكر بنجاح إلى القناة: {channel.mention}", ephemeral=True)
+
+# ==========================================
+# 6. الأحداث التلقائية للبوت (Events)
 # ==========================================
 
 @bot.event
@@ -399,6 +519,7 @@ async def on_member_join(member):
     if not settings:
         return
 
+    # 1. الرول التلقائي
     if settings.get("auto_role"):
         role = discord.utils.get(member.guild.roles, name=settings["auto_role"])
         if role:
@@ -407,6 +528,7 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"تعذر إعطاء الرول: {e}")
 
+    # 2. اللقب التلقائي
     auto_nick = settings.get("auto_nickname", "").strip()
     if auto_nick:
         try:
@@ -418,6 +540,18 @@ async def on_member_join(member):
             await member.edit(nick=new_nick[:32])
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
+
+    # 3. رسالة الترحيب التلقائية
+    if settings.get("welcome_channel"):
+        welc_ch_id = settings.get("welcome_channel")
+        channel = member.guild.get_channel(int(welc_ch_id)) if str(welc_ch_id).isdigit() else discord.utils.get(member.guild.text_channels, name=welc_ch_id)
+        if channel:
+            title = settings.get("welcome_title", "مرحباً بك!")
+            desc = settings.get("welcome_desc", "أهلاً بك يا {user} في السيرفر!").replace("{user}", member.mention)
+            embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
+            if settings.get("welcome_img"):
+                embed.set_image(url=settings["welcome_img"])
+            await channel.send(embed=embed)
 
 @bot.event
 async def on_member_remove(member):
@@ -452,12 +586,14 @@ async def on_member_remove(member):
                             await interaction.guild.ban(user_to_ban, reason="عن طريق زر الوداع")
                             database.increment_stat(interaction.guild.id, "ban_count")
                             await interaction.response.send_message("تم حظر العضو بنجاح.", ephemeral=True)
+                            await send_audit_log(interaction.guild, "حظر من زر الوداع", f"تم حظر المستخدم ID: {self.user_id} عبر زر الوداع.")
                         elif action == "timeout":
                             target_member = interaction.guild.get_member(self.user_id)
                             if target_member:
                                 await target_member.timeout(timedelta(minutes=10), reason="عن طريق زر الوداع")
                                 database.increment_stat(interaction.guild.id, "timeout_count")
                                 await interaction.response.send_message("تم إعطاء تايم أوت.", ephemeral=True)
+                                await send_audit_log(interaction.guild, "تايم أوت من زر الوداع", f"تم تطبيق تايم أوت على {target_member.mention} عبر زر الوداع.")
                             else:
                                 await interaction.response.send_message("⚠️ تعذر إعطاء تايم أوت لأن العضو غادر السيرفر بالفعل.", ephemeral=True)
                     except Exception as e:
@@ -486,6 +622,7 @@ async def on_message(message):
             database.increment_stat(message.guild.id, "media_deleted")
             warn_msg = settings.get("media_warning", "عذراً هذه القناة للميديا فقط!").replace("{user}", message.author.mention)
             await message.channel.send(warn_msg, delete_after=5)
+            await send_audit_log(message.guild, "حذف رسالة مخالفة ميديا", f"قام {message.author.mention} بكتابة نص في قناة الميديا #{message.channel.name}")
             return
 
     # 2. فحص الكلمات المحظورة والعقوبات
@@ -495,6 +632,7 @@ async def on_message(message):
         try:
             await message.delete()
             database.increment_stat(message.guild.id, "banned_blocked")
+            await send_audit_log(message.guild, "حذف كلمة محظورة", f"تم حذف رسالة تحتوي على كلمة محظورة من {message.author.mention} في #{message.channel.name}")
         except Exception as e:
             print(f"تعذر حذف الرسالة: {e}")
         
@@ -544,6 +682,7 @@ async def on_message(message):
                     color=discord.Color.red()
                 )
                 await message.channel.send(embed_punish, delete_after=5)
+                await send_audit_log(message.guild, "تطبيق عقوبة تلقائية", f"تم تطبيق عقوبة ({p_type}) على {message.author.mention} لتجاوزه حد الكلمات المحظورة.", discord.Color.red())
                 violations[g_id][u_id] = 0
 
             except Exception as e:
