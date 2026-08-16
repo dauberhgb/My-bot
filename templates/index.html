@@ -334,7 +334,7 @@
                     </div>
                 </div>
 
-                <!-- 3. Welcome Settings (ميزة جديدة) -->
+                <!-- 3. Welcome Settings -->
                 <div class="tab-pane fade glass-card p-3 p-md-4" id="welcome">
                     <h5 class="fw-bold mb-3 d-flex align-items-center"><i class="fa-solid fa-user-plus text-success me-2 ms-2"></i>{{ t.tab_welcome if t else 'إعدادات الترحيب بالأعضاء الجدد' }}</h5>
                     <div class="row g-3 mb-3">
@@ -510,7 +510,7 @@
                     {% endfor %}
                 </div>
 
-                <!-- 8. Audit Logs Settings (ميزة جديدة) -->
+                <!-- 8. Audit Logs Settings -->
                 <div class="tab-pane fade glass-card p-3 p-md-4" id="logs">
                     <h5 class="fw-bold mb-3 d-flex align-items-center"><i class="fa-solid fa-scroll text-info me-2 ms-2"></i>{{ t.tab_logs if t else 'سجلات الرقابة والتنبيهات (Audit Logs)' }}</h5>
                     <div class="row g-3">
@@ -531,7 +531,7 @@
                     </div>
                 </div>
 
-                <!-- 9. Tickets System Settings (ميزة جديدة) -->
+                <!-- 9. Tickets System Settings -->
                 <div class="tab-pane fade glass-card p-3 p-md-4" id="tickets">
                     <h5 class="fw-bold mb-3 d-flex align-items-center"><i class="fa-solid fa-ticket text-warning me-2 ms-2"></i>{{ t.tab_tickets if t else 'إعدادات نظام التذاكر (Ticket System)' }}</h5>
                     <div class="row g-3">
@@ -547,8 +547,15 @@
                             </select>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label class="form-label">{{ t.ticket_category if t else 'معرف القسم (Category ID) لإنشاء التذاكر بداخله:' }}</label>
-                            <input type="text" class="form-control" name="ticket_category" value="{{ settings.ticket_category if settings else '' }}" placeholder="أدخل ID القسم هنا (اختياري)">
+                            <label class="form-label">{{ t.ticket_archive_channel if t else 'قناة أرشيف التذاكر (التي تُنقل إليها التذاكر المغلقة):' }}</label>
+                            <select class="form-select" name="ticket_archive_channel">
+                                <option value="">{{ t.disable_opt if t else 'تعطيل الأرشيف (أرشفة داخل نفس القناة)' }}</option>
+                                {% if channels %}
+                                    {% for channel in channels %}
+                                        <option value="{{ channel.id }}" {% if settings and settings.ticket_archive_channel == channel.id %}selected{% endif %}># {{ channel.name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
                         </div>
                     </div>
                 </div>
