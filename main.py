@@ -196,14 +196,8 @@ def home():
 
 @app.route('/guilds')
 def guild_list():
-    bot_guilds = []
-    for guild in bot.guilds:
-        bot_guilds.append({
-            "id": str(guild.id),
-            "name": guild.name,
-            "icon": guild.icon.key if guild.icon else None
-        })
-    return render_template('guilds.html', guilds=bot_guilds)
+    # منع عرض قائمة جميع السيرفرات لخصوصية وأمان المشتركين
+    return "❌ غير مسموح بالوصول لقائمة السيرفرات لخصوصية وأمان المشتركين.", 403
 
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
@@ -277,7 +271,7 @@ def save(guild_id):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({"status": "success", "message": "تم حفظ الإعدادات بنجاح!"})
         
-    return f"<h1>تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!</h1><br><a href='/guilds'>العودة لقائمة السيرفرات</a>"
+    return f"<h1>تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!</h1><br><a href='/dashboard/{guild_id}'>العودة للوحة التحكم</a>"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
@@ -303,10 +297,20 @@ async def sync(ctx):
     except Exception as e:
         await ctx.send(f"❌ حدث خطأ أثناء المزامنة: {e}")
 
-@bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (للإدارة فقط)")
-@app_commands.checks.has_permissions(administrator=True)
+@bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (لمالك السيرفر ورتبة Manager فقط)")
 @app_commands.checks.cooldown(1, 5.0)
 async def setup(interaction: discord.Interaction):
+    is_owner = (interaction.user.id == interaction.guild.owner_id)
+    user_roles = [role.name.lower() for role in interaction.user.roles]
+    has_manager_role = "manager" in user_roles
+
+    if not (is_owner or has_manager_role):
+        await interaction.response.send_message(
+            "❌ عذراً! هذا الأمر مخصص فقط لمالك السيرفر أو الأشخاص الذين يملكون رتبة (Manager).", 
+            ephemeral=True
+        )
+        return
+
     guild_id = str(interaction.guild_id)
     
     base_url = os.getenv("DASHBOARD_URL", "").rstrip('/')
@@ -329,12 +333,7 @@ async def setup(interaction: discord.Interaction):
 
 @setup.error
 async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message(
-            "❌ عذراً! هذا الأمر مخصص فقط للمسؤولين (Administrator) ولا يمكنك استخدامه.", 
-            ephemeral=True
-        )
-    elif isinstance(error, app_commands.CommandOnCooldown):
+    if isinstance(error, app_commands.CommandOnCooldown):
         await interaction.response.send_message(
             f"⏳ يرجى الانتظار {round(error.retry_after, 1)} ثانية قبل استخدام الأمر مرة أخرى!", 
             ephemeral=True
