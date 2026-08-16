@@ -53,6 +53,25 @@ def init_db():
         cursor.execute("ALTER TABLE guild_analytics ADD COLUMN ban_count INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+
+    # ==========================================
+    # إضافة حقول الميزات الجديدة (بدون المساس بالقديم)
+    # ==========================================
+    new_columns = [
+        ("welcome_channel", "TEXT DEFAULT ''"),
+        ("welcome_title", "TEXT DEFAULT ''"),
+        ("welcome_desc", "TEXT DEFAULT ''"),
+        ("welcome_img", "TEXT DEFAULT ''"),
+        ("log_channel", "TEXT DEFAULT ''"),
+        ("ticket_channel", "TEXT DEFAULT ''"),
+        ("ticket_category", "TEXT DEFAULT ''")
+    ]
+
+    for col_name, col_type in new_columns:
+        try:
+            cursor.execute(f"ALTER TABLE guild_settings ADD COLUMN {col_name} {col_type}")
+        except sqlite3.OperationalError:
+            pass
     
     conn.commit()
     conn.close()
@@ -62,28 +81,40 @@ def get_settings(guild_id):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
     row = cursor.fetchone()
+    
+    # جلب أسماء الأعمدة ديناميكياً لضمان التوافق وقراءة الميزات الجديدة
+    colnames = [desc[0] for desc in cursor.description]
     conn.close()
     
     if row:
+        data = dict(zip(colnames, row))
         return {
-            "guild_id": row[0],
-            "media_channels": json.loads(row[1]) if row[1] else [],
-            "media_warning": row[2] or "عذراً {user}، هذه القناة مخصصة للميديا فقط!",
-            "banned_words": json.loads(row[3]) if row[3] else [],
-            "max_violations": row[4] or 3,
-            "punishment_type": row[5] or "timeout",
-            "timeout_minutes": row[6] or 10,
-            "warning_title": row[7] or "تحذير مخالفة",
-            "warning_msg_1": row[8] or "تنبيه أول يا {user}، يرجى الالتزام بالقوانين.",
-            "warning_msg_2": row[9] or "تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!",
-            "farewell_channel": row[10] or "",
-            "farewell_title": row[11] or "وداعاً!",
-            "farewell_desc": row[12] or "غادر العضو {user} السيرفر.",
-            "farewell_img": row[13] or "",
-            "farewell_action": row[14] or "none",
-            "auto_responses": json.loads(row[15]) if row[15] else {},
-            "auto_role": row[16] or "",
-            "auto_nickname": row[17] or ""
+            "guild_id": data.get("guild_id"),
+            "media_channels": json.loads(data.get("media_channels")) if data.get("media_channels") else [],
+            "media_warning": data.get("media_warning") or "عذراً {user}، هذه القناة مخصصة للميديا فقط!",
+            "banned_words": json.loads(data.get("banned_words")) if data.get("banned_words") else [],
+            "max_violations": data.get("max_violations") or 3,
+            "punishment_type": data.get("punishment_type") or "timeout",
+            "timeout_minutes": data.get("timeout_minutes") or 10,
+            "warning_title": data.get("warning_title") or "تحذير مخالفة",
+            "warning_msg_1": data.get("warning_msg_1") or "تنبيه أول يا {user}، يرجى الالتزام بالقوانين.",
+            "warning_msg_2": data.get("warning_msg_2") or "تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!",
+            "farewell_channel": data.get("farewell_channel") or "",
+            "farewell_title": data.get("farewell_title") or "وداعاً!",
+            "farewell_desc": data.get("farewell_desc") or "غادر العضو {user} السيرفر.",
+            "farewell_img": data.get("farewell_img") or "",
+            "farewell_action": data.get("farewell_action") or "none",
+            "auto_responses": json.loads(data.get("auto_responses")) if data.get("auto_responses") else {},
+            "auto_role": data.get("auto_role") or "",
+            "auto_nickname": data.get("auto_nickname") or "",
+            # الميزات الجديدة
+            "welcome_channel": data.get("welcome_channel") or "",
+            "welcome_title": data.get("welcome_title") or "مرحباً بك!",
+            "welcome_desc": data.get("welcome_desc") or "أهلاً بك يا {user} في السيرفر!",
+            "welcome_img": data.get("welcome_img") or "",
+            "log_channel": data.get("log_channel") or "",
+            "ticket_channel": data.get("ticket_channel") or "",
+            "ticket_category": data.get("ticket_category") or ""
         }
     return {
         "guild_id": str(guild_id),
@@ -103,35 +134,64 @@ def get_settings(guild_id):
         "farewell_action": "none",
         "auto_responses": {},
         "auto_role": "",
-        "auto_nickname": ""
+        "auto_nickname": "",
+        # الميزات الجديدة الافتراضية
+        "welcome_channel": "",
+        "welcome_title": "أهلاً وسهلاً بك! 🎉",
+        "welcome_desc": "مرحباً بك يا {user} في سيرفرنا، نتمنى لك وقتاً ممتعاً!",
+        "welcome_img": "",
+        "log_channel": "",
+        "ticket_channel": "",
+        "ticket_category": ""
     }
 
 def save_settings(guild_id, settings):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    
+    # الحصول على الإعدادات الحالية لعدم مسح أي بيانات سابقة
+    current = get_settings(guild_id)
+    
+    # دمج البيانات
+    updated = {**current, **settings}
+    
     cursor.execute('''
-        INSERT OR REPLACE INTO guild_settings VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        INSERT OR REPLACE INTO guild_settings (
+            guild_id, media_channels, media_warning, banned_words, max_violations,
+            punishment_type, timeout_minutes, warning_title, warning_msg_1, warning_msg_2,
+            farewell_channel, farewell_title, farewell_desc, farewell_img, farewell_action,
+            auto_responses, auto_role, auto_nickname,
+            welcome_channel, welcome_title, welcome_desc, welcome_img,
+            log_channel, ticket_channel, ticket_category
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     ''', (
         str(guild_id),
-        json.dumps(settings.get("media_channels", [])),
-        settings.get("media_warning", ""),
-        json.dumps(settings.get("banned_words", [])),
-        settings.get("max_violations", 3),
-        settings.get("punishment_type", "timeout"),
-        settings.get("timeout_minutes", 10),
-        settings.get("warning_title", ""),
-        settings.get("warning_msg_1", ""),
-        settings.get("warning_msg_2", ""),
-        settings.get("farewell_channel", ""),
-        settings.get("farewell_title", ""),
-        settings.get("farewell_desc", ""),
-        settings.get("farewell_img", ""),
-        settings.get("farewell_action", "none"),
-        json.dumps(settings.get("auto_responses", {})),
-        settings.get("auto_role", ""),
-        settings.get("auto_nickname", "")
+        json.dumps(updated.get("media_channels", [])),
+        updated.get("media_warning", ""),
+        json.dumps(updated.get("banned_words", [])),
+        updated.get("max_violations", 3),
+        updated.get("punishment_type", "timeout"),
+        updated.get("timeout_minutes", 10),
+        updated.get("warning_title", ""),
+        updated.get("warning_msg_1", ""),
+        updated.get("warning_msg_2", ""),
+        updated.get("farewell_channel", ""),
+        updated.get("farewell_title", ""),
+        updated.get("farewell_desc", ""),
+        updated.get("farewell_img", ""),
+        updated.get("farewell_action", "none"),
+        json.dumps(updated.get("auto_responses", {})),
+        updated.get("auto_role", ""),
+        updated.get("auto_nickname", ""),
+        updated.get("welcome_channel", ""),
+        updated.get("welcome_title", ""),
+        updated.get("welcome_desc", ""),
+        updated.get("welcome_img", ""),
+        updated.get("log_channel", ""),
+        updated.get("ticket_channel", ""),
+        updated.get("ticket_category", "")
     ))
     conn.commit()
     conn.close()
