@@ -269,7 +269,7 @@ def guild_list():
                 allowed_guilds.append(g)
 
     # عرض صفحة اختيار السيرفر الخاص بالمستخدم فقط
-    return render_template('guild_select.html', guilds=allowed_guilds)
+    return render_template('guild.html', guilds=allowed_guilds)
 
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
