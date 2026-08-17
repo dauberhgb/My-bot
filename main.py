@@ -205,8 +205,47 @@ async def send_audit_log(guild, title, description, color=discord.Color.orange()
             print(f"تعذر إرسال السجل: {e}")
 
 # ==========================================
-# الخيار 24: الكائنات والواجهات التفاعلية (Modals & Dynamic Views)
+# الخيار 24: الكائنات والواجهات التفاعلية (Modals & Dynamic Views & Smart Dropdowns)
 # ==========================================
+
+class DynamicBuilderModal(discord.ui.Modal):
+    def __init__(self, title, inputs_config, target_channel_id):
+        super().__init__(title=title[:45])
+        self.target_channel_id = target_channel_id
+        self.inputs = []
+
+        for field in inputs_config:
+            style = discord.TextStyle.paragraph if field.get('type') == 'paragraph' else discord.TextStyle.short
+            text_input = discord.ui.TextInput(
+                label=field.get('label', 'مدخل')[:45],
+                placeholder=field.get('placeholder', ''),
+                required=field.get('required', True),
+                style=style
+            )
+            self.inputs.append((field.get('label'), text_input))
+            self.add_item(text_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        channel = interaction.guild.get_channel(int(self.target_channel_id)) if str(self.target_channel_id).isdigit() else None
+        if not channel:
+            await interaction.response.send_message("❌ لم يتم العثور على روم استقبال البيانات.", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title=f"📥 نموذج جديد: {self.title}",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"ID: {interaction.user.id}")
+
+        for label, text_input in self.inputs:
+            embed.add_field(name=label, value=text_input.value or "لا يوجد", inline=False)
+
+        await channel.send(embed=embed)
+        await interaction.response.send_message("✅ تم إرسال بياناتك بنجاح، شكراً لك!", ephemeral=True)
+        await send_audit_log(interaction.guild, f"نموذج منبثق: {self.title}", f"قام {interaction.user.mention} بتعبئة نموذج وإرساله إلى {channel.mention}.", discord.Color.green())
+
 
 class DynamicModal(discord.ui.Modal):
     def __init__(self, title, fields_data):
@@ -240,6 +279,61 @@ class DynamicModal(discord.ui.Modal):
 
         await interaction.response.send_message("✅ تم إرسال نموذجك بنجاح وشكراً لك!", ephemeral=True)
         await send_audit_log(interaction.guild, f"إدخال نموذج: {self.title}", f"قام {interaction.user.mention} بتعبئة نموذج منبثق.", discord.Color.green())
+
+
+class DynamicSelectView(discord.ui.Select):
+    def __init__(self, custom_id, placeholder, min_val, max_val, options_data):
+        self.custom_id_val = custom_id
+        options = []
+        for opt in options_data:
+            options.append(discord.SelectOption(
+                label=opt['label'],
+                value=opt['value'],
+                description=opt.get('description', ''),
+                emoji=opt.get('emoji', None)
+            ))
+        super().__init__(
+            custom_id=custom_id,
+            placeholder=placeholder,
+            min_values=min_val,
+            max_values=max_val,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        added_roles = []
+        removed_roles = []
+        
+        for val in self.values:
+            if val.startswith("role_add_"):
+                role_id = int(val.replace("role_add_", ""))
+                role = interaction.guild.get_role(role_id)
+                if role and role not in interaction.user.roles:
+                    await interaction.user.add_roles(role)
+                    added_roles.append(role.name)
+            elif val.startswith("role_remove_"):
+                role_id = int(val.replace("role_remove_", ""))
+                role = interaction.guild.get_role(role_id)
+                if role and role in interaction.user.roles:
+                    await interaction.user.remove_roles(role)
+                    removed_roles.append(role.name)
+            elif val.isdigit():
+                role = interaction.guild.get_role(int(val))
+                if role:
+                    if role in interaction.user.roles:
+                        await interaction.user.remove_roles(role)
+                        removed_roles.append(role.name)
+                    else:
+                        await interaction.user.add_roles(role)
+                        added_roles.append(role.name)
+
+        msg = "✅ تم تحديث التفاعلات:"
+        if added_roles:
+            msg += f"\n- إضافة الرولات: {', '.join(added_roles)}"
+        if removed_roles:
+            msg += f"\n- إزالة الرولات: {', '.join(removed_roles)}"
+            
+        await interaction.response.send_message(msg if (added_roles or removed_roles) else "لم يتم تغيير أي رولات.", ephemeral=True)
 
 
 class DynamicEmbedView(discord.ui.View):
@@ -297,6 +391,51 @@ class DynamicEmbedView(discord.ui.View):
                 await interaction.response.send_message("جاري إعداد التكت الخاص بك...", ephemeral=True)
 
         return button_callback
+
+
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    if interaction.type == discord.InteractionType.component:
+        custom_id = interaction.data.get('custom_id', '')
+        
+        # 1. فتح نافذة إدخال Modals الذكية
+        if custom_id.startswith("open_modal_"):
+            modal_cfg = database.get_modal_config(custom_id)
+            if modal_cfg:
+                modal = DynamicBuilderModal(
+                    title=modal_cfg['title'],
+                    inputs_config=modal_cfg['inputs'],
+                    target_channel_id=modal_cfg['target_channel_id']
+                )
+                await interaction.response.send_modal(modal)
+                return
+
+        # 2. معالجة إسناد الرولات المتعددة بضغطة زر واحدة
+        elif custom_id.startswith("multi_roles_"):
+            roles_data = custom_id.replace("multi_roles_", "").split("_")
+            added = []
+            removed = []
+            for r_id in roles_data:
+                if r_id.isdigit():
+                    role = interaction.guild.get_role(int(r_id))
+                    if role:
+                        if role in interaction.user.roles:
+                            await interaction.user.remove_roles(role)
+                            removed.append(role.name)
+                        else:
+                            await interaction.user.add_roles(role)
+                            added.append(role.name)
+            
+            msg = "✅ تم تحديث الرولات بنجاح:"
+            if added:
+                msg += f"\n- تم إعطاؤك: {', '.join(added)}"
+            if removed:
+                msg += f"\n- تم سحب: {', '.join(removed)}"
+            await interaction.response.send_message(msg if (added or removed) else "لم تتم أدنى تغييرات.", ephemeral=True)
+            return
+
+    await bot.process_application_commands(interaction)
+
 
 def build_embed_from_json(data):
     embed = discord.Embed(
