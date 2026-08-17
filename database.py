@@ -72,6 +72,45 @@ def init_db():
             cursor.execute(f"ALTER TABLE guild_settings ADD COLUMN {col_name} {col_type}")
         except sqlite3.OperationalError:
             pass
+
+    # ==========================================
+    # الخيار 24: نظام الـ Embed Builder الخارق
+    # ==========================================
+    # 1. جدول القوالب والرسائل المخصصة (Visual Construction & Logic)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS embed_templates (
+            template_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT,
+            template_name TEXT,
+            embed_data TEXT,
+            components_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 2. جدول الرسائل المجدولة (Scheduled Embeds)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS scheduled_embeds (
+            schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT,
+            channel_id TEXT,
+            template_id INTEGER,
+            send_at TEXT,
+            mention_type TEXT DEFAULT 'none',
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (template_id) REFERENCES embed_templates (template_id)
+        )
+    ''')
+
+    # 3. جدول التفاعلات الحية للأزرار والقوائم والـ Modals
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS embed_interactions (
+            custom_id TEXT PRIMARY KEY,
+            guild_id TEXT,
+            action_type TEXT,
+            action_data TEXT
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -226,5 +265,99 @@ def get_analytics(guild_id):
         "timeout_count": 0,
         "ban_count": 0
     }
+
+# ==========================================
+# دوال الخيار 24 (Embed Builder الخارق)
+# ==========================================
+
+def save_embed_template(guild_id, template_name, embed_data, components_data):
+    """حفظ أو تحديث قالب Embed كامل مع أزراره ومكوناته التفاعلية"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO embed_templates (guild_id, template_name, embed_data, components_data)
+        VALUES (?, ?, ?, ?)
+    ''', (str(guild_id), template_name, json.dumps(embed_data), json.dumps(components_data)))
+    template_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return template_id
+
+def get_embed_templates(guild_id):
+    """جلب جميع القوالب المحفوظة لسيرفر معين"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT template_id, template_name, embed_data, components_data, created_at FROM embed_templates WHERE guild_id = ?", (str(guild_id),))
+    rows = cursor.fetchall()
+    conn.close()
+    templates = []
+    for r in rows:
+        templates.append({
+            "template_id": r[0],
+            "template_name": r[1],
+            "embed_data": json.loads(r[2]) if r[2] else {},
+            "components_data": json.loads(r[3]) if r[3] else [],
+            "created_at": r[4]
+        })
+    return templates
+
+def register_interaction(custom_id, guild_id, action_type, action_data):
+    """تسجيل تفاعل زر أو قائمة منسدلة أو Modal في قاعدة البيانات ليربطه البوت تلقائياً"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO embed_interactions (custom_id, guild_id, action_type, action_data)
+        VALUES (?, ?, ?, ?)
+    ''', (custom_id, str(guild_id), action_type, json.dumps(action_data)))
+    conn.commit()
+    conn.close()
+
+def get_interaction(custom_id):
+    """جلب بيانات التفاعل عند ضغط المستخدم على أي زر أو خيار في ديسكورد"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT guild_id, action_type, action_data FROM embed_interactions WHERE custom_id = ?", (custom_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            "guild_id": row[0],
+            "action_type": row[1],
+            "action_data": json.loads(row[2]) if row[2] else {}
+        }
+    return None
+
+def add_scheduled_embed(guild_id, channel_id, template_id, send_at, mention_type="none"):
+    """جدولة رسالة Embed للإرسال التلقائي في وقت لاحق"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO scheduled_embeds (guild_id, channel_id, template_id, send_at, mention_type, status)
+        VALUES (?, ?, ?, ?, ?, 'pending')
+    ''', (str(guild_id), str(channel_id), template_id, str(send_at), mention_type))
+    conn.commit()
+    conn.close()
+
+def get_pending_scheduled_embeds():
+    """جلب الرسائل المجدولة المستحقة للإرسال الآن"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT s.schedule_id, s.guild_id, s.channel_id, s.mention_type, t.embed_data, t.components_data
+        FROM scheduled_embeds s
+        JOIN embed_templates t ON s.template_id = t.template_id
+        WHERE s.status = 'pending' AND datetime(s.send_at) <= datetime('now')
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def mark_schedule_completed(schedule_id):
+    """تحديث حالة الرسالة المجدولة بعد الإرسال بنجاح"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE scheduled_embeds SET status = 'completed' WHERE schedule_id = ?", (schedule_id,))
+    conn.commit()
+    conn.close()
 
 init_db()
