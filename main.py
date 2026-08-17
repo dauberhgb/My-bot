@@ -205,7 +205,7 @@ async def send_audit_log(guild, title, description, color=discord.Color.orange()
             print(f"تعذر إرسال السجل: {e}")
 
 # ==========================================
-# الخيار 24: الكائنات والواجهات التفاعلية (Modals & Dynamic Views & Smart Dropdowns)
+# الكائنات والواجهات التفاعلية (Modals & Dynamic Views & Smart Dropdowns)
 # ==========================================
 
 class DynamicBuilderModal(discord.ui.Modal):
@@ -649,7 +649,7 @@ def save(guild_id):
     return f"<h1>تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!</h1><br><a href='/dashboard/{guild_id}'>العودة للوحة التحكم</a>"
 
 # ==========================================
-# الخيار 24: مسارات الـ API لإرسال وجدولة وحفظ الـ Embeds
+# مسارات الـ API لإرسال وجدولة وحفظ الـ Embeds
 # ==========================================
 
 @app.route('/api/embed/send/<guild_id>', methods=['POST'])
@@ -658,17 +658,24 @@ def api_send_embed(guild_id):
     if not authorized:
         return jsonify({"status": "error", "message": "غير مصرح به"}), 403
 
-    data = request.json
+    data = request.json or {}
     channel_id = data.get("channel_id")
     embed_data = data.get("embed_data", {})
     components_data = data.get("components_data", {})
     mention_type = data.get("mention_type", "none")
 
-    channel = bot.get_channel(int(channel_id))
-    if not channel:
-        return jsonify({"status": "error", "message": "القناة غير موجودة"}), 400
+    if not channel_id:
+        return jsonify({"status": "error", "message": "يرجى تحديد القناة المستهدفة"}), 400
 
-    # تسجيل التفاعلات في قاعدة البيانات
+    try:
+        channel = bot.get_channel(int(channel_id))
+    except (ValueError, TypeError):
+        return jsonify({"status": "error", "message": "معرف القناة غير صالح"}), 400
+
+    if not channel:
+        return jsonify({"status": "error", "message": "القناة غير موجودة أو لا يمكن للبوت الوصول إليها"}), 400
+
+    # تسجيل تفاعلات الأزرار في قاعدة البيانات
     for row in components_data.get("rows", []):
         for item in row.get("items", []):
             if item.get("custom_id") and item.get("action_type") != "LINK":
@@ -688,8 +695,17 @@ def api_send_embed(guild_id):
     elif mention_type == "here":
         content = "@here"
 
-    asyncio.run_coroutine_threadsafe(channel.send(content=content, embed=embed, view=view), bot.loop)
-    return jsonify({"status": "success", "message": "تم إرسال الـ Embed بنجاح إلى القناة!"})
+    try:
+        future = asyncio.run_coroutine_threadsafe(
+            channel.send(content=content, embed=embed, view=view),
+            bot.loop
+        )
+        future.result(timeout=10)
+        return jsonify({"status": "success", "message": "تم إرسال الـ Embed بنجاح إلى القناة!"})
+    except asyncio.TimeoutError:
+        return jsonify({"status": "error", "message": "استغرق الإرسال وقتاً طويلاً (Timeout)"}), 504
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"حدث خطأ أثناء الإرسال: {str(e)}"}), 500
 
 @app.route('/api/embed/save/<guild_id>', methods=['POST'])
 def api_save_embed_template(guild_id):
@@ -697,7 +713,7 @@ def api_save_embed_template(guild_id):
     if not authorized:
         return jsonify({"status": "error", "message": "غير مصرح به"}), 403
 
-    data = request.json
+    data = request.json or {}
     template_name = data.get("template_name", "قالب جديد")
     embed_data = data.get("embed_data", {})
     components_data = data.get("components_data", {})
@@ -711,7 +727,7 @@ def api_schedule_embed(guild_id):
     if not authorized:
         return jsonify({"status": "error", "message": "غير مصرح به"}), 403
 
-    data = request.json
+    data = request.json or {}
     template_id = data.get("template_id")
     channel_id = data.get("channel_id")
     send_at = data.get("send_at") # بصيغة YYYY-MM-DD HH:MM:SS
