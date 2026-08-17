@@ -459,6 +459,27 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
 # 5. أوامر السلاش الإضافية (Slash Commands)
 # ==========================================
 
+@bot.tree.command(name="clear", description="مسح عدد معين من الرسائل في القناة")
+@app_commands.checks.has_permissions(manage_messages=True)
+async def clear_command(interaction: discord.Interaction, amount: int):
+    if amount <= 0:
+        await interaction.response.send_message("❌ يرجى تحديد عدد أكبر من الصفر!", ephemeral=True)
+        return
+    
+    await interaction.response.defer(ephemeral=True)
+    try:
+        deleted = await interaction.channel.purge(limit=amount)
+        await interaction.followup.send(f"✅ تم مسح {len(deleted)} رسالة بنجاح.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ حدث خطأ أثناء مسح الرسائل: {e}", ephemeral=True)
+
+@clear_command.error
+async def clear_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message("❌ عذراً، لا تمتلك صلاحية `Manage Messages` لاستخدام هذا الأمر.", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"❌ حدث خطأ: {error}", ephemeral=True)
+
 @bot.tree.command(name="stats", description="عرض إحصائيات الحماية والنشاط للسيرفر")
 async def stats_command(interaction: discord.Interaction):
     analytics = database.get_analytics(interaction.guild_id)
@@ -688,7 +709,11 @@ async def on_member_join(member):
         if channel:
             title = settings.get("welcome_title", "مرحباً بك!")
             desc = settings.get("welcome_desc", "أهلاً بك يا {user} في السيرفر!").replace("{user}", member.mention)
+            
+            # تم إضافة صورة بروفايل العضو الجديد هنا (Thumbnail)
             embed = discord.Embed(title=title, description=desc, color=discord.Color.green())
+            embed.set_thumbnail(url=member.display_avatar.url)
+            
             if settings.get("welcome_img"):
                 embed.set_image(url=settings["welcome_img"])
             await channel.send(embed=embed)
