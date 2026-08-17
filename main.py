@@ -179,6 +179,16 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
+def is_manager(interaction: discord.Interaction) -> bool:
+    """فحص ما إذا كان المستخدم يمتلك صلاحية الإدارة برمجياً دون الاعتماد على اسم الرتبة"""
+    if not interaction.guild:
+        return False
+    if interaction.user.id == interaction.guild.owner_id:
+        return True
+    
+    perms = interaction.user.guild_permissions
+    return perms.manage_guild or perms.administrator or perms.manage_roles
+
 async def send_audit_log(guild, title, description, color=discord.Color.orange()):
     settings = database.get_settings(guild.id)
     if not settings or not settings.get("log_channel"):
@@ -247,7 +257,6 @@ def has_permission(permissions):
 
 @app.route('/guilds')
 def guild_list():
-    # التأكد من تسجيل الدخول
     token = session.get('oauth2_token')
     if not token:
         return redirect(url_for('login'))
@@ -261,19 +270,16 @@ def guild_list():
     user_guilds = user_guilds_res.json()
     bot_guild_ids = [str(guild.id) for guild in bot.guilds]
 
-    # تصفية السيرفرات: البوت متواجد فيها + المستخدم يمتلك صلاحية إدارة
     allowed_guilds = []
     for g in user_guilds:
         if str(g['id']) in bot_guild_ids:
             if g.get('owner') or has_permission(g.get('permissions', 0)):
                 allowed_guilds.append(g)
 
-    # عرض صفحة اختيار السيرفر الخاص بالمستخدم فقط
     return render_template('guilds.html', guilds=allowed_guilds)
 
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
-    # التحقق من أن المستخدم يملك صلاحية على هذا السيرفر المحدد
     token = session.get('oauth2_token')
     if not token:
         return redirect(url_for('login'))
@@ -390,16 +396,12 @@ async def sync(ctx):
     except Exception as e:
         await ctx.send(f"❌ حدث خطأ أثناء المزامنة: {e}")
 
-@bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (لمالك السيرفر ورتبة Manager فقط)")
+@bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (لمالك السيرفر والمشرفين فقط)")
 @app_commands.checks.cooldown(1, 5.0)
 async def setup(interaction: discord.Interaction):
-    is_owner = (interaction.user.id == interaction.guild.owner_id)
-    user_roles = [role.name.lower() for role in interaction.user.roles]
-    has_manager_role = "manager" in user_roles
-
-    if not (is_owner or has_manager_role):
+    if not is_manager(interaction):
         await interaction.response.send_message(
-            "❌ عذراً! هذا الأمر مخصص فقط لمالك السيرفر أو الأشخاص الذين يملكون رتبة (Manager).", 
+            "❌ عذراً! هذا الأمر مخصص فقط لمالك السيرفر أو الأشخاص الذين يملكون صلاحية إدارة السيرفر (Manager/Admin).", 
             ephemeral=True
         )
         return
