@@ -252,8 +252,36 @@ def has_permission(permissions):
     try:
         perms = int(permissions)
         return (perms & 0x8) == 0x8 or (perms & 0x20) == 0x20
-    except:
+    except (ValueError, TypeError):
         return False
+
+def check_user_access_to_guild(guild_id):
+    """دالة أمان مركزية للتأكد من حق المستخدم في التحكم بسيرفر معين"""
+    token = session.get('oauth2_token')
+    if not token:
+        return False, "NO_TOKEN"
+
+    headers = {'Authorization': f"Bearer {token['access_token']}"}
+    res = requests.get(f"{DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
+    
+    if res.status_code != 200:
+        return False, "INVALID_TOKEN"
+
+    bot_guild_ids = [str(bg.id) for bg in bot.guilds]
+    if str(guild_id) not in bot_guild_ids:
+        return False, "BOT_NOT_IN_GUILD"
+
+    user_guilds = res.json()
+    for g in user_guilds:
+        if str(g['id']) == str(guild_id):
+            is_owner = g.get('owner', False)
+            has_perm = has_permission(g.get('permissions', 0))
+            if is_owner or has_perm:
+                return True, "AUTHORIZED"
+            else:
+                return False, "NO_PERMISSION"
+
+    return False, "NOT_IN_GUILD"
 
 @app.route('/guilds')
 def guild_list():
@@ -280,24 +308,10 @@ def guild_list():
 
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
-    token = session.get('oauth2_token')
-    if not token:
-        return redirect(url_for('login'))
-
-    headers = {'Authorization': f"Bearer {token['access_token']}"}
-    user_guilds_res = requests.get(f"{DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
-    if user_guilds_res.status_code != 200:
-        return redirect(url_for('login'))
-
-    user_guilds = user_guilds_res.json()
-    authorized = False
-    for g in user_guilds:
-        if str(g['id']) == str(guild_id):
-            if str(g['id']) in [str(bg.id) for bg in bot.guilds] and (g.get('owner') or has_permission(g.get('permissions', 0))):
-                authorized = True
-                break
-
+    authorized, reason = check_user_access_to_guild(guild_id)
     if not authorized:
+        if reason in ["NO_TOKEN", "INVALID_TOKEN"]:
+            return redirect(url_for('login'))
         return "❌ غير مسموح لك بالوصول لإعدادات هذا السيرفر أو أن البوت غير متواجد فيه.", 403
 
     guild = bot.get_guild(int(guild_id))
@@ -323,6 +337,13 @@ def dashboard(guild_id):
 
 @app.route('/save/<guild_id>', methods=['POST'])
 def save(guild_id):
+    # حماية مسار الحفظ ومنع التعديل غير المصرح به
+    authorized, reason = check_user_access_to_guild(guild_id)
+    if not authorized:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"status": "error", "message": "❌ محاولة غير مصرح بها! لا تملك صلاحيات تعديل هذا السيرفر."}), 403
+        return "❌ غير مسموح لك بتعديل إعدادات هذا السيرفر!", 403
+
     guild = bot.get_guild(int(guild_id))
     if not guild:
         return jsonify({"status": "error", "message": "السيرفر غير موجود!"}), 400
