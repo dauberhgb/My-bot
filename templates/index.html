@@ -380,7 +380,7 @@
                             <select class="form-select" name="media_channels" multiple style="height: 110px;">
                                 {% if channels %}
                                     {% for channel in channels %}
-                                        <option value="{{ channel.id }}" {% if settings and channel.id in settings.media_channels %}selected{% endif %}># {{ channel.name }}</option>
+                                        <option value="{{ channel.id }}" {% if settings and settings.media_channels and channel.id in settings.media_channels %}selected{% endif %}># {{ channel.name }}</option>
                                     {% endfor %}
                                 {% endif %}
                             </select>
@@ -495,7 +495,7 @@
                 <div class="tab-pane fade glass-card p-3 p-md-4" id="responses">
                     <h5 class="fw-bold mb-3 d-flex align-items-center"><i class="fa-solid fa-robot text-success me-2 ms-2"></i>{{ t.tab_responses if t else 'الردود التلقائية' }}</h5>
                     
-                    {% set resp_list = settings.auto_responses.items()|list if settings and settings.auto_responses else [] %}
+                    {% set resp_list = settings.auto_responses.items()|list if settings and settings.auto_responses is mapping else [] %}
                     
                     {% for i in range(1, 4) %}
                     {% set item = resp_list[i-1] if resp_list|length >= i else None %}
@@ -654,6 +654,11 @@
         document.getElementById('dashboardForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
+
+            // إصلاح إرسال قيم القنوات المحددة المتعددة
+            const mediaChannels = Array.from(document.querySelectorAll('select[name="media_channels"] option:checked')).map(opt => opt.value);
+            formData.delete('media_channels');
+            mediaChannels.forEach(val => formData.append('media_channels', val));
             
             fetch(this.action, {
                 method: 'POST',
@@ -663,7 +668,7 @@
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {
-                    document.getElementById('toastMsg').innerText = data.message;
+                    document.getElementById('toastMsg').innerText = data.message || 'تم حفظ الإعدادات بنجاح!';
                     const toast = new bootstrap.Toast(document.getElementById('saveToast'));
                     toast.show();
                 }
