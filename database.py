@@ -111,6 +111,31 @@ def init_db():
             action_data TEXT
         )
     ''')
+
+    # 4. جدول إعدادات القوائم المنسدلة الذكية (Smart Dropdowns)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS embed_dropdowns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT,
+            custom_id TEXT UNIQUE,
+            placeholder TEXT,
+            min_values INTEGER DEFAULT 1,
+            max_values INTEGER DEFAULT 1,
+            options_json TEXT
+        )
+    ''')
+
+    # 5. جدول إعدادات نوافذ الإدخال المنبثقة (Modals)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS embed_modals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT,
+            custom_id TEXT UNIQUE,
+            title TEXT,
+            inputs_json TEXT,
+            target_channel_id TEXT
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -359,5 +384,60 @@ def mark_schedule_completed(schedule_id):
     cursor.execute("UPDATE scheduled_embeds SET status = 'completed' WHERE schedule_id = ?", (schedule_id,))
     conn.commit()
     conn.close()
+
+def save_dropdown_config(guild_id, custom_id, placeholder, min_val, max_val, options):
+    """حفظ إعدادات القوائم المنسدلة الذكية"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO embed_dropdowns (guild_id, custom_id, placeholder, min_values, max_values, options_json)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (str(guild_id), custom_id, placeholder, min_val, max_val, json.dumps(options)))
+    conn.commit()
+    conn.close()
+
+def get_dropdown_config(custom_id):
+    """جلب إعدادات قائمة منسدلة بحسب custom_id"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('SELECT guild_id, placeholder, min_values, max_values, options_json FROM embed_dropdowns WHERE custom_id = ?', (custom_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            'guild_id': row[0],
+            'placeholder': row[1],
+            'min_values': row[2],
+            'max_values': row[3],
+            'options': json.loads(row[4]) if row[4] else []
+        }
+    return None
+
+def save_modal_config(guild_id, custom_id, title, inputs, target_channel_id):
+    """حفظ إعدادات النوافذ المنبثقة Modals"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO embed_modals (guild_id, custom_id, title, inputs_json, target_channel_id)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (str(guild_id), custom_id, title, json.dumps(inputs), str(target_channel_id)))
+    conn.commit()
+    conn.close()
+
+def get_modal_config(custom_id):
+    """جلب إعدادات نافذة منبثقة Modal بحسب custom_id"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('SELECT guild_id, title, inputs_json, target_channel_id FROM embed_modals WHERE custom_id = ?', (custom_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            'guild_id': row[0],
+            'title': row[1],
+            'inputs': json.loads(row[2]) if row[2] else [],
+            'target_channel_id': row[3]
+        }
+    return None
 
 init_db()
