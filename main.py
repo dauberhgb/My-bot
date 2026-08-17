@@ -3,14 +3,24 @@ import json
 import threading
 import io
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 import discord
 from discord import app_commands
 from discord.ext import commands
+import requests
 import database
 
 # ==========================================
-# 0. قاموس الترجمة للغات (العربية والإنجليزية)
+# 0. إعدادات الأمان و OAuth2 (Discord)
+# ==========================================
+CLIENT_ID = os.getenv("CLIENT_ID", "YOUR_CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET", "YOUR_CLIENT_SECRET")
+# رابط الـ Redirect يجب أن يتطابق مع المنصة (Render مثلاً)
+REDIRECT_URI = os.getenv("REDIRECT_URI", "https://my-bot-05wx.onrender.com/callback")
+DISCORD_API_ENDPOINT = "https://discord.com/api/v10"
+
+# ==========================================
+# 1. قاموس الترجمة للغات (العربية والإنجليزية)
 # ==========================================
 TRANSLATIONS = {
     'ar': {
@@ -160,7 +170,7 @@ TRANSLATIONS = {
 }
 
 # ==========================================
-# 1. إعداد وتشغيل بوت ديسكورد
+# 2. إعداد وتشغيل بوت ديسكورد
 # ==========================================
 intents = discord.Intents.default()
 intents.message_content = True
@@ -169,7 +179,6 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
-# دالة مساعدة لإرسال سجلات الرقابة (Audit Logs)
 async def send_audit_log(guild, title, description, color=discord.Color.orange()):
     settings = database.get_settings(guild.id)
     if not settings or not settings.get("log_channel"):
@@ -186,26 +195,105 @@ async def send_audit_log(guild, title, description, color=discord.Color.orange()
             print(f"تعذر إرسال السجل: {e}")
 
 # ==========================================
-# 2. إعداد خادم الويب (Flask Dashboard)
+# 3. إعداد خادم الويب (Flask Dashboard & OAuth2)
 # ==========================================
 app = Flask(__name__)
+app.secret_key = os.urandom(24) # مطلوب لإدارة الـ Session بأمان
 
 @app.route('/')
 def home():
     return redirect(url_for('guild_list'))
 
-# --- تعديل: إضافة مسار Ping صريح لإبقاء البوت حياً ---
 @app.route('/ping')
 def ping():
     return "OK", 200
 
+# --- مسارات المصادقة عبر Discord OAuth2 ---
+@app.route('/login')
+def login():
+    discord_login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={requests.utils.quote(REDIRECT_URI)}&response_type=code&scope=identify%20guilds"
+    return redirect(discord_login_url)
+
+@app.route('/callback')
+def callback():
+    code = request.args.get('code')
+    if not code:
+        return "❌ فشل تسجيل الدخول عبر ديسكورد.", 400
+
+    data = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': REDIRECT_URI,
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    
+    res = requests.post(f"{DISCORD_API_ENDPOINT}/oauth2/token", data=data, headers=headers)
+    if res.status_code != 200:
+        return "❌ تعذر جلب الـ Token من ديسكورد.", 400
+
+    token_json = res.json()
+    session['oauth2_token'] = token_json
+    return redirect(url_for('guild_list'))
+
+def has_permission(permissions):
+    # فحص صلاحية Administrator (0x8) أو Manage Server (0x20)
+    try:
+        perms = int(permissions)
+        return (perms & 0x8) == 0x8 or (perms & 0x20) == 0x20
+    except:
+        return False
+
 @app.route('/guilds')
 def guild_list():
-    # منع عرض قائمة جميع السيرفرات لخصوصية وأمان المشتركين
-    return "❌ غير مسموح بالوصول لقائمة السيرفرات لخصوصية وأمان المشتركين.", 403
+    # التأكد من تسجيل الدخول
+    token = session.get('oauth2_token')
+    if not token:
+        return redirect(url_for('login'))
+
+    headers = {'Authorization': f"Bearer {token['access_token']}"}
+    user_guilds_res = requests.get(f"{DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
+    
+    if user_guilds_res.status_code != 200:
+        return redirect(url_for('login'))
+
+    user_guilds = user_guilds_res.json()
+    bot_guild_ids = [str(guild.id) for guild in bot.guilds]
+
+    # تصفية السيرفرات: البوت متواجد فيها + المستخدم يمتلك صلاحية إدارة
+    allowed_guilds = []
+    for g in user_guilds:
+        if str(g['id']) in bot_guild_ids:
+            if g.get('owner') or has_permission(g.get('permissions', 0)):
+                allowed_guilds.append(g)
+
+    # عرض صفحة اختيار السيرفر الخاص بالمستخدم فقط
+    return render_template('guild_select.html', guilds=allowed_guilds)
 
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
+    # التحقق من أن المستخدم يملك صلاحية على هذا السيرفر المحدد
+    token = session.get('oauth2_token')
+    if not token:
+        return redirect(url_for('login'))
+
+    headers = {'Authorization': f"Bearer {token['access_token']}"}
+    user_guilds_res = requests.get(f"{DISCORD_API_ENDPOINT}/users/@me/guilds", headers=headers)
+    if user_guilds_res.status_code != 200:
+        return redirect(url_for('login'))
+
+    user_guilds = user_guilds_res.json()
+    authorized = False
+    for g in user_guilds:
+        if str(g['id']) == str(guild_id):
+            if str(g['id']) in [str(bg.id) for bg in bot.guilds] and (g.get('owner') or has_permission(g.get('permissions', 0))):
+                authorized = True
+                break
+
+    if not authorized:
+        return "❌ غير مسموح لك بالوصول لإعدادات هذا السيرفر أو أن البوت غير متواجد فيه.", 403
+
     guild = bot.get_guild(int(guild_id))
     if not guild:
         return "البوت غير متواجد في هذا السيرفر!", 404
@@ -285,7 +373,7 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # ==========================================
-# 3. أحداث وأوامر البوت (Discord Events & Commands)
+# 4. أحداث وأوامر البوت (Discord Events & Commands)
 # ==========================================
 @bot.event
 async def on_ready():
@@ -345,7 +433,7 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
         )
 
 # ==========================================
-# 4. أوامر السلاش الإضافية (Slash Commands)
+# 5. أوامر السلاش الإضافية (Slash Commands)
 # ==========================================
 
 @bot.tree.command(name="stats", description="عرض إحصائيات الحماية والنشاط للسيرفر")
@@ -447,7 +535,7 @@ async def clear_warns_command(interaction: discord.Interaction, member: discord.
         await interaction.response.send_message(f"ℹ️ {member.mention} لا يملك أي مخالفات مسجلة.", ephemeral=True)
 
 # ==========================================
-# 5. نظام التذاكر المطور (Private Threads & Transcripts)
+# 6. نظام التذاكر المطور (Private Threads & Transcripts)
 # ==========================================
 class TicketCloseView(discord.ui.View):
     def __init__(self):
@@ -461,7 +549,6 @@ class TicketCloseView(discord.ui.View):
         settings = database.get_settings(interaction.guild_id)
         archive_ch_id = settings.get("ticket_archive_channel")
 
-        # 1. جمع جميع المحادثات لتوليد ملف الترانسكريبت
         messages = []
         async for msg in thread.history(limit=500, oldest_first=True):
             time_str = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -471,7 +558,6 @@ class TicketCloseView(discord.ui.View):
         file_data = io.BytesIO(transcript_text.encode('utf-8'))
         transcript_file = discord.File(file_data, filename=f"transcript-{thread.name}.txt")
 
-        # 2. إرسال الترانسكريبت لقناة الأرشيف المحددة
         archive_channel = interaction.guild.get_channel(int(archive_ch_id)) if str(archive_ch_id).isdigit() else None
         if archive_channel:
             embed_archive = discord.Embed(
@@ -486,7 +572,6 @@ class TicketCloseView(discord.ui.View):
 
         await send_audit_log(interaction.guild, "إغلاق تكت", f"قام {interaction.user.mention} بإغلاق التكت: {thread.name}")
         
-        # 3. إغلاق الخيط وأرشفته
         import asyncio
         await asyncio.sleep(2)
         await thread.edit(archived=True, locked=True)
@@ -499,7 +584,6 @@ class TicketLaunchView(discord.ui.View):
     async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
 
-        # إنشاء خيط خاص (Private Thread) داخل نفس القناة المخصصة للتذاكر
         try:
             thread = await interaction.channel.create_thread(
                 name=f"ticket-{interaction.user.name}",
@@ -546,7 +630,7 @@ async def setup_tickets_command(interaction: discord.Interaction):
     await interaction.response.send_message(f"✅ تم إرسال لوحة التذاكر بنجاح إلى القناة: {channel.mention}", ephemeral=True)
 
 # ==========================================
-# 6. الأحداث التلقائية للبوت (Events)
+# 7. الأحداث التلقائية للبوت (Events)
 # ==========================================
 
 @bot.event
@@ -555,7 +639,6 @@ async def on_member_join(member):
     if not settings:
         return
 
-    # 1. الرول التلقائي
     if settings.get("auto_role"):
         role = discord.utils.get(member.guild.roles, name=settings["auto_role"])
         if role:
@@ -564,7 +647,6 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"تعذر إعطاء الرول: {e}")
 
-    # 2. اللقب التلقائي
     auto_nick = settings.get("auto_nickname", "").strip()
     if auto_nick:
         try:
@@ -577,7 +659,6 @@ async def on_member_join(member):
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
 
-    # 3. رسالة الترحيب التلقائية
     if settings.get("welcome_channel"):
         welc_ch_id = settings.get("welcome_channel")
         channel = member.guild.get_channel(int(welc_ch_id)) if str(welc_ch_id).isdigit() else discord.utils.get(member.guild.text_channels, name=welc_ch_id)
@@ -649,7 +730,6 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    # 1. فحص قنوات الميديا
     media_channels = settings.get("media_channels", [])
     if str(message.channel.id) in media_channels or message.channel.name in media_channels:
         has_media = len(message.attachments) > 0 or any(ext in message.content.lower() for ext in ['.jpg', '.png', '.gif', '.mp4', 'http://', 'https://'])
@@ -661,7 +741,6 @@ async def on_message(message):
             await send_audit_log(message.guild, "حذف رسالة مخالفة ميديا", f"قام {message.author.mention} بكتابة نص في قناة الميديا #{message.channel.name}")
             return
 
-    # 2. فحص الكلمات المحظورة والعقوبات
     banned_words = settings.get("banned_words", [])
     msg_content = message.content.lower()
     if any(word in msg_content for word in banned_words):
@@ -729,7 +808,6 @@ async def on_message(message):
                 )
         return
 
-    # 3. الردود التلقائية
     auto_resp = settings.get("auto_responses", {})
     if message.content.lower() in auto_resp:
         await message.channel.send(auto_resp[message.content.lower()])
