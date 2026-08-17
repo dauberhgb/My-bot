@@ -359,7 +359,7 @@
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-6">
                                         <label class="form-label">القناة المستهدفة للإرسال:</label>
-                                        <select class="form-select" name="embed_target_channel" id="embed_target_channel">
+                                        <select class="form-select" name="embed_target_channel" id="embed_channel_select">
                                             {% if channels %}
                                                 {% for channel in channels %}
                                                     <option value="{{ channel.id }}"># {{ channel.name }}</option>
@@ -369,34 +369,34 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">لون الشريط (Embed Color):</label>
-                                        <input type="color" class="form-control form-control-color w-100" id="eb_color" name="embed_color" value="#5865f2">
+                                        <input type="color" class="form-control form-control-color w-100" id="embed_color" name="embed_color" value="#3498db">
                                     </div>
                                 </div>
 
                                 <div class="mb-2">
                                     <label class="form-label">العنوان الرئيسي (Embed Title):</label>
-                                    <input type="text" class="form-control" id="eb_title" name="embed_title" placeholder="أدخل عنوان الرسالة التفاعلية...">
+                                    <input type="text" class="form-control" id="embed_title" name="embed_title" placeholder="أدخل عنوان الرسالة التفاعلية...">
                                 </div>
 
                                 <div class="mb-2">
                                     <label class="form-label">محتوى الوصف (Description):</label>
-                                    <textarea class="form-control" id="eb_desc" name="embed_description" rows="3" placeholder="أكتب وصف الرسالة... يمكنك استخدام {user} أو {server}"></textarea>
+                                    <textarea class="form-control" id="embed_description" name="embed_description" rows="3" placeholder="أكتب وصف الرسالة... يمكنك استخدام {user} أو {server}"></textarea>
                                 </div>
 
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-6">
                                         <label class="form-label">رابط الصورة المصغرة (Thumbnail):</label>
-                                        <input type="text" class="form-control" id="eb_thumb" name="embed_thumbnail" placeholder="https://...">
+                                        <input type="text" class="form-control" id="embed_thumbnail" name="embed_thumbnail" placeholder="https://...">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">رابط الصورة الرئيسية (Main Image):</label>
-                                        <input type="text" class="form-control" id="eb_image" name="embed_image" placeholder="https://...">
+                                        <input type="text" class="form-control" id="embed_image" name="embed_image" placeholder="https://...">
                                     </div>
                                 </div>
 
                                 <div class="mb-2">
                                     <label class="form-label">نص الهامش السفلي (Footer Text):</label>
-                                    <input type="text" class="form-control" id="eb_footer" name="embed_footer" placeholder="نص يتذيل الرسالة...">
+                                    <input type="text" class="form-control" id="embed_footer_text" name="embed_footer_text" placeholder="نص يتذيل الرسالة...">
                                 </div>
                             </div>
 
@@ -439,7 +439,7 @@
                                 <div class="row g-2 align-items-center">
                                     <div class="col-md-6">
                                         <label class="form-label">إرفاق التنبيهات (Mentions):</label>
-                                        <select class="form-select" name="embed_mention">
+                                        <select class="form-select" name="embed_mention" id="embed_mention_type">
                                             <option value="none">بدون منشن</option>
                                             <option value="here">@here</option>
                                             <option value="everyone">@everyone</option>
@@ -493,7 +493,7 @@
 
                                 <div class="mt-3">
                                     <button type="button" class="btn btn-success w-100 py-2 fw-bold" id="btnSendEmbedNow">
-                                        <i class="fa-solid fa-paper-plane me-2 ms-2"></i>إرسال الـ Embed التفاعلي الآن
+                                        <i class="fa-solid fa-paper-plane me-2 ms-2"></i>إرسال مباشر إلى القناة
                                     </button>
                                 </div>
                             </div>
@@ -844,12 +844,12 @@
         updatePreview();
 
         // ==================== Option 24: Embed Builder Live Logic ====================
-        const ebColor = document.getElementById('eb_color');
-        const ebTitle = document.getElementById('eb_title');
-        const ebDesc = document.getElementById('eb_desc');
-        const ebThumb = document.getElementById('eb_thumb');
-        const ebImage = document.getElementById('eb_image');
-        const ebFooter = document.getElementById('eb_footer');
+        const ebColor = document.getElementById('embed_color');
+        const ebTitle = document.getElementById('embed_title');
+        const ebDesc = document.getElementById('embed_description');
+        const ebThumb = document.getElementById('embed_thumbnail');
+        const ebImage = document.getElementById('embed_image');
+        const ebFooter = document.getElementById('embed_footer_text');
 
         const previewEmbedCard = document.getElementById('previewEmbedCard');
         const previewEbTitle = document.getElementById('previewEbTitle');
@@ -896,26 +896,26 @@
                 buttonCount++;
 
                 const btnDiv = document.createElement('div');
-                btnDiv.className = 'row g-1 align-items-center bg-dark p-2 rounded border border-secondary';
+                btnDiv.className = 'row g-1 align-items-center bg-dark p-2 rounded border border-secondary builder-button-item';
                 btnDiv.id = `btn_row_${buttonCount}`;
                 btnDiv.innerHTML = `
                     <div class="col-4">
-                        <input type="text" class="form-control form-control-sm btn-label-in" name="btn_label_${buttonCount}" placeholder="اسم الزر" value="زر ${buttonCount}">
+                        <input type="text" class="form-control form-control-sm btn-label-in btn-label-input" name="btn_label_${buttonCount}" placeholder="اسم الزر" value="زر ${buttonCount}">
                     </div>
                     <div class="col-4">
-                        <select class="form-select form-select-sm btn-action-in" name="btn_action_${buttonCount}">
-                            <option value="give_role">إعطاء رول</option>
-                            <option value="remove_role">سحب رول</option>
+                        <select class="form-select form-select-sm btn-action-in btn-action-select" name="btn_action_${buttonCount}">
+                            <option value="TOGGLE_ROLES">إعطاء/سحب رول</option>
+                            <option value="OPEN_MODAL">نافذة إدخال (Modal)</option>
                             <option value="open_ticket">فتح تكت</option>
-                            <option value="modal_input">نافذة إدخال (Modal)</option>
                             <option value="url">رابط خارجي</option>
                         </select>
                     </div>
                     <div class="col-3">
-                        <select class="form-select form-select-sm btn-style-in" name="btn_style_${buttonCount}">
-                            <option value="btn-primary-dc">أزرق</option>
-                            <option value="btn-success-dc">أخضر</option>
-                            <option value="btn-danger-dc">أحمر</option>
+                        <select class="form-select form-select-sm btn-style-in btn-style-select" name="btn_style_${buttonCount}">
+                            <option value="primary">أزرق</option>
+                            <option value="success">أخضر</option>
+                            <option value="danger">أحمر</option>
+                            <option value="secondary">رمادي</option>
                         </select>
                     </div>
                     <div class="col-1 text-center">
@@ -937,7 +937,11 @@
             const btnRows = buttonsContainer.querySelectorAll('.row');
             btnRows.forEach(r => {
                 const label = r.querySelector('.btn-label-in').value || 'زر';
-                const styleClass = r.querySelector('.btn-style-in').value || 'btn-primary-dc';
+                const styleVal = r.querySelector('.btn-style-in').value || 'primary';
+                let styleClass = 'btn-primary-dc';
+                if(styleVal === 'success') styleClass = 'btn-success-dc';
+                if(styleVal === 'danger') styleClass = 'btn-danger-dc';
+
                 const pBtn = document.createElement('button');
                 pBtn.type = 'button';
                 pBtn.className = `discord-btn-preview ${styleClass}`;
@@ -970,6 +974,133 @@
             })
             .catch(err => console.error(err));
         });
+    </script>
+
+    <!-- سكريبت إرسال الـ Embed عبر API -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnSendNow = document.getElementById('btnSendEmbedNow');
+
+        if (btnSendNow) {
+            btnSendNow.addEventListener('click', async function(e) {
+                e.preventDefault();
+
+                // 1. القناة المعنية بالاستلام
+                const channelSelect = document.getElementById('embed_channel_select');
+                const channelId = channelSelect ? channelSelect.value : null;
+
+                if (!channelId) {
+                    alert("❌ يرجى تحديد القناة المراد إرسال الـ Embed إليها أولاً!");
+                    return;
+                }
+
+                // 2. تحديد نوع الإشارة/المنشن
+                const mentionTypeSelect = document.getElementById('embed_mention_type');
+                const mentionType = mentionTypeSelect ? mentionTypeSelect.value : 'none';
+
+                // 3. تجميع بيانات الـ Embed الأساسية
+                const embedData = {
+                    title: document.getElementById('embed_title')?.value || null,
+                    description: document.getElementById('embed_description')?.value || null,
+                    color: document.getElementById('embed_color')?.value || "#3498db",
+                    url: document.getElementById('embed_url')?.value || null,
+                    author_name: document.getElementById('embed_author_name')?.value || null,
+                    author_icon: document.getElementById('embed_author_icon')?.value || null,
+                    thumbnail: document.getElementById('embed_thumbnail')?.value || null,
+                    image: document.getElementById('embed_image')?.value || null,
+                    footer_text: document.getElementById('embed_footer_text')?.value || null,
+                    footer_icon: document.getElementById('embed_footer_icon')?.value || null,
+                    fields: []
+                };
+
+                // قراءة الحقول الديناميكية (Fields) إن وجدت
+                document.querySelectorAll('.builder-field-item').forEach(fieldEl => {
+                    const name = fieldEl.querySelector('.field-name-input')?.value;
+                    const value = fieldEl.querySelector('.field-value-input')?.value;
+                    const inline = fieldEl.querySelector('.field-inline-checkbox')?.checked || false;
+
+                    if (name && value) {
+                        embedData.fields.push({ name, value, inline });
+                    }
+                });
+
+                // 4. تجميع بيانات الأزرار والتفاعلات
+                const buttonsList = [];
+                document.querySelectorAll('.builder-button-item').forEach((btnEl, index) => {
+                    const label = btnEl.querySelector('.btn-label-input')?.value || `زر ${index + 1}`;
+                    const style = btnEl.querySelector('.btn-style-select')?.value || 'secondary';
+                    const actionType = btnEl.querySelector('.btn-action-select')?.value || 'TOGGLE_ROLES';
+                    
+                    // إنشاء Custom ID فريد للزر
+                    const customId = `btn_${Date.now()}_${index}`;
+
+                    // إعداد بيانات التفاعل بناءً على نوع الزر المختاري
+                    let actionData = {};
+                    if (actionType === 'TOGGLE_ROLES') {
+                        const addRolesSelect = btnEl.querySelector('.btn-add-roles');
+                        const removeRolesSelect = btnEl.querySelector('.btn-remove-roles');
+
+                        const addRoles = addRolesSelect ? Array.from(addRolesSelect.selectedOptions).map(o => o.value) : [];
+                        const removeRoles = removeRolesSelect ? Array.from(removeRolesSelect.selectedOptions).map(o => o.value) : [];
+
+                        actionData = { add_roles: addRoles, remove_roles: removeRoles };
+                    } else if (actionType === 'OPEN_MODAL') {
+                        actionData = {
+                            modal_title: btnEl.querySelector('.btn-modal-title')?.value || 'نافذة إدخال',
+                            fields: [
+                                { label: "الاسم", type: "short", required: true },
+                                { label: "الملاحظات", type: "paragraph", required: false }
+                            ]
+                        };
+                    }
+
+                    buttonsList.push({
+                        type: "button",
+                        label: label,
+                        style: style,
+                        action_type: actionType,
+                        custom_id: customId,
+                        action_data: actionData
+                    });
+                });
+
+                const componentsData = {
+                    rows: buttonsList.length > 0 ? [{ items: buttonsList }] : []
+                };
+
+                // 5. إرسال الطلب إلى السيرفر
+                const guildId = "{{ guild.id }}";
+                btnSendNow.disabled = true;
+                btnSendNow.innerText = "جاري الإرسال...";
+
+                try {
+                    const response = await fetch(`/api/embed/send/${guildId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            channel_id: channelId,
+                            mention_type: mentionType,
+                            embed_data: embedData,
+                            components_data: componentsData
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (response.ok && result.status === 'success') {
+                        alert("✅ " + result.message);
+                    } else {
+                        alert("❌ خطأ: " + (result.message || "تعذر إرسال الـ Embed"));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ حدث خطأ في الاتصال بالسيرفر!");
+                } finally {
+                    btnSendNow.disabled = false;
+                    btnSendNow.innerText = "إرسال مباشر إلى القناة";
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>
