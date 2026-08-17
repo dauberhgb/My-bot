@@ -194,6 +194,11 @@ app = Flask(__name__)
 def home():
     return redirect(url_for('guild_list'))
 
+# --- تعديل: إضافة مسار Ping صريح لإبقاء البوت حياً ---
+@app.route('/ping')
+def ping():
+    return "OK", 200
+
 @app.route('/guilds')
 def guild_list():
     # منع عرض قائمة جميع السيرفرات لخصوصية وأمان المشتركين
