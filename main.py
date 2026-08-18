@@ -39,7 +39,6 @@ TRANSLATIONS = {
         'tab_responses': 'الردود التلقائية',
         'tab_logs': 'سجلات الرقابة',
         'tab_tickets': 'نظام التذاكر',
-        'tab_embed_builder': 'مركز الـ Embed Builder الخارق',
         'save_btn': 'حفظ جميع التغييرات',
         'auto_role': 'الرول التلقائي عند الدخول:',
         'no_role': 'بدون رول',
@@ -112,7 +111,6 @@ TRANSLATIONS = {
         'tab_responses': 'Auto Responses',
         'tab_logs': 'Audit Logs',
         'tab_tickets': 'Ticket System',
-        'tab_embed_builder': 'Embed Builder Super Engine',
         'save_btn': 'Save All Changes',
         'auto_role': 'Auto Role on Join:',
         'no_role': 'No Role',
@@ -203,264 +201,6 @@ async def send_audit_log(guild, title, description, color=discord.Color.orange()
             await channel.send(embed=embed)
         except Exception as e:
             print(f"تعذر إرسال السجل: {e}")
-
-# ==========================================
-# الكائنات والواجهات التفاعلية (Modals & Dynamic Views & Smart Dropdowns)
-# ==========================================
-
-class DynamicBuilderModal(discord.ui.Modal):
-    def __init__(self, title, inputs_config, target_channel_id):
-        super().__init__(title=title[:45])
-        self.target_channel_id = target_channel_id
-        self.inputs = []
-
-        for field in inputs_config:
-            style = discord.TextStyle.paragraph if field.get('type') == 'paragraph' else discord.TextStyle.short
-            text_input = discord.ui.TextInput(
-                label=field.get('label', 'مدخل')[:45],
-                placeholder=field.get('placeholder', ''),
-                required=field.get('required', True),
-                style=style
-            )
-            self.inputs.append((field.get('label'), text_input))
-            self.add_item(text_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        channel = interaction.guild.get_channel(int(self.target_channel_id)) if str(self.target_channel_id).isdigit() else None
-        if not channel:
-            await interaction.response.send_message("❌ لم يتم العثور على روم استقبال البيانات.", ephemeral=True)
-            return
-
-        embed = discord.Embed(
-            title=f"📥 نموذج جديد: {self.title}",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
-        embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
-        embed.set_footer(text=f"ID: {interaction.user.id}")
-
-        for label, text_input in self.inputs:
-            embed.add_field(name=label, value=text_input.value or "لا يوجد", inline=False)
-
-        await channel.send(embed=embed)
-        await interaction.response.send_message("✅ تم إرسال بياناتك بنجاح، شكراً لك!", ephemeral=True)
-        await send_audit_log(interaction.guild, f"نموذج منبثق: {self.title}", f"قام {interaction.user.mention} بتعبئة نموذج وإرساله إلى {channel.mention}.", discord.Color.green())
-
-
-class DynamicModal(discord.ui.Modal):
-    def __init__(self, title, fields_data):
-        super().__init__(title=title[:45])
-        self.fields_data = fields_data
-        self.inputs = []
-
-        for field in fields_data:
-            style = discord.TextStyle.paragraph if field.get("type") == "paragraph" else discord.TextStyle.short
-            text_input = discord.ui.TextInput(
-                label=field.get("label", "المُدخل")[:45],
-                style=style,
-                placeholder=field.get("placeholder", ""),
-                required=field.get("required", True),
-                max_length=field.get("max_length", 1000)
-            )
-            self.inputs.append((field.get("label"), text_input))
-            self.add_item(text_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title=f"📥 نموذج جديد: {self.title}",
-            color=discord.Color.blue(),
-            timestamp=datetime.utcnow()
-        )
-        embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
-        embed.set_footer(text=f"ID: {interaction.user.id}")
-
-        for label, text_input in self.inputs:
-            embed.add_field(name=label, value=text_input.value or "غير محدد", inline=False)
-
-        await interaction.response.send_message("✅ تم إرسال نموذجك بنجاح وشكراً لك!", ephemeral=True)
-        await send_audit_log(interaction.guild, f"إدخال نموذج: {self.title}", f"قام {interaction.user.mention} بتعبئة نموذج منبثق.", discord.Color.green())
-
-
-class DynamicSelectView(discord.ui.Select):
-    def __init__(self, custom_id, placeholder, min_val, max_val, options_data):
-        self.custom_id_val = custom_id
-        options = []
-        for opt in options_data:
-            options.append(discord.SelectOption(
-                label=opt['label'],
-                value=opt['value'],
-                description=opt.get('description', ''),
-                emoji=opt.get('emoji', None)
-            ))
-        super().__init__(
-            custom_id=custom_id,
-            placeholder=placeholder,
-            min_values=min_val,
-            max_values=max_val,
-            options=options
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        added_roles = []
-        removed_roles = []
-        
-        for val in self.values:
-            if val.startswith("role_add_"):
-                role_id = int(val.replace("role_add_", ""))
-                role = interaction.guild.get_role(role_id)
-                if role and role not in interaction.user.roles:
-                    await interaction.user.add_roles(role)
-                    added_roles.append(role.name)
-            elif val.startswith("role_remove_"):
-                role_id = int(val.replace("role_remove_", ""))
-                role = interaction.guild.get_role(role_id)
-                if role and role in interaction.user.roles:
-                    await interaction.user.remove_roles(role)
-                    removed_roles.append(role.name)
-            elif val.isdigit():
-                role = interaction.guild.get_role(int(val))
-                if role:
-                    if role in interaction.user.roles:
-                        await interaction.user.remove_roles(role)
-                        removed_roles.append(role.name)
-                    else:
-                        await interaction.user.add_roles(role)
-                        added_roles.append(role.name)
-
-        msg = "✅ تم تحديث التفاعلات:"
-        if added_roles:
-            msg += f"\n- إضافة الرولات: {', '.join(added_roles)}"
-        if removed_roles:
-            msg += f"\n- إزالة الرولات: {', '.join(removed_roles)}"
-            
-        await interaction.response.send_message(msg if (added_roles or removed_roles) else "لم يتم تغيير أي رولات.", ephemeral=True)
-
-
-class DynamicEmbedView(discord.ui.View):
-    def __init__(self, components_data):
-        super().__init__(timeout=None)
-        
-        for row in components_data.get("rows", []):
-            for item in row.get("items", []):
-                if item.get("type") == "button":
-                    style = getattr(discord.ButtonStyle, item.get("style", "secondary").lower(), discord.ButtonStyle.secondary)
-                    btn = discord.ui.Button(
-                        label=item.get("label", "زر"),
-                        style=style,
-                        url=item.get("url") if item.get("action_type") == "LINK" else None,
-                        custom_id=item.get("custom_id") if item.get("action_type") != "LINK" else None,
-                        emoji=item.get("emoji") if item.get("emoji") else None
-                    )
-                    if item.get("action_type") != "LINK":
-                        btn.callback = self.create_button_callback(item.get("custom_id"))
-                    self.add_item(btn)
-
-    def create_button_callback(self, custom_id):
-        async def button_callback(interaction: discord.Interaction):
-            action_info = database.get_interaction(custom_id)
-            if not action_info:
-                await interaction.response.send_message("❌ حدث خطأ أو أن هذا التفاعل غير مسجل!", ephemeral=True)
-                return
-
-            action_type = action_info.get("action_type")
-            action_data = action_info.get("action_data", {})
-
-            if action_type == "TOGGLE_ROLES":
-                guild = interaction.guild
-                member = interaction.user
-                
-                roles_to_add = [guild.get_role(int(r)) for r in action_data.get("add_roles", []) if guild.get_role(int(r))]
-                roles_to_remove = [guild.get_role(int(r)) for r in action_data.get("remove_roles", []) if guild.get_role(int(r))]
-
-                msg_parts = []
-                if roles_to_add:
-                    await member.add_roles(*roles_to_add, reason="Embed Builder Auto Action")
-                    msg_parts.append(f"➕ تم إعطاؤك: {', '.join([r.mention for r in roles_to_add])}")
-                if roles_to_remove:
-                    await member.remove_roles(*roles_to_remove, reason="Embed Builder Auto Action")
-                    msg_parts.append(f"➖ تم سحب: {', '.join([r.mention for r in roles_to_remove])}")
-
-                await interaction.response.send_message("\n".join(msg_parts) if msg_parts else "لم يتم إجراء أي تغيير على الرولات.", ephemeral=True)
-
-            elif action_type == "OPEN_MODAL":
-                modal_title = action_data.get("modal_title", "نافذة إدخال بيانات")
-                fields = action_data.get("fields", [])
-                await interaction.response.send_modal(DynamicModal(modal_title, fields))
-
-            elif action_type == "OPEN_TICKET":
-                await interaction.response.send_message("جاري إعداد التكت الخاص بك...", ephemeral=True)
-
-        return button_callback
-
-
-@bot.event
-async def on_interaction(interaction: discord.Interaction):
-    if interaction.type == discord.InteractionType.component:
-        custom_id = interaction.data.get('custom_id', '')
-        
-        # 1. فتح نافذة إدخال Modals الذكية
-        if custom_id.startswith("open_modal_"):
-            modal_cfg = database.get_modal_config(custom_id)
-            if modal_cfg:
-                modal = DynamicBuilderModal(
-                    title=modal_cfg['title'],
-                    inputs_config=modal_cfg['inputs'],
-                    target_channel_id=modal_cfg['target_channel_id']
-                )
-                await interaction.response.send_modal(modal)
-                return
-
-        # 2. معالجة إسناد الرولات المتعددة بضغطة زر واحدة
-        elif custom_id.startswith("multi_roles_"):
-            roles_data = custom_id.replace("multi_roles_", "").split("_")
-            added = []
-            removed = []
-            for r_id in roles_data:
-                if r_id.isdigit():
-                    role = interaction.guild.get_role(int(r_id))
-                    if role:
-                        if role in interaction.user.roles:
-                            await interaction.user.remove_roles(role)
-                            removed.append(role.name)
-                        else:
-                            await interaction.user.add_roles(role)
-                            added.append(role.name)
-            
-            msg = "✅ تم تحديث الرولات بنجاح:"
-            if added:
-                msg += f"\n- تم إعطاؤك: {', '.join(added)}"
-            if removed:
-                msg += f"\n- تم سحب: {', '.join(removed)}"
-            await interaction.response.send_message(msg if (added or removed) else "لم تتم أدنى تغييرات.", ephemeral=True)
-            return
-
-    await bot.process_application_commands(interaction)
-
-
-def build_embed_from_json(data):
-    embed = discord.Embed(
-        title=data.get("title"),
-        description=data.get("description"),
-        color=int(data.get("color", "3498db").replace("#", ""), 16) if data.get("color") else discord.Color.blue(),
-        url=data.get("url") if data.get("url") else None
-    )
-    
-    if data.get("author_name"):
-        embed.set_author(name=data.get("author_name"), icon_url=data.get("author_icon") or None)
-        
-    if data.get("thumbnail"):
-        embed.set_thumbnail(url=data.get("thumbnail"))
-        
-    if data.get("image"):
-        embed.set_image(url=data.get("image"))
-        
-    if data.get("footer_text"):
-        embed.set_footer(text=data.get("footer_text"), icon_url=data.get("footer_icon") or None)
-
-    for field in data.get("fields", []):
-        embed.add_field(name=field.get("name", "---"), value=field.get("value", "---"), inline=field.get("inline", False))
-
-    return embed
 
 # ==========================================
 # 3. إعداد خادم الويب (Flask Dashboard & OAuth2)
@@ -584,12 +324,11 @@ def dashboard(guild_id):
 
     settings = database.get_settings(guild_id)
     analytics = database.get_analytics(guild_id)
-    templates = database.get_embed_templates(guild_id)
 
     lang = request.args.get('lang', 'ar')
     t = TRANSLATIONS.get(lang, TRANSLATIONS['ar'])
 
-    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, analytics=analytics, templates=templates, t=t, lang=lang)
+    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats, analytics=analytics, t=t, lang=lang)
 
 @app.route('/save/<guild_id>', methods=['POST'])
 def save(guild_id):
@@ -648,94 +387,6 @@ def save(guild_id):
         
     return f"<h1>تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!</h1><br><a href='/dashboard/{guild_id}'>العودة للوحة التحكم</a>"
 
-# ==========================================
-# مسارات الـ API لإرسال وجدولة وحفظ الـ Embeds
-# ==========================================
-
-@app.route('/api/embed/send/<guild_id>', methods=['POST'])
-def api_send_embed(guild_id):
-    authorized, _ = check_user_access_to_guild(guild_id)
-    if not authorized:
-        return jsonify({"status": "error", "message": "غير مصرح به"}), 403
-
-    data = request.json or {}
-    channel_id = data.get("channel_id")
-    embed_data = data.get("embed_data", {})
-    components_data = data.get("components_data", {})
-    mention_type = data.get("mention_type", "none")
-
-    if not channel_id:
-        return jsonify({"status": "error", "message": "يرجى تحديد القناة المستهدفة"}), 400
-
-    try:
-        channel = bot.get_channel(int(channel_id))
-    except (ValueError, TypeError):
-        return jsonify({"status": "error", "message": "معرف القناة غير صالح"}), 400
-
-    if not channel:
-        return jsonify({"status": "error", "message": "القناة غير موجودة أو لا يمكن للبوت الوصول إليها"}), 400
-
-    # تسجيل تفاعلات الأزرار في قاعدة البيانات
-    for row in components_data.get("rows", []):
-        for item in row.get("items", []):
-            if item.get("custom_id") and item.get("action_type") != "LINK":
-                database.register_interaction(
-                    item["custom_id"],
-                    guild_id,
-                    item.get("action_type"),
-                    item.get("action_data", {})
-                )
-
-    embed = build_embed_from_json(embed_data)
-    view = DynamicEmbedView(components_data)
-
-    content = None
-    if mention_type == "everyone":
-        content = "@everyone"
-    elif mention_type == "here":
-        content = "@here"
-
-    try:
-        future = asyncio.run_coroutine_threadsafe(
-            channel.send(content=content, embed=embed, view=view),
-            bot.loop
-        )
-        future.result(timeout=10)
-        return jsonify({"status": "success", "message": "تم إرسال الـ Embed بنجاح إلى القناة!"})
-    except asyncio.TimeoutError:
-        return jsonify({"status": "error", "message": "استغرق الإرسال وقتاً طويلاً (Timeout)"}), 504
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"حدث خطأ أثناء الإرسال: {str(e)}"}), 500
-
-@app.route('/api/embed/save/<guild_id>', methods=['POST'])
-def api_save_embed_template(guild_id):
-    authorized, _ = check_user_access_to_guild(guild_id)
-    if not authorized:
-        return jsonify({"status": "error", "message": "غير مصرح به"}), 403
-
-    data = request.json or {}
-    template_name = data.get("template_name", "قالب جديد")
-    embed_data = data.get("embed_data", {})
-    components_data = data.get("components_data", {})
-
-    t_id = database.save_embed_template(guild_id, template_name, embed_data, components_data)
-    return jsonify({"status": "success", "template_id": t_id, "message": "تم حفظ القالب بنجاح!"})
-
-@app.route('/api/embed/schedule/<guild_id>', methods=['POST'])
-def api_schedule_embed(guild_id):
-    authorized, _ = check_user_access_to_guild(guild_id)
-    if not authorized:
-        return jsonify({"status": "error", "message": "غير مصرح به"}), 403
-
-    data = request.json or {}
-    template_id = data.get("template_id")
-    channel_id = data.get("channel_id")
-    send_at = data.get("send_at") # بصيغة YYYY-MM-DD HH:MM:SS
-    mention_type = data.get("mention_type", "none")
-
-    database.add_scheduled_embed(guild_id, channel_id, template_id, send_at, mention_type)
-    return jsonify({"status": "success", "message": "تمت جدولة الـ Embed بنجاح!"})
-
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
@@ -746,29 +397,10 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # 4. أحداث وأوامر البوت (Discord Events & Tasks)
 # ==========================================
 
-@tasks.loop(seconds=30)
-async def check_scheduled_embeds_task():
-    """المهمة التلقائية لفحص وإرسال الـ Embeds المجدولة"""
-    pending = database.get_pending_scheduled_embeds()
-    for row in pending:
-        schedule_id, guild_id, channel_id, mention_type, embed_data, components_data = row
-        channel = bot.get_channel(int(channel_id))
-        if channel:
-            embed = build_embed_from_json(embed_data)
-            view = DynamicEmbedView(components_data)
-            content = "@everyone" if mention_type == "everyone" else ("@here" if mention_type == "here" else None)
-            try:
-                await channel.send(content=content, embed=embed, view=view)
-                database.mark_schedule_completed(schedule_id)
-            except Exception as e:
-                print(f"خطأ في إرسال الـ Embed المجدول: {e}")
-
 @bot.event
 async def on_ready():
     bot.add_view(TicketLaunchView())
     bot.add_view(TicketCloseView())
-    if not check_scheduled_embeds_task.is_running():
-        check_scheduled_embeds_task.start()
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
 @bot.command(name="sync")
