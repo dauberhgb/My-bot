@@ -594,75 +594,91 @@ async def botinfo(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed, view=view)
 
 
-# 6. أمر إرسال لوحة التذاكر (Ticket Setup) الجديد
-@bot.tree.command(
-    name="ticket-setup", description="إرسال لوحة إنشاء التذاكر في القناة الحالية"
-)
-@app_commands.checks.has_permissions(manage_guild=True)
-async def ticket_setup(interaction: discord.Interaction):
-  class TicketButtonView(discord.ui.View):
+# 6. أمر إرسال لوحة التذاكر (Ticket Setup) المحدث
+class CloseTicketView(discord.ui.View):
 
-    def __init__(self):
-      super().__init__(timeout=None)
+  def __init__(self):
+    super().__init__(timeout=None)
 
-    @discord.ui.button(
-        label="فتح تذكرة 🎫",
-        style=discord.ButtonStyle.green,
-        custom_id="create_ticket_btn",
+  @discord.ui.button(
+      label="إغلاق التذكرة 🔒",
+      style=discord.ButtonStyle.red,
+      custom_id="close_ticket_btn",
+  )
+  async def close_ticket(
+      self, interaction: discord.Interaction, button: discord.ui.Button
+  ):
+    await interaction.response.send_message(
+        "جاري إغلاق القناة...", ephemeral=True
     )
-    async def create_ticket(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-      settings = database.get_settings(interaction.guild.id)
-      cat_id = settings.get("ticket_category")
-      support_role_id = settings.get("ticket_support_role")
+    try:
+      await interaction.channel.delete()
+    except:
+      pass
 
-      category = (
-          interaction.guild.get_channel(int(cat_id))
-          if cat_id and cat_id.isdigit()
-          else None
+
+class TicketButtonView(discord.ui.View):
+
+  def __init__(self):
+    super().__init__(timeout=None)
+
+  @discord.ui.button(
+      label="فتح تذكرة 🎫",
+      style=discord.ButtonStyle.green,
+      custom_id="create_ticket_btn",
+  )
+  async def create_ticket(
+      self, interaction: discord.Interaction, button: discord.ui.Button
+  ):
+    # حل مشكلة ECREX didn't respond in time بالاستجابة الفورية
+    await interaction.response.defer(ephemeral=True)
+
+    guild = interaction.guild
+    settings = database.get_settings(guild.id)
+    cat_id = settings.get("ticket_category")
+    support_role_id = settings.get("ticket_support_role")
+
+    category = (
+        guild.get_channel(int(cat_id)) if cat_id and cat_id.isdigit() else None
+    )
+    support_role = (
+        guild.get_role(int(support_role_id))
+        if support_role_id and support_role_id.isdigit()
+        else None
+    )
+
+    # منع تكرار فتح تذكرة جديدة إذا كان العضو يملك واحدة مفتوحة بالفعل
+    existing_channel = discord.utils.get(
+        guild.text_channels, name=f"ticket-{interaction.user.name.lower()}"
+    )
+    if existing_channel:
+      await interaction.followup.send(
+          f"لديك تذكرة مفتوحة بالفعل هنا: {existing_channel.mention}",
+          ephemeral=True,
       )
-      support_role = (
-          interaction.guild.get_role(int(support_role_id))
-          if support_role_id and support_role_id.isdigit()
-          else None
+      return
+
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        interaction.user: discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True,
+        ),
+        guild.me: discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, manage_channels=True
+        ),
+    }
+    if support_role:
+      overwrites[support_role] = discord.PermissionOverwrite(
+          view_channel=True, send_messages=True, read_message_history=True
       )
 
-      overwrites = {
-          interaction.guild.default_role: discord.PermissionOverwrite(
-              view_channel=False
-          ),
-          interaction.user: discord.PermissionOverwrite(
-              view_channel=True,
-              send_messages=True,
-              read_message_history=True,
-          ),
-          interaction.guild.me: discord.PermissionOverwrite(
-              view_channel=True, send_messages=True, manage_channels=True
-          ),
-      }
-      if support_role:
-        overwrites[support_role] = discord.PermissionOverwrite(
-            view_channel=True, send_messages=True, read_message_history=True
-        )
-
-      channel_name = f"ticket-{interaction.user.name}"
-      ticket_chan = await interaction.guild.create_text_channel(
+    channel_name = f"ticket-{interaction.user.name}"
+    try:
+      ticket_chan = await guild.create_text_channel(
           channel_name, category=category, overwrites=overwrites
       )
-
-      close_view = discord.ui.View()
-
-      @discord.ui.button(
-          label="إغلاق التذكرة 🔒",
-          style=discord.ButtonStyle.red,
-          custom_id="close_ticket_btn",
-      )
-      async def close_ticket(btn_interaction: discord.Interaction):
-        await btn_interaction.response.send_message("جاري إغلاق القناة...")
-        await ticket_chan.delete()
-
-      close_view.add_item(close_ticket)
 
       embed = discord.Embed(
           title="🎫 تذكرة دعم فني جديدة",
@@ -673,12 +689,25 @@ async def ticket_setup(interaction: discord.Interaction):
           color=0x6366f1,
       )
       await ticket_chan.send(
-          content=interaction.user.mention, embed=embed, view=close_view
+          content=interaction.user.mention,
+          embed=embed,
+          view=CloseTicketView(),
       )
-      await interaction.response.send_message(
+      await interaction.followup.send(
           f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}", ephemeral=True
       )
+    except Exception as e:
+      await interaction.followup.send(
+          "حدث خطأ أثناء إنشاء التذكرة، يرجى التحقق من صلاحيات البوت.",
+          ephemeral=True,
+      )
 
+
+@bot.tree.command(
+    name="ticket-setup", description="إرسال لوحة إنشاء التذاكر في القناة الحالية"
+)
+@app_commands.checks.has_permissions(manage_guild=True)
+async def ticket_setup(interaction: discord.Interaction):
   embed = discord.Embed(
       title="🎫 نظام التذاكر والدعم الفني",
       description="اضغط على الزر بالأسفل لفتح تذكرة جديدة والتواصل مع الإدارة.",
