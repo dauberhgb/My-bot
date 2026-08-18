@@ -108,7 +108,6 @@ async def on_member_join(member):
     if not settings:
         return
 
-    # إعطاء الرول التلقائي
     if settings.get('auto_role'):
         role = discord.utils.get(member.guild.roles, name=settings['auto_role'])
         if role:
@@ -117,7 +116,6 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"فشل إعطاء الرول: {e}")
 
-    # تغيير اللقب التلقائي
     if settings.get('auto_nickname'):
         try:
             await member.edit(nick=settings['auto_nickname'])
