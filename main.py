@@ -172,6 +172,9 @@ def save(guild_id):
       "ticket_support_role": request.form.get("ticket_support_role", ""),
       "xp_enabled": int(request.form.get("xp_enabled", 1)),
       "xp_per_message": int(request.form.get("xp_per_message", 15)),
+      "xp_role_5": request.form.get("xp_role_5", ""),
+      "xp_role_10": request.form.get("xp_role_10", ""),
+      "xp_role_20": request.form.get("xp_role_20", ""),
   }
 
   database.save_settings(guild_id, settings)
@@ -351,14 +354,26 @@ async def on_message(message):
       new_level, leveled_up = database.add_user_xp(
           message.guild.id, message.author.id, xp_gain
       )
-      if leveled_up:
-        try:
-          await message.channel.send(
-              f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى"
-              f" **{new_level}** 🚀"
-          )
-        except:
-          pass
+if leveled_up:
+    try:
+        await message.channel.send(f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى **{new_level}** 🚀")
+
+        # التحقق من الرولات التلقائية للمستويات 5، 10، 20 ومنحها للعضو
+        role_id_to_give = None
+        if new_level == 5:
+            role_id_to_give = settings.get("xp_role_5")
+        elif new_level == 10:
+            role_id_to_give = settings.get("xp_role_10")
+        elif new_level == 20:
+            role_id_to_give = settings.get("xp_role_20")
+
+        if role_id_to_give and role_id_to_give.isdigit():
+            target_role = message.guild.get_role(int(role_id_to_give))
+            if target_role:
+                await message.author.add_roles(target_role)
+                await message.channel.send(f"🎁 لقد حصلت على رول التميز: **{target_role.name}**!")
+    except Exception as e:
+        print(f"خطأ في منح رول المستوى: {e}")
 
   media_channels = settings.get("media_channels", [])
   if (
