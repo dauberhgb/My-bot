@@ -100,6 +100,31 @@ async def on_ready():
     print(f'البوت يعمل الآن باسم: {bot.user}')
 
 # ==========================================
+# 👤 نظام الانضمام التلقائي (Rolle & Nickname)
+# ==========================================
+@bot.event
+async def on_member_join(member):
+    settings = database.get_settings(str(member.guild.id))
+    if not settings:
+        return
+
+    # إعطاء الرول التلقائي
+    if settings.get('auto_role'):
+        role = discord.utils.get(member.guild.roles, name=settings['auto_role'])
+        if role:
+            try:
+                await member.add_roles(role)
+            except Exception as e:
+                print(f"فشل إعطاء الرول: {e}")
+
+    # تغيير اللقب التلقائي
+    if settings.get('auto_nickname'):
+        try:
+            await member.edit(nick=settings['auto_nickname'])
+        except Exception as e:
+            print(f"فشل تغيير اللقب: {e}")
+
+# ==========================================
 # 🎫 نظام تذاكر الدعم الفني الخارق (Ticket System)
 # ==========================================
 class TicketView(discord.ui.View):
@@ -125,7 +150,7 @@ class TicketView(discord.ui.View):
         close_view = TicketCloseView()
         embed = discord.Embed(
             title="🎟️ تذكرة جديدة",
-            description=f"مرحباً {interaction.user.mention}!\nطرح فريق الإدارة قريباً لمساعدتك. للغلق اضغط على الزر أدناه.",
+            description=f"مرحباً {interaction.user.mention}!\nسيقوم فريق الإدارة بمساعدتك قريباً. للإغلاق اضغط على الزر أدناه.",
             color=discord.Color.green()
         )
         await ticket_channel.send(embed=embed, view=close_view)
@@ -157,7 +182,6 @@ async def ticket_panel(interaction: discord.Interaction):
 # ==========================================
 @bot.event
 async def on_voice_state_update(member, before, after):
-    # افتراض أن الروم الرئيسية اسمها "➕ | انشئ غرفتك"
     if after.channel and after.channel.name == "➕ | انشئ غرفتك":
         guild = member.guild
         category = after.channel.category
