@@ -35,7 +35,7 @@ def guild_list():
         bot_guilds.append({
             "id": str(guild.id),
             "name": guild.name,
-            "icon": guild.icon.key if guild.icon else None
+            "icon": guild.icon.url if guild.icon else None
         })
     return render_template('guilds.html', guilds=bot_guilds)
 
@@ -52,7 +52,10 @@ def dashboard(guild_id):
     
     settings = database.get_settings(guild_id)
 
-    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings)
+    # جلب رابط صورة السيرفر المباشر
+    icon_url = guild.icon.url if guild.icon else None
+
+    return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, icon_url=icon_url)
 
 # حفظ الإعدادات للسيرفر المختار
 @app.route('/save/<guild_id>', methods=['POST'])
