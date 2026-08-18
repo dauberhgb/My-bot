@@ -6,6 +6,7 @@ DB_NAME = "bot_settings.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    # جدول الإعدادات الأساسية
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS guild_settings (
             guild_id TEXT PRIMARY KEY,
@@ -26,6 +27,15 @@ def init_db():
             auto_responses TEXT,
             auto_role TEXT,
             auto_nickname TEXT
+        )
+    ''')
+    # جدول لتخزين المخالفات بشكل دائم لئلا تضيع عند إعادة التشغيل
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS violations (
+            guild_id TEXT,
+            user_id TEXT,
+            count INTEGER,
+            PRIMARY KEY (guild_id, user_id)
         )
     ''')
     conn.commit()
@@ -107,6 +117,33 @@ def save_settings(guild_id, settings):
         settings.get("auto_role", ""),
         settings.get("auto_nickname", "")
     ))
+    conn.commit()
+    conn.close()
+
+# دوال إدارة المخالفات بشكل دائم في القاعدة
+def get_violation_count(guild_id, user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT count FROM violations WHERE guild_id = ? AND user_id = ?", (str(guild_id), str(user_id)))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else 0
+
+def add_violation(guild_id, user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    current_count = get_violation_count(guild_id, user_id) + 1
+    cursor.execute('''
+        INSERT OR REPLACE INTO violations (guild_id, user_id, count) VALUES (?, ?, ?)
+    ''', (str(guild_id), str(user_id), current_count))
+    conn.commit()
+    conn.close()
+    return current_count
+
+def reset_violations(guild_id, user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM violations WHERE guild_id = ? AND user_id = ?", (str(guild_id), str(user_id)))
     conn.commit()
     conn.close()
 
