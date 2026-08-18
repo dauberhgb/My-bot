@@ -1,4 +1,4 @@
-import json
+Import json
 import os
 import threading
 from datetime import timedelta
@@ -346,32 +346,36 @@ async def on_message(message):
     await bot.process_commands(message)
     return
 
-  # 1. نظام المستويات (XP) الجديد
-    if settings.get("xp_enabled", 1) == 1:
-        xp_gain = settings.get("xp_per_message", 15)
-        if hasattr(database, "add_user_xp"):
-            new_level, leveled_up = database.add_user_xp(
-                message.guild.id, message.author.id, xp_gain
-            )
-            if leveled_up:
-                try:
-                    await message.channel.send(f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى **{new_level}** 🚀")
-                    
-                    role_id_to_give = None
-                    if new_level == 5:
-                        role_id_to_give = settings.get("xp_role_5")
-                    elif new_level == 10:
-                        role_id_to_give = settings.get("xp_role_10")
-                    elif new_level == 20:
-                        role_id_to_give = settings.get("xp_role_20")
-                        
-                    if role_id_to_give and role_id_to_give.isdigit():
-                        target_role = message.guild.get_role(int(role_id_to_give))
-                        if target_role:
-                            await message.author.add_roles(target_role)
-                            await message.channel.send(f"🎁 لقد حصلت على رول التميز: **{target_role.name}**!")
-                except Exception as e:
-                    print(f"خطأ في منح رول المستوى: {e}")
+  # 1. نظام المستويات (XP) الجديد (تم تصحيح المسافات هنا)
+  if settings.get("xp_enabled", 1) == 1:
+    xp_gain = settings.get("xp_per_message", 15)
+    if hasattr(database, "add_user_xp"):
+      new_level, leveled_up = database.add_user_xp(
+          message.guild.id, message.author.id, xp_gain
+      )
+      if leveled_up:
+        try:
+          await message.channel.send(
+              f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى **{new_level}** 🚀"
+          )
+
+          role_id_to_give = None
+          if new_level == 5:
+            role_id_to_give = settings.get("xp_role_5")
+          elif new_level == 10:
+            role_id_to_give = settings.get("xp_role_10")
+          elif new_level == 20:
+            role_id_to_give = settings.get("xp_role_20")
+
+          if role_id_to_give and role_id_to_give.isdigit():
+            target_role = message.guild.get_role(int(role_id_to_give))
+            if target_role:
+              await message.author.add_roles(target_role)
+              await message.channel.send(
+                  f"🎁 لقد حصلت على رول التميز: **{target_role.name}**!"
+              )
+        except Exception as e:
+          print(f"خطأ في منح رول المستوى: {e}")
 
   media_channels = settings.get("media_channels", [])
   if (
@@ -754,35 +758,55 @@ async def level_command(
   embed.set_thumbnail(url=target.display_avatar.url)
   await interaction.response.send_message(embed=embed)
 
+
 # أمر عرض قائمة المتصدرين (Leaderboard)
-@bot.tree.command(name="leaderboard", description="عرض قائمة أكثر الأعضاء تفاعلاً ونقاطاً XP")
+@bot.tree.command(
+    name="leaderboard", description="عرض قائمة أكثر الأعضاء تفاعلاً ونقاطاً XP"
+)
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
 async def leaderboard(interaction: discord.Interaction):
-    guild_id = interaction.guild.id
-    
-    top_users = database.get_top_users(guild_id, limit=10) if hasattr(database, "get_top_users") else []
-    
-    embed = discord.Embed(
-        title=f"🏆 قائمة المتصدرين في {interaction.guild.name}",
-        description="أكثر الأعضاء تفاعلاً وحصولاً على نقاط الخبرة (XP):",
-        color=discord.Color.gold()
+  guild_id = interaction.guild.id
+
+  top_users = (
+      database.get_top_users(guild_id, limit=10)
+      if hasattr(database, "get_top_users")
+      else []
+  )
+
+  embed = discord.Embed(
+      title=f"🏆 قائمة المتصدرين في {interaction.guild.name}",
+      description="أكثر الأعضاء تفاعلاً وحصولاً على نقاط الخبرة (XP):",
+      color=discord.Color.gold(),
+  )
+
+  if not top_users:
+    embed.add_field(
+        name="لا توجد بيانات بعد",
+        value="ابدأ بإرسال الرسائل لتكون أول المتصدرين!",
+        inline=False,
     )
-    
-    if not top_users:
-        embed.add_field(name="لا توجد بيانات بعد", value="ابدأ بإرسال الرسائل لتكون أول المتصدرين!", inline=False)
-    else:
-        desc_list = []
-        for index, (uid, xp, lvl) in enumerate(top_users, start=1):
-            member = interaction.guild.get_member(int(uid))
-            name = member.mention if member else f"مستخدم مغادر ({uid})"
-            medal = "🥇" if index == 1 else "🥈" if index == 2 else "🥉" if index == 3 else f"**#{index}**"
-            desc_list.append(f"{medal} {name} — المستوى: **{lvl}** (`{xp} XP`)")
-        embed.description = "\n".join(desc_list)
-        
-    if interaction.guild.icon:
-        embed.set_thumbnail(url=interaction.guild.icon.url)
-        
-    await interaction.response.send_message(embed=embed)
+  else:
+    desc_list = []
+    for index, (uid, xp, lvl) in enumerate(top_users, start=1):
+      member = interaction.guild.get_member(int(uid))
+      name = member.mention if member else f"مستخدم مغادر ({uid})"
+      medal = (
+          "🥇"
+          if index == 1
+          else "🥈"
+          if index == 2
+          else "🥉"
+          if index == 3
+          else f"**#{index}**"
+      )
+      desc_list.append(f"{medal} {name} — المستوى: **{lvl}** (`{xp} XP`)")
+    embed.description = "\n".join(desc_list)
+
+  if interaction.guild.icon:
+    embed.set_thumbnail(url=interaction.guild.icon.url)
+
+  await interaction.response.send_message(embed=embed)
+
 
 # ==========================================
 # 6. معالجة الأخطاء العامة الشاملة لأوامر السلاش
