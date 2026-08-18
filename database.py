@@ -31,11 +31,10 @@ def init_db():
             ticket_category TEXT,
             ticket_support_role TEXT,
             xp_enabled INTEGER,
-            xp_per_message INTEGER
+            xp_per_message INTEGER,
             xp_role_5 TEXT,
             xp_role_10 TEXT,
             xp_role_20 TEXT
-
         )
     """)
 
@@ -116,6 +115,9 @@ def get_settings(guild_id):
       "ticket_support_role": "",
       "xp_enabled": 1,
       "xp_per_message": 15,
+      "xp_role_5": "",
+      "xp_role_10": "",
+      "xp_role_20": "",
   }
 
 
@@ -125,7 +127,7 @@ def save_settings(guild_id, settings):
   cursor.execute(
       """
         INSERT OR REPLACE INTO guild_settings VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     """,
       (
@@ -210,6 +212,7 @@ def get_user_level(guild_id, user_id):
     return row[0], row[1]
   return 0, 1
 
+
 def get_top_users(guild_id, limit=10):
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
@@ -221,5 +224,6 @@ def get_top_users(guild_id, limit=10):
   rows = cursor.fetchall()
   conn.close()
   return rows
+
 
 init_db()
