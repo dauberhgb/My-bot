@@ -18,6 +18,9 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
+# ضع معرف حسابك في ديسكورد (User ID) هنا مكان هذا الرقم
+OWNER_ID = 123456789012345678
+
 # ==========================================
 # 2. إعداد خادم الويب (Flask Dashboard)
 # ==========================================
@@ -109,15 +112,6 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 @bot.event
 async def on_ready():
-    # مزامنة أوامر السلاش فوراً مع كل السيرفرات المتواجد فيها البوت
-    try:
-        for guild in bot.guilds:
-            bot.tree.copy_global_to(guild=guild)
-            await bot.tree.sync(guild=guild)
-        print("تمت مزامنة أوامر السلاش فورياً مع جميع السيرفرات!")
-    except Exception as e:
-        print(f"خطأ في مزامنة أوامر السلاش: {e}")
-        
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
 # أمر السلاش /setup مع حماية Cooldown
@@ -283,6 +277,132 @@ async def on_message(message):
         return
 
     await bot.process_commands(message)
+
+# ==========================================
+# 4. أمر المزامنة اليدوي (!sync)
+# ==========================================
+@bot.command(name="sync")
+async def sync_commands(ctx):
+    # التحقق مما إذا كان منفذ الأمر هو صاحب البوت فقط
+    if ctx.author.id != OWNER_ID:
+        await ctx.send("عذراً! هذا الأمر مخصص لصاحب البوت فقط.")
+        return
+
+    msg = await ctx.send("جاري مزامنة أوامر السلاش عالمياً...")
+    
+    try:
+        synced = await bot.tree.sync()
+        await msg.edit(content=f"تمت مزامنة {len(synced)} أمر سلاش بنجاح على مستوى العالم!")
+    except Exception as e:
+        await msg.edit(content=f"حدث خطأ أثناء المزامنة: {e}")
+
+# ==========================================
+# 5. أوامر السلاش الجديدة (Slash Commands)
+# ==========================================
+
+# 1. أمر عرض معلومات العضو
+@bot.tree.command(name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر")
+@app_commands.describe(member="العضو المراد عرض معلوماته (اختياري)")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    
+    embed = discord.Embed(
+        title=f"معلومات العضو: {target.display_name}",
+        color=discord.Color.blue()
+    )
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="الاسم:", value=target.name, inline=True)
+    embed.add_field(name="المعرف (ID):", value=target.id, inline=True)
+    embed.add_field(name="تاريخ إنشاء الحساب:", value=target.created_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="تاريخ الانضمام للسيرفر:", value=target.joined_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="أعلى رول:", value=target.top_role.mention, inline=True)
+    
+    await interaction.response.send_message(embed=embed)
+
+# 2. أمر عرض معلومات السيرفر
+@bot.tree.command(name="serverinfo", description="عرض معلومات وإحصائيات هذا السيرفر")
+@app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
+async def serverinfo(interaction: discord.Interaction):
+    guild = interaction.guild
+    
+    embed = discord.Embed(
+        title=f"إحصائيات {guild.name}",
+        color=discord.Color.purple()
+    )
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+        
+    embed.add_field(name="معرف السيرفر (ID):", value=guild.id, inline=True)
+    embed.add_field(name="مالك السيرفر:", value=f"<@{guild.owner_id}>", inline=True)
+    embed.add_field(name="عدد الأعضاء الإجمالي:", value=guild.member_count, inline=True)
+    embed.add_field(name="عدد القنوات:", value=len(guild.channels), inline=True)
+    embed.add_field(name="عدد الرولات:", value=len(guild.roles), inline=True)
+    embed.add_field(name="تاريخ الإنشاء:", value=guild.created_at.strftime("%Y-%m-%d"), inline=False)
+    
+    await interaction.response.send_message(embed=embed)
+
+# 3. أمر مسح الرسائل
+@bot.tree.command(name="clear", description="حذف عدد معين من الرسائل من القناة الحالية")
+@app_commands.describe(amount="عدد الرسائل المراد مسحها (1 - 100)", member="تحديد عضو معين لتنظيف رسائله فقط (اختياري)")
+@app_commands.checks.has_permissions(manage_messages=True)
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def clear(interaction: discord.Interaction, amount: int, member: discord.Member = None):
+    if amount < 1 or amount > 100:
+        await interaction.response.send_message("يرجى إدخال رقم بين 1 و 100.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    
+    def check(msg):
+        return msg.author == member if member else True
+
+    deleted = await interaction.channel.purge(limit=amount, check=check)
+    await interaction.followup.send(f"تم مسح {len(deleted)} رسالة بنجاح.", ephemeral=True)
+
+# 4. أمر فحص سرعة الاستجابة (Ping)
+@bot.tree.command(name="ping", description="عرض سرعة اتصال البوت واستجابته")
+@app_commands.checks.cooldown(1, 3.0, key=lambda i: (i.guild_id, i.user.id))
+async def ping(interaction: discord.Interaction):
+    latency = round(bot.latency * 1000)
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"سرعة استجابة البوت (Latency): **{latency} ms**",
+        color=discord.Color.green() if latency < 150 else discord.Color.red()
+    )
+    await interaction.response.send_message(embed=embed)
+
+# 5. أمر معلومات البوت ورابط Top.gg
+@bot.tree.command(name="botinfo", description="عرض معلومات البوت ورابط التصويت")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def botinfo(interaction: discord.Interaction):
+    total_guilds = len(bot.guilds)
+    total_users = sum(g.member_count for g in bot.guilds)
+    
+    embed = discord.Embed(
+        title="معلومات البوت ورابط الدعم",
+        description="شكراً لاستخدامك البوت! يمكنك دعمنا وتقييمنا على منصة Top.gg.",
+        color=discord.Color.gold()
+    )
+    embed.add_field(name="السيرفرات الخادمة:", value=f"{total_guilds} سيرفر", inline=True)
+    embed.add_field(name="إجمالي المستخدمين:", value=f"{total_users} عضو", inline=True)
+    
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label="دعم البوت على Top.gg", url="https://top.gg", style=discord.ButtonStyle.link))
+    
+    await interaction.response.send_message(embed=embed, view=view)
+
+# ==========================================
+# 6. معالجة الأخطاء العامة لأوامر السلاش
+# ==========================================
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {round(error.retry_after, 1)} ثانية.", ephemeral=True)
+    elif isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message("عذراً، لا تمتلك الصلاحيات الكافية لاستخدام هذا الأمر.", ephemeral=True)
+    else:
+        await interaction.response.send_message("حدث خطأ غير متوقع أثناء تنفيذ الأمر.", ephemeral=True)
 
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
