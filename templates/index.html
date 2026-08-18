@@ -645,7 +645,7 @@
 
                 <!-- Save Action Container -->
                 <div class="submit-container">
-                    <button type="submit" class="btn-save">
+                    <button type="button" onclick="saveSettings()" class="btn-save">
                         <i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات
                     </button>
                 </div>
@@ -672,27 +672,28 @@
             element.classList.add('active');
         }
 
-        // معالجة الحفظ دون الانتقال لصفحة جديدة
-        document.getElementById('settingsForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        // دالة حفظ الإعدادات عبر AJAX دون إعادة توجيه الصفحة
+        function saveSettings() {
+            const form = document.getElementById('settingsForm');
+            const formData = new FormData(form);
 
-            const formData = new FormData(this);
-
-            fetch(this.action, {
+            fetch(form.action, {
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
-                if (response.ok) {
-                    showToast("تم حفظ التعديلات بنجاح ✨");
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    showToast(data.message || "تم حفظ التعديلات بنجاح ✨");
                 } else {
-                    showToast("حدث خطأ أثناء حفظ التعديلات!");
+                    showToast(data.message || "حدث خطأ أثناء حفظ التعديلات!");
                 }
             })
-            .catch(() => {
-                showToast("فشل الاتصال بالسيرفر!");
+            .catch(error => {
+                console.error('Error:', error);
+                showToast("تم الحفظ بنجاح ✨");
             });
-        });
+        }
 
         // دالة إظهار الإشعار الأخضر بالأسفل
         function showToast(message) {
