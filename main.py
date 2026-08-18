@@ -170,7 +170,7 @@ async def on_voice_state_update(member, before, after):
         new_channel = await guild.create_voice_channel(f"🎙️ | روم {member.display_name}", category=category, overwrites=overwrites)
         await member.move_to(new_channel)
         
-        def check(b,, a):
+        def check(b, a):
             return len(new_channel.members) == 0
 
         try:
