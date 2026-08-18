@@ -2,7 +2,7 @@ import os
 import json
 import threading
 from datetime import timedelta
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -60,12 +60,12 @@ def dashboard(guild_id):
 
     return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, icon_url=icon_url)
 
-# حفظ الإعدادات للسيرفر المختار
+# حفظ الإعدادات للسيرفر المختار (تم التعديل لإرجاع JSON للواجهة)
 @app.route('/save/<guild_id>', methods=['POST'])
 def save(guild_id):
     guild = bot.get_guild(int(guild_id))
     if not guild:
-        return "السيرفر غير موجود!", 400
+        return jsonify({"status": "error", "message": "السيرفر غير موجود!"}), 400
 
     media_channels = request.form.getlist('media_channels')
     banned_words = [w.strip().lower() for w in request.form.get('banned_words', '').split(',') if w.strip()]
@@ -99,7 +99,7 @@ def save(guild_id):
     }
 
     database.save_settings(guild_id, settings)
-    return f"<h1>تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!</h1><br><a href='/guilds'>العودة لقائمة السيرفرات</a>"
+    return jsonify({"status": "success", "message": f"تم حفظ إعدادات السيرفر ({guild.name}) بنجاح!"}), 200
 
 def run_web_server():
     port = int(os.environ.get("PORT", 8080))
