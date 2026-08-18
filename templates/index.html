@@ -212,8 +212,10 @@
     <!-- Hero Banner -->
     <div class="hero-section">
         <div class="d-flex align-items-center gap-3">
-            {% if guild.icon %}
-                <img src="https://cdn.discordapp.com/icons/{{ guild.id }}/{{ guild.icon }}.png" class="guild-avatar" alt="Guild Icon">
+            {% if icon_url %}
+                <img src="{{ icon_url }}" class="guild-avatar" alt="Guild Icon">
+            {% elif guild.icon %}
+                <img src="{{ guild.icon.url }}" class="guild-avatar" alt="Guild Icon">
             {% else %}
                 <div class="guild-avatar d-flex align-items-center justify-content-center bg-secondary fs-3 fw-bold">{{ guild.name[0] }}</div>
             {% endif %}
