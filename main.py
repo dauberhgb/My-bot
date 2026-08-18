@@ -52,19 +52,32 @@ def admin_required(f):
 
 @app.route('/')
 def home():
+    user_id = request.args.get('user_id')
+    if user_id:
+        return redirect(url_for('guild_list', user_id=user_id))
     return redirect(url_for('guild_list'))
 
-# صفحة عرض كافة السيرفرات المتواجد فيها البوت تلقائياً
+# صفحة عرض السيرفرات المفلترة بحسب صلاحيات الأدمن فقط
 @app.route('/guilds')
 def guild_list():
+    user_id = request.args.get('user_id')
     bot_guilds = []
+
     for guild in bot.guilds:
-        bot_guilds.append({
-            "id": str(guild.id),
-            "name": guild.name,
-            "icon": guild.icon.url if guild.icon else None
-        })
-    return render_template('guilds.html', guilds=bot_guilds)
+        # إذا تم إرسال user_id يتم التصفية لعرض السيرفرات التي يملك المستخدم فيها صلاحية Manage Server
+        if user_id and user_id.isdigit():
+            member = guild.get_member(int(user_id))
+            if member and member.guild_permissions.manage_guild:
+                bot_guilds.append({
+                    "id": str(guild.id),
+                    "name": guild.name,
+                    "icon": guild.icon.url if guild.icon else None
+                })
+        else:
+            # عدم عرض أي سيرفر لتجنب إظهار سيرفرات الآخرين لجميع الزوار بدون تحكم
+            pass
+
+    return render_template('guilds.html', guilds=bot_guilds, user_id=user_id)
 
 # صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب قنواته ورولاته تلقائياً (محمية)
 @app.route('/dashboard/<guild_id>')
