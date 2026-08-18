@@ -34,7 +34,7 @@ def init_db():
             xp_per_message INTEGER
             xp_role_5 TEXT,
             xp_role_10 TEXT,
-            xp_role_20 TEXT,
+            xp_role_20 TEXT
 
         )
     """)
