@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+from functools import wraps
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import discord
@@ -26,6 +27,29 @@ OWNER_ID = 1462429084377157832
 # ==========================================
 app = Flask(__name__)
 
+# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(guild_id, *args, **kwargs):
+        guild = bot.get_guild(int(guild_id))
+        if not guild:
+            if request.path.startswith('/save/'):
+                return jsonify({"status": "error", "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!"}), 404
+            return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
+
+        # التحقق من وجود معرف العضو في الهيدر/الطلب أو المعلمات، مع فحص صلاحية إدارة السيرفر
+        user_id = request.args.get('user_id') or request.headers.get('X-User-ID') or request.form.get('user_id')
+        
+        if user_id and user_id.isdigit():
+            member = guild.get_member(int(user_id))
+            if not member or not member.guild_permissions.manage_guild:
+                if request.path.startswith('/save/'):
+                    return jsonify({"status": "error", "message": "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا الإجراء!"}), 403
+                return "عذراً، لا تملك صلاحية (إدارة السيرفر) للدخول إلى هذه اللوحة!", 403
+
+        return f(guild_id, *args, **kwargs)
+    return decorated_function
+
 @app.route('/')
 def home():
     return redirect(url_for('guild_list'))
@@ -42,12 +66,11 @@ def guild_list():
         })
     return render_template('guilds.html', guilds=bot_guilds)
 
-# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب قنواته ورولاته تلقائياً
+# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب قنواته ورولاته تلقائياً (محمية)
 @app.route('/dashboard/<guild_id>')
+@admin_required
 def dashboard(guild_id):
     guild = bot.get_guild(int(guild_id))
-    if not guild:
-        return "البوت غير متواجد في هذا السيرفر!", 404
 
     # جلب جميع القنوات النصية والرولات تلقائياً
     channels = [{"id": str(c.id), "name": c.name} for c in guild.text_channels]
@@ -60,12 +83,11 @@ def dashboard(guild_id):
 
     return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, icon_url=icon_url)
 
-# حفظ الإعدادات للسيرفر المختار (تم التعديل لإرجاع JSON للواجهة)
+# حفظ الإعدادات للسيرفر المختار (محمية)
 @app.route('/save/<guild_id>', methods=['POST'])
+@admin_required
 def save(guild_id):
     guild = bot.get_guild(int(guild_id))
-    if not guild:
-        return jsonify({"status": "error", "message": "السيرفر غير موجود!"}), 400
 
     media_channels = request.form.getlist('media_channels')
     banned_words = [w.strip().lower() for w in request.form.get('banned_words', '').split(',') if w.strip()]
@@ -116,15 +138,17 @@ async def on_ready():
 
 # أمر السلاش /setup مع حماية Cooldown
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر")
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0)  # مهلة 5 ثوانٍ بين الاستخدامات لمنع الحظر
 async def setup(interaction: discord.Interaction):
     guild_id = str(interaction.guild_id)
+    user_id = str(interaction.user.id)
     
     base_url = os.getenv("DASHBOARD_URL", "").rstrip('/')
     if not base_url:
-        dashboard_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/dashboard/{guild_id}"
+        dashboard_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/dashboard/{guild_id}?user_id={user_id}"
     else:
-        dashboard_link = f"{base_url}/dashboard/{guild_id}"
+        dashboard_link = f"{base_url}/dashboard/{guild_id}?user_id={user_id}"
 
     view = discord.ui.View()
     button = discord.ui.Button(label="فتح لوحة التحكم ⚙️", url=dashboard_link, style=discord.ButtonStyle.link)
@@ -138,12 +162,17 @@ async def setup(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-# معالجة خطأ الـ Cooldown
+# معالجة خطأ الـ Cooldown والصلاحيات لأمر Setup
 @setup.error
 async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CommandOnCooldown):
         await interaction.response.send_message(
             f"⏳ يرجى الانتظار {round(error.retry_after, 1)} ثانية قبل استخدام الأمر مرة أخرى!", 
+            ephemeral=True
+        )
+    elif isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message(
+            "🚫 عذراً، يجب أن تمتلك صلاحية (إدارة السيرفر Manage Server) للوصول للوحة التحكم!", 
             ephemeral=True
         )
 
