@@ -200,5 +200,16 @@ def get_user_level(guild_id, user_id):
     return row[0], row[1]
   return 0, 1
 
+def get_top_users(guild_id, limit=10):
+  conn = sqlite3.connect(DB_NAME)
+  cursor = conn.cursor()
+  cursor.execute(
+      "SELECT user_id, xp, level FROM user_levels WHERE guild_id = ? ORDER BY"
+      " xp DESC LIMIT ?",
+      (str(guild_id), limit),
+  )
+  rows = cursor.fetchall()
+  conn.close()
+  return rows
 
 init_db()
