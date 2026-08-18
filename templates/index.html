@@ -3,407 +3,557 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إعدادات {{ guild.name }} | لوحة التحكم</title>
-    <!-- Bootstrap RTL -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
+    <title>لوحة تحكم السيرفر | {{ guild.name }}</title>
+    <!-- Google Fonts: Cairo -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --bg-primary: #0b0f19;
-            --bg-card: rgba(30, 41, 59, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --accent-blue: #38bdf8;
-            --accent-purple: #818cf8;
-            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --bg-primary: #1e1f22;
+            --bg-secondary: #2b2d31;
+            --bg-tertiary: #313338;
+            --accent-color: #5865f2;
+            --accent-hover: #4752c4;
+            --text-normal: #dbdee1;
+            --text-muted: #949ba4;
+            --border-color: #3f4147;
+            --danger-color: #f23f43;
+            --sidebar-width: 260px;
         }
 
-        body { 
-            background-color: var(--bg-primary); 
-            color: #f8fafc; 
-            font-family: 'Cairo', Tahoma, sans-serif;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
-            background-attachment: fixed;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-normal);
+            display: flex;
+            flex-direction: column;
             min-height: 100vh;
         }
 
-        /* Top Bar */
-        .top-bar {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-color);
-            padding: 15px 0;
-            margin-bottom: 30px;
-        }
-
-        .verified-badge { 
-            background: rgba(16, 185, 129, 0.1); 
-            color: #34d399; 
-            padding: 8px 18px; 
-            border-radius: 50px; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            font-weight: 700; 
-            font-size: 0.9rem;
-            border: 1px solid rgba(52, 211, 153, 0.3); 
-        }
-
-        /* Hero Banner */
-        .hero-section { 
-            background: rgba(30, 41, 59, 0.5);
-            backdrop-filter: blur(16px);
-            padding: 35px 25px; 
-            border-radius: 24px; 
-            margin-bottom: 35px; 
-            border: 1px solid var(--border-color);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        /* Top Header */
+        header {
+            background-color: var(--bg-secondary);
+            padding: 15px 30px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        .guild-avatar {
-            width: 70px;
-            height: 70px;
-            border-radius: 20px;
+        .server-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .server-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
             object-fit: cover;
-            border: 2px solid var(--accent-blue);
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+            border: 2px solid var(--accent-color);
         }
 
-        /* Card System */
-        .card-custom { 
-            background: var(--bg-card); 
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color); 
-            border-radius: 20px; 
-            margin-bottom: 25px; 
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .server-icon-placeholder {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #fff;
         }
 
-        .card-custom:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-            border-color: rgba(99, 102, 241, 0.3);
-        }
-
-        .card-header-custom { 
-            background: rgba(15, 23, 42, 0.8); 
-            border-bottom: 1px solid var(--border-color); 
-            padding: 18px 25px; 
-            font-weight: 700; 
-            font-size: 1.1rem;
-            color: var(--accent-blue); 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-        }
-
-        .card-header-custom i {
+        .server-name {
             font-size: 1.2rem;
-            color: #818cf8;
-        }
-
-        .card-body {
-            padding: 25px;
-        }
-
-        /* Form Controls */
-        .form-label {
-            font-weight: 600;
-            color: #cbd5e1;
-            margin-bottom: 8px;
-        }
-
-        .form-control, .form-select { 
-            background-color: rgba(15, 23, 42, 0.7); 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            color: #f8fafc; 
-            border-radius: 12px; 
-            padding: 12px 16px;
-            transition: all 0.2s ease;
-        }
-
-        .form-control:focus, .form-select:focus { 
-            background-color: rgba(15, 23, 42, 0.9); 
-            color: #fff; 
-            border-color: var(--accent-purple); 
-            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15);
-        }
-
-        /* Buttons */
-        .btn-submit { 
-            background: var(--accent-gradient); 
-            border: none; 
-            color: white; 
-            padding: 14px 45px; 
-            font-weight: 700; 
-            font-size: 1.1rem;
-            border-radius: 14px; 
-            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 35px rgba(168, 85, 247, 0.5);
-            color: white;
+            font-weight: 700;
         }
 
         .btn-back {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            color: #cbd5e1;
-            border-radius: 12px;
-            padding: 8px 18px;
-            font-weight: 600;
-            transition: all 0.2s ease;
+            background-color: var(--bg-tertiary);
+            color: var(--text-normal);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-back:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
+            background-color: var(--border-color);
         }
 
-        /* Nav Pills (Tabs) */
-        .nav-pills .nav-link {
-            color: #94a3b8;
+        /* Layout Container */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            flex: 1;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            background-color: var(--bg-secondary);
+            padding: 25px 15px;
+            border-left: 1px solid var(--border-color);
+            position: sticky;
+            top: 76px;
+            height: calc(100vh - 76px);
+            overflow-y: auto;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
             font-weight: 600;
-            border-radius: 12px;
-            padding: 10px 20px;
-            margin-left: 8px;
             transition: all 0.2s ease;
         }
 
-        .nav-pills .nav-link.active {
-            background: var(--accent-gradient);
-            color: #fff;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        .sidebar-link i {
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
         }
 
-        .nav-pills .nav-link:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.05);
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: var(--accent-color);
+            color: #ffffff;
+        }
+
+        /* Main Form Area */
+        .main-content {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .form-section {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+            scroll-margin-top: 90px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
             color: #fff;
+        }
+
+        .section-header i {
+            color: var(--accent-color);
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-normal);
+        }
+
+        .sub-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: -4px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        select[multiple] {
+            height: 120px;
+        }
+
+        /* Grid for Multiple Inputs */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .response-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        /* Submit Button */
+        .submit-container {
+            position: sticky;
+            bottom: 20px;
+            background-color: rgba(43, 45, 49, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-save {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-save:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 900px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+                height: auto;
+                border-left: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .sidebar-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                padding-bottom: 5px;
+            }
+
+            .sidebar-link {
+                white-space: nowrap;
+            }
+
+            .grid-2, .response-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- Top Navigation Bar -->
-<div class="top-bar">
-    <div class="container d-flex justify-content-between align-items-center">
-        <a href="/guilds" class="btn btn-back"><i class="fa-solid fa-arrow-right me-2"></i> العودة لقائمة السيرفرات</a>
-        <div class="verified-badge">
-            <i class="fa-solid fa-shield-halved"></i> البوت نشط وموثق
-        </div>
-    </div>
-</div>
-
-<div class="container pb-5">
-    <!-- Hero Banner -->
-    <div class="hero-section">
-        <div class="d-flex align-items-center gap-3">
+    <!-- Header Bar -->
+    <header>
+        <div class="server-info">
             {% if icon_url %}
-                <img src="{{ icon_url }}" class="guild-avatar" alt="Guild Icon">
-            {% elif guild.icon %}
-                <img src="{{ guild.icon.url }}" class="guild-avatar" alt="Guild Icon">
+                <img src="{{ icon_url }}" class="server-icon" alt="Icon">
             {% else %}
-                <div class="guild-avatar d-flex align-items-center justify-content-center bg-secondary fs-3 fw-bold">{{ guild.name[0] }}</div>
+                <div class="server-icon-placeholder">{{ guild.name[0] }}</div>
             {% endif %}
-            <div>
-                <h3 class="fw-bold m-0">إعدادات السيرفر</h3>
-                <span class="text-info font-monospace">{{ guild.name }}</span>
-            </div>
+            <span class="server-name">{{ guild.name }}</span>
         </div>
-        <div class="text-secondary small">ID: {{ guild.id }}</div>
+        <a href="/guilds" class="btn-back">
+            <i class="fa-solid fa-arrow-right"></i> قائمة السيرفرات
+        </a>
+    </header>
+
+    <!-- Main Layout Grid -->
+    <div class="dashboard-container">
+        
+        <!-- Sidebar Navigation Options -->
+        <nav class="sidebar">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="#section-media" class="sidebar-link active">
+                        <i class="fa-solid fa-photo-film"></i>
+                        <span>قنوات الميديا</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#section-banned" class="sidebar-link">
+                        <i class="fa-solid fa-ban"></i>
+                        <span>الكلمات المحظورة</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#section-responses" class="sidebar-link">
+                        <i class="fa-solid fa-reply"></i>
+                        <span>الردود التلقائية</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#section-roles" class="sidebar-link">
+                        <i class="fa-solid fa-user-tag"></i>
+                        <span>الرول واللقب</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#section-farewell" class="sidebar-link">
+                        <i class="fa-solid fa-door-open"></i>
+                        <span>إعدادات الوداع</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Configuration Form Body -->
+        <main class="main-content">
+            <form action="/save/{{ guild.id }}" method="POST">
+                
+                <!-- 1. Media Channels Section -->
+                <div id="section-media" class="form-section">
+                    <div class="section-header">
+                        <i class="fa-solid fa-photo-film fa-lg"></i>
+                        <h3>إعدادات قنوات الميديا</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>اختر قنوات الميديا (اضغط Ctrl لمضاعفة الاختيار):</label>
+                        <select name="media_channels" multiple>
+                            {% for ch in channels %}
+                                <option value="{{ ch.id }}" {% if settings and ch.id in settings.get('media_channels', []) %}selected{% endif %}>
+                                    # {{ ch.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>رسالة التحذير المخصصة للميديا:</label>
+                        <span class="sub-label">ملاحظة: يمكنك استخدام التاج {user} للإشارة للعضو.</span>
+                        <input type="text" name="media_warning" value="{{ settings.get('media_warning', 'عذراً {user} هذه القناة للميديا فقط!') if settings else 'عذراً {user} هذه القناة للميديا فقط!' }}">
+                    </div>
+                </div>
+
+                <!-- 2. Banned Words & Penalties Section -->
+                <div id="section-banned" class="form-section">
+                    <div class="section-header">
+                        <i class="fa-solid fa-ban fa-lg"></i>
+                        <h3>نظام حظر الكلمات والعقوبات</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label>الكلمات المحظورة (افصل بينها بفصلة ,):</label>
+                        <input type="text" name="banned_words" value="{{ settings.get('banned_words', [])|join(', ') if settings else '' }}" placeholder="كلمة1, كلمة2, كلمة3">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>عنوان رسالة التحذير:</label>
+                            <input type="text" name="warning_title" value="{{ settings.get('warning_title', 'تحذير مخالفة القوانين') if settings else 'تحذير مخالفة القوانين' }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>الحد الأقصى للمخالفات قبل العقوبة:</label>
+                            <input type="number" name="max_violations" value="{{ settings.get('max_violations', 3) if settings else 3 }}" min="1">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>رسالة التحذير الأول:</label>
+                            <input type="text" name="warning_msg_1" value="{{ settings.get('warning_msg_1', 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.') if settings else 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.' }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>رسالة التحذير الثاني:</label>
+                            <input type="text" name="warning_msg_2" value="{{ settings.get('warning_msg_2', 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.') if settings else 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.' }}">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>نوع العقوبة:</label>
+                            <select name="punishment_type">
+                                <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>تايم أوت (Timeout)</option>
+                                <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>كتم كامل (Mute)</option>
+                                <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>طرد (Kick)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>مدة التايم أوت (بالدقائق):</label>
+                            <input type="number" name="timeout_minutes" value="{{ settings.get('timeout_minutes', 10) if settings else 10 }}" min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Auto Responses Section -->
+                <div id="section-responses" class="form-section">
+                    <div class="section-header">
+                        <i class="fa-solid fa-reply fa-lg"></i>
+                        <h3>الردود التلقائية</h3>
+                    </div>
+
+                    {% set responses = settings.get('auto_responses', {}) if settings else {} %}
+                    {% set keys = responses.keys()|list %}
+                    
+                    {% for i in range(1, 4) %}
+                        {% set curr_key = keys[i-1] if keys|length >= i else '' %}
+                        {% set curr_val = responses[curr_key] if curr_key else '' %}
+                        <div class="response-row">
+                            <input type="text" name="word{{ i }}" value="{{ curr_key }}" placeholder="الكلمة المفتاحية {{ i }}">
+                            <input type="text" name="resp{{ i }}" value="{{ curr_val }}" placeholder="الرد التلقائي المقابل {{ i }}">
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 4. Roles & Nicknames Section -->
+                <div id="section-roles" class="form-section">
+                    <div class="section-header">
+                        <i class="fa-solid fa-user-tag fa-lg"></i>
+                        <h3>الرول واللقب التلقائي</h3>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>الرول التلقائي للأعضاء الجدد:</label>
+                            <select name="auto_role">
+                                <option value="">-- بدون رول --</option>
+                                {% for r in roles %}
+                                    <option value="{{ r.name }}" {% if settings and settings.get('auto_role') == r.name %}selected{% endif %}>
+                                        @{{ r.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>اللقب التلقائي (Auto-Nickname):</label>
+                            <span class="sub-label">استخدم {user} لاسم العضو أو اكتب كلمة لتكون بادئة.</span>
+                            <input type="text" name="auto_nickname" value="{{ settings.get('auto_nickname', '') if settings else '' }}" placeholder="مثال: Member | {user}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Farewell Section -->
+                <div id="section-farewell" class="form-section">
+                    <div class="section-header">
+                        <i class="fa-solid fa-door-open fa-lg"></i>
+                        <h3>إعدادات رسالة الوداع</h3>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>قناة الوداع:</label>
+                            <select name="farewell_channel">
+                                <option value="">-- إيقاف رسائل الوداع --</option>
+                                {% for ch in channels %}
+                                    <option value="{{ ch.id }}" {% if settings and settings.get('farewell_channel') == ch.id %}selected{% endif %}>
+                                        # {{ ch.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>عنوان إمبد الوداع:</label>
+                            <input type="text" name="farewell_title" value="{{ settings.get('farewell_title', 'وداعاً!') if settings else 'وداعاً!' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>وصف رسالة الوداع:</label>
+                        <span class="sub-label">يمكنك استخدام {user} للإشارة لمن غادر.</span>
+                        <input type="text" name="farewell_desc" value="{{ settings.get('farewell_desc', 'غادر العضو {user} السيرفر.') if settings else 'غادر العضو {user} السيرفر.' }}">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>رابط صورة الوداع (URL):</label>
+                            <input type="text" name="farewell_img" value="{{ settings.get('farewell_img', '') if settings else '' }}" placeholder="https://example.com/image.png">
+                        </div>
+
+                        <div class="form-group">
+                            <label>إجراء الزر التفاعلي مع المغادرة:</label>
+                            <select name="farewell_action">
+                                <option value="none" {% if settings and settings.get('farewell_action') == 'none' %}selected{% endif %}>بدون إجراء (زر عادي)</option>
+                                <option value="ban" {% if settings and settings.get('farewell_action') == 'ban' %}selected{% endif %}>زر الحظر (Ban)</option>
+                                <option value="timeout" {% if settings and settings.get('farewell_action') == 'timeout' %}selected{% endif %}>زر التايم أوت (Timeout)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floating Save Options Bar -->
+                <div class="submit-container">
+                    <button type="submit" class="btn-save">
+                        <i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات
+                    </button>
+                </div>
+
+            </form>
+        </main>
     </div>
 
-    <!-- Navigation Tabs -->
-    <ul class="nav nav-pills mb-4" id="settingsTabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active" id="tab-media" data-bs-toggle="pill" data-bs-target="#sec-media" type="button"><i class="fa-solid fa-photo-film me-2"></i>الميديا</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-protection" data-bs-toggle="pill" data-bs-target="#sec-protection" type="button"><i class="fa-solid fa-shield-virus me-2"></i>الحماية والعقوبات</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-farewell" data-bs-toggle="pill" data-bs-target="#sec-farewell" type="button"><i class="fa-solid fa-door-open me-2"></i>الوداع</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="tab-auto" data-bs-toggle="pill" data-bs-target="#sec-auto" type="button"><i class="fa-solid fa-robot me-2"></i>الردود والأدوار</button>
-        </li>
-    </ul>
-
-    <form method="POST" action="/save/{{ guild.id }}">
-        <div class="tab-content" id="settingsTabsContent">
-            
-            <!-- Section 1: Media Channels -->
-            <div class="tab-pane fade show active" id="sec-media">
-                <div class="card card-custom">
-                    <div class="card-header-custom"><i class="fa-solid fa-photo-film"></i> قنوات الميديا المخصصة</div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <label class="form-label">اختر قنوات الميديا (اضغط Ctrl / Cmd لتحديد عدة قنوات):</label>
-                            <select name="media_channels" class="form-select" multiple size="4">
-                                {% for channel in channels %}
-                                    <option value="{{ channel.id }}" {% if channel.id|string in settings.media_channels %}selected{% endif %}># {{ channel.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">رسالة التحذير التلقائية عند إرسال نص فقط:</label>
-                            <input type="text" name="media_warning" class="form-control" value="{{ settings.media_warning }}" placeholder="مثال: عذراً {user}، هذه القناة للميديا فقط!">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 2: Banned Words & Punishment -->
-            <div class="tab-pane fade" id="sec-protection">
-                <div class="card card-custom">
-                    <div class="card-header-custom"><i class="fa-solid fa-ban"></i> فلترة الكلمات والعقوبات</div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <label class="form-label">الكلمات المحظورة (افصل بين الكلمات بفاصلة ,):</label>
-                            <input type="text" name="banned_words" class="form-control" value="{{ settings.banned_words|join(', ') }}" placeholder="كلمة1, كلمة2, كلمة3">
-                        </div>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label">الحد الأقصى للمخالفات:</label>
-                                <input type="number" name="max_violations" class="form-control" value="{{ settings.max_violations }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">نوع العقوبة النهائة:</label>
-                                <select name="punishment_type" class="form-select">
-                                    <option value="timeout" {% if settings.punishment_type == 'timeout' %}selected{% endif %}>تايم أوت (Timeout)</option>
-                                    <option value="kick" {% if settings.punishment_type == 'kick' %}selected{% endif %}>طرد (Kick)</option>
-                                    <option value="mute" {% if settings.punishment_type == 'mute' %}selected{% endif %}>كتم (Mute)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">مدة الـ Timeout (بالدقائق):</label>
-                                <input type="number" name="timeout_minutes" class="form-control" value="{{ settings.timeout_minutes }}">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">عنوان رسالة التحذير:</label>
-                            <input type="text" name="warning_title" class="form-control" value="{{ settings.warning_title }}">
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">رسالة التحذير الأولى:</label>
-                                <input type="text" name="warning_msg_1" class="form-control" value="{{ settings.warning_msg_1 }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">رسالة التحذير الثانية:</label>
-                                <input type="text" name="warning_msg_2" class="form-control" value="{{ settings.warning_msg_2 }}">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 3: Farewell -->
-            <div class="tab-pane fade" id="sec-farewell">
-                <div class="card card-custom">
-                    <div class="card-header-custom"><i class="fa-solid fa-door-open"></i> إعدادات رسائل الوداع</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">قناة الوداع:</label>
-                            <select name="farewell_channel" class="form-select">
-                                <option value="">-- اختر قناة --</option>
-                                {% for channel in channels %}
-                                    <option value="{{ channel.id }}" {% if channel.id|string == settings.farewell_channel %}selected{% endif %}># {{ channel.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">عنوان الـ Embed:</label>
-                            <input type="text" name="farewell_title" class="form-control" value="{{ settings.farewell_title }}">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">الوصف (استخدم {user} لمنشن المغادر):</label>
-                            <input type="text" name="farewell_desc" class="form-control" value="{{ settings.farewell_desc }}">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">رابط الصورة (Image URL):</label>
-                            <input type="text" name="farewell_img" class="form-control" value="{{ settings.farewell_img }}">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">إجراء الأزرار التفاعلية:</label>
-                            <select name="farewell_action" class="form-select">
-                                <option value="none" {% if settings.farewell_action == 'none' %}selected{% endif %}>بدون زر</option>
-                                <option value="ban" {% if settings.farewell_action == 'ban' %}selected{% endif %}>زر حظر (Ban)</option>
-                                <option value="timeout" {% if settings.farewell_action == 'timeout' %}selected{% endif %}>زر تايم أوت (Timeout)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 4: Auto-Responses, Roles & Nicknames -->
-            <div class="tab-pane fade" id="sec-auto">
-                <!-- Auto Responses -->
-                <div class="card card-custom mb-4">
-                    <div class="card-header-custom"><i class="fa-solid fa-comments"></i> الردود التلقائية</div>
-                    <div class="card-body">
-                        {% set keys = settings.auto_responses.keys()|list %}
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6"><input type="text" name="word1" class="form-control" value="{{ keys[0] if keys|length > 0 else '' }}" placeholder="الكلمة / الجملة الأولى"></div>
-                            <div class="col-md-6"><input type="text" name="resp1" class="form-control" value="{{ settings.auto_responses[keys[0]] if keys|length > 0 else '' }}" placeholder="الرد المخصص الأول"></div>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6"><input type="text" name="word2" class="form-control" value="{{ keys[1] if keys|length > 1 else '' }}" placeholder="الكلمة / الجملة الثانية"></div>
-                            <div class="col-md-6"><input type="text" name="resp2" class="form-control" value="{{ settings.auto_responses[keys[1]] if keys|length > 1 else '' }}" placeholder="الرد المخصص الثاني"></div>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><input type="text" name="word3" class="form-control" value="{{ keys[2] if keys|length > 2 else '' }}" placeholder="الكلمة / الجملة الثالثة"></div>
-                            <div class="col-md-6"><input type="text" name="resp3" class="form-control" value="{{ settings.auto_responses[keys[2]] if keys|length > 2 else '' }}" placeholder="الرد المخصص الثالث"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Roles & Nicknames -->
-                <div class="card card-custom">
-                    <div class="card-header-custom"><i class="fa-solid fa-user-gear"></i> الأدوار والسناريوهات التلقائية</div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <label class="form-label">الرول التلقائي عند الانضمام (Auto-Role):</label>
-                            <select name="auto_role" class="form-select">
-                                <option value="">-- اختر رول --</option>
-                                {% for role in roles %}
-                                    <option value="{{ role.name }}" {% if role.name == settings.auto_role %}selected{% endif %}>@{{ role.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">اللقب التلقائي (Auto-Nickname):</label>
-                            <input type="text" name="auto_nickname" class="form-control" value="{{ settings.auto_nickname }}" placeholder="مثال: Member | {user}">
-                            <div class="form-text text-secondary mt-1">استخدم {user} لاستبداله باسم العضو الأصلي.</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Submit Button Banner -->
-        <div class="text-center mt-5">
-            <button type="submit" class="btn btn-submit"><i class="fa-solid fa-floppy-disk me-2"></i> حفظ الإعدادات</button>
-        </div>
-    </form>
-</div>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script for Navigation Active State -->
+    <script>
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', function() {
+                document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
 </body>
 </html>
