@@ -5,22 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم السيرفر | {{ guild.name }}</title>
     <!-- Google Fonts: Cairo -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --bg-primary: #111214;
-            --bg-secondary: #1e1f22;
-            --bg-tertiary: #2b2d31;
-            --accent-color: #5865f2;
-            --accent-hover: #4752c4;
-            --accent-glow: rgba(88, 101, 242, 0.25);
+            /* نظام ألوان فخم وحاد */
+            --bg-primary: #0b0c0e;
+            --bg-secondary: rgba(22, 24, 29, 0.75);
+            --bg-card: rgba(28, 30, 38, 0.6);
+            --bg-tertiary: #16181d;
+            --accent-primary: #5865f2;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --accent-glow: rgba(168, 85, 247, 0.35);
+            --text-white: #ffffff;
             --text-normal: #dbdee1;
-            --text-muted: #949ba4;
-            --border-color: #2b2d31;
-            --sidebar-width: 250px;
+            --text-muted: #80848e;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(168, 85, 247, 0.4);
+            --sidebar-width: 260px;
         }
 
         * {
@@ -36,12 +40,16 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(88, 101, 242, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
         }
 
-        /* Header Layout */
+        /* Top Bar */
         header {
-            background-color: var(--bg-secondary);
-            padding: 15px 30px;
+            background-color: rgba(14, 15, 18, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 16px 35px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -58,60 +66,64 @@
         }
 
         .server-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
             object-fit: cover;
-            border: 2px solid var(--accent-color);
-            box-shadow: 0 0 10px var(--accent-glow);
+            border: 2px solid transparent;
+            background: linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box, var(--accent-gradient) border-box;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .server-icon-placeholder {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background-color: var(--accent-color);
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--accent-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 18px;
+            font-weight: 800;
+            font-size: 20px;
             color: #fff;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .server-name {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-white);
+            letter-spacing: 0.5px;
         }
 
         .btn-back {
-            background-color: var(--bg-tertiary);
+            background: var(--bg-tertiary);
             color: var(--text-normal);
             text-decoration: none;
-            padding: 8px 18px;
-            border-radius: 8px;
+            padding: 10px 22px;
+            border-radius: 10px;
             font-size: 0.9rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             border: 1px solid var(--border-color);
         }
 
         .btn-back:hover {
-            background-color: var(--accent-color);
+            background: var(--accent-gradient);
             color: #fff;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 12px var(--accent-glow);
+            border-color: transparent;
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-2px);
         }
 
-        /* Dashboard Container - Dynamic Grid */
+        /* Container Layout */
         .dashboard-container {
             display: flex;
             flex: 1;
-            max-width: 1400px;
+            max-width: 1450px;
             width: 100%;
             margin: 0 auto;
         }
@@ -120,184 +132,227 @@
         .sidebar {
             width: var(--sidebar-width);
             background-color: var(--bg-secondary);
-            padding: 25px 15px;
+            backdrop-filter: blur(16px);
+            padding: 30px 18px;
             border-right: 1px solid var(--border-color);
-            order: 2; /* النقل لليسار */
+            order: 2; /* نقل القائمة إلى اليسار */
             position: sticky;
-            top: 76px;
-            height: calc(100vh - 76px);
+            top: 81px;
+            height: calc(100vh - 81px);
         }
 
         .sidebar-menu {
             list-style: none;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
 
         .sidebar-link {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
+            gap: 14px;
+            padding: 14px 18px;
             color: var(--text-muted);
             text-decoration: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.3s ease;
             border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .sidebar-link i {
-            font-size: 1.1rem;
-            width: 20px;
+            font-size: 1.15rem;
+            width: 22px;
             text-align: center;
+            transition: transform 0.3s ease;
         }
 
         .sidebar-link:hover {
-            background-color: var(--bg-tertiary);
-            color: var(--text-normal);
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-white);
+            border-color: var(--border-color);
         }
 
+        .sidebar-link:hover i {
+            transform: scale(1.15);
+        }
+
+        /* تصميم زر الخيار الفخم عند التفعيل */
         .sidebar-link.active {
-            background: linear-gradient(135deg, var(--accent-color), #4752c4);
-            color: #ffffff;
-            box-shadow: 0 4px 15px var(--accent-glow);
+            background: var(--accent-gradient);
+            color: var(--text-white);
+            box-shadow: 0 8px 25px var(--accent-glow);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
-        /* Main Content Area */
+        .sidebar-link.active i {
+            color: #fff;
+        }
+
+        /* Main Content Panel */
         .main-content {
             flex: 1;
-            padding: 35px;
-            order: 1; /* المحتوى في اليمين/الوسط */
+            padding: 40px;
+            order: 1;
         }
 
-        /* Tab Panels (عرض قسم واحد فقط) */
         .tab-panel {
             display: none;
-            animation: fadeIn 0.3s ease-in-out;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .tab-panel.active {
             display: block;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* Card Frame */
         .form-section {
-            background-color: var(--bg-secondary);
-            border-radius: 14px;
-            padding: 30px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 35px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
         }
 
+        .form-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-gradient);
+        }
+
+        /* تصميم عنوان القسم الفخم */
         .section-header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
+            gap: 16px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
             border-bottom: 1px solid var(--border-color);
-            color: #fff;
         }
 
-        .section-header i {
-            color: var(--accent-color);
+        .section-header-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a855f7;
+            font-size: 1.3rem;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
         }
 
-        /* Form Controls */
+        .section-header h3 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-white);
+            letter-spacing: 0.3px;
+        }
+
+        /* Controls Style */
         .form-group {
-            margin-bottom: 22px;
+            margin-bottom: 24px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 700;
-            color: #fff;
+            color: var(--text-white);
+            font-size: 0.95rem;
         }
 
         .sub-label {
             font-size: 0.85rem;
             color: var(--text-muted);
-            margin-top: -4px;
-            margin-bottom: 8px;
+            margin-top: -6px;
+            margin-bottom: 10px;
             display: block;
         }
 
         input[type="text"], input[type="number"], select {
             width: 100%;
-            padding: 13px 16px;
+            padding: 14px 18px;
             background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: #fff;
+            border-radius: 12px;
+            color: var(--text-white);
             font-size: 0.95rem;
             outline: none;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         input:focus, select:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 10px var(--accent-glow);
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 18px var(--accent-glow);
+            background-color: rgba(22, 24, 29, 0.9);
         }
 
         select[multiple] {
-            height: 130px;
+            height: 140px;
         }
 
         .grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 18px;
+            gap: 20px;
         }
 
         .response-row {
             display: grid;
             grid-template-columns: 1fr 2fr;
-            gap: 15px;
-            margin-bottom: 12px;
+            gap: 16px;
+            margin-bottom: 14px;
         }
 
-        /* Floating Submit Button Container */
+        /* Submit Button */
         .submit-container {
-            margin-top: 25px;
+            margin-top: 30px;
             display: flex;
             justify-content: flex-end;
         }
 
         .btn-save {
-            background: linear-gradient(135deg, var(--accent-color), #4752c4);
+            background: var(--accent-gradient);
             color: #fff;
             border: none;
-            padding: 14px 35px;
-            border-radius: 10px;
+            padding: 16px 40px;
+            border-radius: 12px;
             font-weight: 800;
-            font-size: 1rem;
+            font-size: 1.05rem;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 15px var(--accent-glow);
+            gap: 12px;
+            box-shadow: 0 6px 20px var(--accent-glow);
         }
 
         .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.5);
         }
 
-        /* Mobile View Adjustment */
+        /* Mobile Adjustment */
         @media (max-width: 900px) {
-            .dashboard-container {
-                flex-direction: column;
-            }
-
+            .dashboard-container { flex-direction: column; }
             .sidebar {
                 width: 100%;
                 order: 1;
@@ -306,30 +361,16 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border-color);
             }
-
-            .sidebar-menu {
-                flex-direction: row;
-                overflow-x: auto;
-            }
-
-            .sidebar-link {
-                white-space: nowrap;
-            }
-
-            .main-content {
-                order: 2;
-                padding: 20px;
-            }
-
-            .grid-2, .response-row {
-                grid-template-columns: 1fr;
-            }
+            .sidebar-menu { flex-direction: row; overflow-x: auto; }
+            .sidebar-link { white-space: nowrap; }
+            .main-content { order: 2; padding: 20px; }
+            .grid-2, .response-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Top Header Bar -->
+    <!-- Header Bar -->
     <header>
         <div class="server-info">
             {% if icon_url %}
@@ -346,7 +387,7 @@
 
     <div class="dashboard-container">
         
-        <!-- Left Sidebar Navigation -->
+        <!-- Left Menu Navigation -->
         <nav class="sidebar">
             <ul class="sidebar-menu">
                 <li class="sidebar-link active" onclick="switchTab('section-media', this)">
@@ -372,7 +413,7 @@
             </ul>
         </nav>
 
-        <!-- Main Form Content Area -->
+        <!-- Main Form Body -->
         <main class="main-content">
             <form action="/save/{{ guild.id }}" method="POST">
                 
@@ -380,7 +421,9 @@
                 <div id="section-media" class="tab-panel active">
                     <div class="form-section">
                         <div class="section-header">
-                            <i class="fa-solid fa-photo-film fa-lg"></i>
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-photo-film"></i>
+                            </div>
                             <h3>إعدادات قنوات الميديا</h3>
                         </div>
                         
@@ -407,7 +450,9 @@
                 <div id="section-banned" class="tab-panel">
                     <div class="form-section">
                         <div class="section-header">
-                            <i class="fa-solid fa-ban fa-lg"></i>
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-ban"></i>
+                            </div>
                             <h3>نظام حظر الكلمات والعقوبات</h3>
                         </div>
 
@@ -462,7 +507,9 @@
                 <div id="section-responses" class="tab-panel">
                     <div class="form-section">
                         <div class="section-header">
-                            <i class="fa-solid fa-reply fa-lg"></i>
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-reply"></i>
+                            </div>
                             <h3>الردود التلقائية</h3>
                         </div>
 
@@ -484,7 +531,9 @@
                 <div id="section-roles" class="tab-panel">
                     <div class="form-section">
                         <div class="section-header">
-                            <i class="fa-solid fa-user-tag fa-lg"></i>
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-user-tag"></i>
+                            </div>
                             <h3>الرول واللقب التلقائي</h3>
                         </div>
 
@@ -514,7 +563,9 @@
                 <div id="section-farewell" class="tab-panel">
                     <div class="form-section">
                         <div class="section-header">
-                            <i class="fa-solid fa-door-open fa-lg"></i>
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-door-open"></i>
+                            </div>
                             <h3>إعدادات رسالة الوداع</h3>
                         </div>
 
@@ -561,7 +612,7 @@
                     </div>
                 </div>
 
-                <!-- Save Button -->
+                <!-- Save Action Container -->
                 <div class="submit-container">
                     <button type="submit" class="btn-save">
                         <i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات
@@ -572,20 +623,14 @@
         </main>
     </div>
 
-    <!-- Script to Switch Tabs -->
     <script>
         function switchTab(tabId, element) {
-            // Hide all tab panels
             document.querySelectorAll('.tab-panel').forEach(panel => {
                 panel.classList.remove('active');
             });
-
-            // Remove active class from all links
             document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.classList.remove('active');
             });
-
-            // Show selected panel & highlight link
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
         }
