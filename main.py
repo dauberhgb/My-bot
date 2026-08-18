@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
 # ضع معرف حسابك في ديسكورد (User ID) هنا مكان هذا الرقم
-OWNER_ID = 123456789012345678
+OWNER_ID = 1462429084377157832
 
 # ==========================================
 # 2. إعداد خادم الويب (Flask Dashboard)
