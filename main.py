@@ -113,6 +113,7 @@ def dashboard(guild_id):
       for r in guild.roles
       if not r.is_default()
   ]
+  categories = [{"id": str(cat.id), "name": cat.name} for cat in guild.categories]
 
   settings = database.get_settings(guild_id)
   icon_url = guild.icon.url if guild.icon else None
@@ -122,6 +123,7 @@ def dashboard(guild_id):
       guild=guild,
       channels=channels,
       roles=roles,
+      categories=categories,
       settings=settings,
       icon_url=icon_url,
   )
@@ -165,6 +167,11 @@ def save(guild_id):
       "auto_responses": auto_responses,
       "auto_role": request.form.get("auto_role", ""),
       "auto_nickname": request.form.get("auto_nickname", ""),
+      # الإضافات الجديدة (التذاكر والمستويات)
+      "ticket_category": request.form.get("ticket_category", ""),
+      "ticket_support_role": request.form.get("ticket_support_role", ""),
+      "xp_enabled": int(request.form.get("xp_enabled", 1)),
+      "xp_per_message": int(request.form.get("xp_per_message", 15)),
   }
 
   database.save_settings(guild_id, settings)
@@ -325,7 +332,7 @@ async def on_member_remove(member):
     await channel.send(embed=embed, view=view)
 
 
-# الميديا والكلمات والردود
+# الميديا والكلمات والردود والمستويات (XP)
 @bot.event
 async def on_message(message):
   if message.author.bot or not message.guild:
@@ -335,6 +342,23 @@ async def on_message(message):
   if not settings:
     await bot.process_commands(message)
     return
+
+  # 1. نظام المستويات (XP) الجديد
+  if settings.get("xp_enabled", 1) == 1:
+    xp_gain = settings.get("xp_per_message", 15)
+    # التأكد من توفر دالة add_user_xp في ملف database
+    if hasattr(database, "add_user_xp"):
+      new_level, leveled_up = database.add_user_xp(
+          message.guild.id, message.author.id, xp_gain
+      )
+      if leveled_up:
+        try:
+          await message.channel.send(
+              f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى"
+              f" **{new_level}** 🚀"
+          )
+        except:
+          pass
 
   media_channels = settings.get("media_channels", [])
   if (
@@ -427,7 +451,7 @@ async def sync_commands(ctx):
 
 
 # ==========================================
-# 5. أوامر السلاش الأصلية
+# 5. أوامر السلاش الأصلية والإضافات الجديدة
 # ==========================================
 
 # 1. أمر عرض معلومات العضو
@@ -437,7 +461,9 @@ async def sync_commands(ctx):
 @app_commands.describe(member="العضو المراد عرض معلوماته (اختياري)")
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
-async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
+async def userinfo(
+    interaction: discord.Interaction, member: discord.Member = None
+):
   target = member or interaction.user
 
   embed = discord.Embed(
@@ -468,7 +494,9 @@ async def userinfo(interaction: discord.Interaction, member: discord.Member = No
 async def serverinfo(interaction: discord.Interaction):
   guild = interaction.guild
 
-  embed = discord.Embed(title=f"إحصائيات {guild.name}", color=discord.Color.purple())
+  embed = discord.Embed(
+      title=f"إحصائيات {guild.name}", color=discord.Color.purple()
+  )
   if guild.icon:
     embed.set_thumbnail(url=guild.icon.url)
 
@@ -487,7 +515,9 @@ async def serverinfo(interaction: discord.Interaction):
 
 
 # 3. أمر مسح الرسائل
-@bot.tree.command(name="clear", description="حذف عدد معين من الرسائل من القناة الحالية")
+@bot.tree.command(
+    name="clear", description="حذف عدد معين من الرسائل من القناة الحالية"
+)
 @app_commands.describe(
     amount="عدد الرسائل المراد مسحها (1 - 100)",
     member="تحديد عضو معين لتنظيف رسائله فقط (اختياري)",
@@ -562,6 +592,125 @@ async def botinfo(interaction: discord.Interaction):
   )
 
   await interaction.response.send_message(embed=embed, view=view)
+
+
+# 6. أمر إرسال لوحة التذاكر (Ticket Setup) الجديد
+@bot.tree.command(
+    name="ticket-setup", description="إرسال لوحة إنشاء التذاكر في القناة الحالية"
+)
+@app_commands.checks.has_permissions(manage_guild=True)
+async def ticket_setup(interaction: discord.Interaction):
+  class TicketButtonView(discord.ui.View):
+
+    def __init__(self):
+      super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="فتح تذكرة 🎫",
+        style=discord.ButtonStyle.green,
+        custom_id="create_ticket_btn",
+    )
+    async def create_ticket(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+      settings = database.get_settings(interaction.guild.id)
+      cat_id = settings.get("ticket_category")
+      support_role_id = settings.get("ticket_support_role")
+
+      category = (
+          interaction.guild.get_channel(int(cat_id))
+          if cat_id and cat_id.isdigit()
+          else None
+      )
+      support_role = (
+          interaction.guild.get_role(int(support_role_id))
+          if support_role_id and support_role_id.isdigit()
+          else None
+      )
+
+      overwrites = {
+          interaction.guild.default_role: discord.PermissionOverwrite(
+              view_channel=False
+          ),
+          interaction.user: discord.PermissionOverwrite(
+              view_channel=True,
+              send_messages=True,
+              read_message_history=True,
+          ),
+          interaction.guild.me: discord.PermissionOverwrite(
+              view_channel=True, send_messages=True, manage_channels=True
+          ),
+      }
+      if support_role:
+        overwrites[support_role] = discord.PermissionOverwrite(
+            view_channel=True, send_messages=True, read_message_history=True
+        )
+
+      channel_name = f"ticket-{interaction.user.name}"
+      ticket_chan = await interaction.guild.create_text_channel(
+          channel_name, category=category, overwrites=overwrites
+      )
+
+      close_view = discord.ui.View()
+
+      @discord.ui.button(
+          label="إغلاق التذكرة 🔒",
+          style=discord.ButtonStyle.red,
+          custom_id="close_ticket_btn",
+      )
+      async def close_ticket(btn_interaction: discord.Interaction):
+        await btn_interaction.response.send_message("جاري إغلاق القناة...")
+        await ticket_chan.delete()
+
+      close_view.add_item(close_ticket)
+
+      embed = discord.Embed(
+          title="🎫 تذكرة دعم فني جديدة",
+          description=(
+              f"مرحباً {interaction.user.mention}، يرجى كتابة مشكلتك وسيتم الرد"
+              " عليك قريباً من قبل فريق الدعم."
+          ),
+          color=0x6366f1,
+      )
+      await ticket_chan.send(
+          content=interaction.user.mention, embed=embed, view=close_view
+      )
+      await interaction.response.send_message(
+          f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}", ephemeral=True
+      )
+
+  embed = discord.Embed(
+      title="🎫 نظام التذاكر والدعم الفني",
+      description="اضغط على الزر بالأسفل لفتح تذكرة جديدة والتواصل مع الإدارة.",
+      color=0xa855f7,
+  )
+  await interaction.channel.send(embed=embed, view=TicketButtonView())
+  await interaction.response.send_message(
+      "تم إرسال لوحة التذاكر بنجاح!", ephemeral=True
+  )
+
+
+# 7. أمر عرض المستوى ونقاط الخبرة (Level) الجديد
+@bot.tree.command(name="level", description="عرض مستواك الحالي ونقاط الخبرة XP")
+@app_commands.describe(member="العضو المراد عرض مستواه (اختياري)")
+async def level_command(
+    interaction: discord.Interaction, member: discord.Member = None
+):
+  target = member or interaction.user
+  if hasattr(database, "get_user_level"):
+    xp, lvl = database.get_user_level(interaction.guild.id, target.id)
+  else:
+    xp, lvl = 0, 1
+
+  next_xp = lvl * 100 + 100
+
+  embed = discord.Embed(
+      title=f"📊 رتبة العضو {target.name}", color=discord.Color.pink()
+  )
+  embed.add_field(name="المستوى", value=str(lvl), inline=True)
+  embed.add_field(name="نقاط الخبرة (XP)", value=f"{xp} / {next_xp}", inline=True)
+  embed.set_thumbnail(url=target.display_avatar.url)
+  await interaction.response.send_message(embed=embed)
 
 
 # ==========================================
