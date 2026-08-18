@@ -32,6 +32,10 @@ def init_db():
             ticket_support_role TEXT,
             xp_enabled INTEGER,
             xp_per_message INTEGER
+            xp_role_5 TEXT,
+            xp_role_10 TEXT,
+            xp_role_20 TEXT,
+
         )
     """)
 
@@ -85,6 +89,9 @@ def get_settings(guild_id):
         "ticket_support_role": row[19] or "",
         "xp_enabled": row[20] if row[20] is not None else 1,
         "xp_per_message": row[21] or 15,
+        "xp_role_5": row[22] or "",
+        "xp_role_10": row[23] or "",
+        "xp_role_20": row[24] or "",
     }
   return {
       "guild_id": str(guild_id),
@@ -144,6 +151,9 @@ def save_settings(guild_id, settings):
           settings.get("ticket_support_role", ""),
           int(settings.get("xp_enabled", 1)),
           int(settings.get("xp_per_message", 15)),
+          str(settings.get("xp_role_5", "")),
+          str(settings.get("xp_role_10", "")),
+          str(settings.get("xp_role_20", "")),
       ),
   )
   conn.commit()
