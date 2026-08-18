@@ -533,7 +533,7 @@
             {% endif %}
             <span class="server-name">{{ guild.name }}</span>
         </div>
-        <a href="/guilds" class="btn-back">
+        <a href="/guilds{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
             <i class="fa-solid fa-arrow-right"></i> قائمة السيرفرات
         </a>
     </header>
@@ -568,7 +568,7 @@
 
         <!-- Main Form Body -->
         <main class="main-content">
-            <form id="settingsForm" action="/save/{{ guild.id }}" method="POST">
+            <form id="settingsForm" action="/save/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" method="POST">
                 
                 <!-- 1. Media Channels Tab -->
                 <div id="section-media" class="tab-panel active">
@@ -812,7 +812,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast("تم الحفظ بنجاح ✨");
+                showToast("حدث خطأ أثناء الاتصال بالسيرفر!");
             });
         }
 
