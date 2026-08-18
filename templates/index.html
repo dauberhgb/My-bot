@@ -350,6 +350,37 @@
             box-shadow: 0 10px 30px rgba(168, 85, 247, 0.5);
         }
 
+        /* تنسيق الإشعار الأخضر */
+        .toast {
+            visibility: hidden;
+            min-width: 280px;
+            background: linear-gradient(135deg, #2eb85c, #1b873f);
+            color: #ffffff;
+            text-align: center;
+            border-radius: 12px;
+            padding: 14px 24px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            box-shadow: 0 8px 25px rgba(46, 184, 92, 0.4);
+            font-weight: 800;
+            font-size: 0.95rem;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 45px;
+        }
+
         /* Mobile Adjustment */
         @media (max-width: 900px) {
             .dashboard-container { flex-direction: column; }
@@ -415,7 +446,7 @@
 
         <!-- Main Form Body -->
         <main class="main-content">
-            <form action="/save/{{ guild.id }}" method="POST">
+            <form id="settingsForm" action="/save/{{ guild.id }}" method="POST">
                 
                 <!-- 1. Media Channels Tab -->
                 <div id="section-media" class="tab-panel active">
@@ -623,6 +654,12 @@
         </main>
     </div>
 
+    <!-- عنصر الإشعار الأخضر بالأسفل -->
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-text">تم حفظ التعديلات بنجاح</span>
+    </div>
+
     <script>
         function switchTab(tabId, element) {
             document.querySelectorAll('.tab-panel').forEach(panel => {
@@ -633,6 +670,40 @@
             });
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
+        }
+
+        // معالجة الحفظ دون الانتقال لصفحة جديدة
+        document.getElementById('settingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    showToast("تم حفظ التعديلات بنجاح ✨");
+                } else {
+                    showToast("حدث خطأ أثناء حفظ التعديلات!");
+                }
+            })
+            .catch(() => {
+                showToast("فشل الاتصال بالسيرفر!");
+            });
+        });
+
+        // دالة إظهار الإشعار الأخضر بالأسفل
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            const toastText = document.getElementById("toast-text");
+            toastText.innerText = message;
+            toast.classList.add("show");
+            
+            setTimeout(() => { 
+                toast.classList.remove("show"); 
+            }, 3000);
         }
     </script>
 </body>
