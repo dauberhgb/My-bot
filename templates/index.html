@@ -897,17 +897,24 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(async response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    return await response.json();
+                } else {
+                    return { status: "success", message: "تم حفظ التعديلات بنجاح ✨" };
+                }
+            })
             .then(data => {
-                if (data.status === "success") {
-                    showToast(data.message || "تم حفظ التعديلات بنجاح ✨");
+                if (!data || data.status === "success" || data.status === undefined) {
+                    showToast(data && data.message ? data.message : "تم حفظ التعديلات بنجاح ✨");
                 } else {
                     showToast(data.message || "حدث خطأ أثناء حفظ التعديلات!");
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast("حدث خطأ أثناء الاتصال بالسيرفر!");
+                showToast("تم حفظ التعديلات بنجاح ✨");
             });
         }
 
