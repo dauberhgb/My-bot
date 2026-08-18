@@ -287,7 +287,9 @@
                         <small class="text-muted">ID: {{ guild.id }}</small>
                     </div>
                 </div>
-                <a href="/dashboard/{{ guild.id }}" class="btn btn-manage"><i class="fa-solid fa-gear ms-1"></i> إعدادات السيرفر</a>
+                <a href="/dashboard/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn btn-manage">
+                    <i class="fa-solid fa-gear ms-1"></i> إعدادات السيرفر
+                </a>
             </div>
             {% endfor %}
         </div>
