@@ -144,7 +144,7 @@
                             <div class="mb-3">
                                 <label class="form-label">اللقب التلقائي (Auto-Nickname):</label>
                                 <input type="text" class="form-control bg-dark text-white border-secondary" name="auto_nickname" value="{{ settings.auto_nickname if settings else '' }}" placeholder="مثال: [VIP] {user}">
-                                <small class="text-muted">استخدم {user} لتمثيل اسم العضو، أو اترك البادئة ليتم وضعها قبل اسمه.</small>
+                                <small class="text-muted">استخدم {user} لتمثيل اسم العضو.</small>
                             </div>
                         </div>
 
@@ -165,7 +165,7 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">رسالة التنبيه عند كتابة نص فقط:</label>
+                                <label class="form-label">رسالة التنبيه:</label>
                                 <input type="text" class="form-control bg-dark text-white border-secondary" name="media_warning" value="{{ settings.media_warning if settings else 'عذراً هذه القناة للميديا فقط!' }}">
                             </div>
                         </div>
@@ -206,7 +206,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">رسالة التحذير الأول:</label>
-                                <input type="text" class="form-control bg-dark text-white border-secondary" name="warning_msg_1" value="{{ settings.warning_msg_1 if settings else 'انتبه يا {user}، الكلمة محظورة! (الإنذار الأول)' }}">
+                                <input type="text" class="form-control bg-dark text-white border-secondary" name="warning_msg_1" value="{{ settings.warning_msg_1 if settings else 'انتبه يا {user}، الكلمة محظورة!' }}">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">رسالة التحذير الثاني:</label>
@@ -214,7 +214,7 @@
                             </div>
                         </div>
 
-                        <!-- 4. Farewell Settings + Discord Live Preview -->
+                        <!-- 4. Farewell Settings -->
                         <div class="tab-pane fade glass-card p-4" id="farewell">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h4 class="fw-bold m-0"><i class="fa-solid fa-door-open text-warning me-2"></i>إعدادات الوداع</h4>
@@ -236,49 +236,55 @@
                                 <input type="text" class="form-control bg-dark text-white border-secondary" id="preview_title_input" name="farewell_title" value="{{ settings.farewell_title if settings else 'وداعاً!' }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">وصف الرسالة ({user} لذكر العضو):</label>
+                                <label class="form-label">وصف الرسالة:</label>
                                 <textarea class="form-control bg-dark text-white border-secondary" id="preview_desc_input" name="farewell_desc" rows="3">{{ settings.farewell_desc if settings else 'لقد غادر {user} السيرفر.' }}</textarea>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">رابط صورة Embed (اختياري):</label>
+                                <label class="form-label">رابط صورة Embed:</label>
                                 <input type="text" class="form-control bg-dark text-white border-secondary" name="farewell_img" value="{{ settings.farewell_img if settings else '' }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">إجراء الأزرار التفاعلية:</label>
+                                <label class="form-label">إجراء الأزرار:</label>
                                 <select class="form-select bg-dark text-white border-secondary" name="farewell_action">
                                     <option value="none" {% if settings and settings.farewell_action == 'none' %}selected{% endif %}>بدون زر</option>
-                                    <option value="ban" {% if settings and settings.farewell_action == 'ban' %}selected{% endif %}>زر Ban حظر تلقائي</option>
+                                    <option value="ban" {% if settings and settings.farewell_action == 'ban' %}selected{% endif %}>زر Ban حظر</option>
                                     <option value="timeout" {% if settings and settings.farewell_action == 'timeout' %}selected{% endif %}>زر Timeout تايم أوت</option>
                                 </select>
                             </div>
 
-                            <!-- Discord Live Preview Container -->
                             <hr class="border-secondary my-4">
-                            <h6 class="text-muted mb-3"><i class="fa-brands fa-discord me-2"></i>معاينة حية لرسالة الوداع (Discord Live Preview)</h6>
+                            <h6 class="text-muted mb-3"><i class="fa-brands fa-discord me-2"></i>معاينة حية لرسالة الوداع</h6>
                             <div class="discord-preview">
                                 <div class="discord-title" id="preview_title">وداعاً!</div>
                                 <div id="preview_desc">لقد غادر @User السيرفر.</div>
                             </div>
                         </div>
 
-                        <!-- 5. Auto Responses (Fixed) -->
+                        <!-- 5. Dynamic Auto Responses (Unlimited) -->
                         <div class="tab-pane fade glass-card p-4" id="responses">
-                            <h4 class="fw-bold mb-3"><i class="fa-solid fa-robot text-success me-2"></i>الردود التلقائية</h4>
-                            
-                            <!-- إحضار الردود المحفوظة كقائمة آمنة -->
-                            {% set resp_list = settings.auto_responses.items()|list if settings and settings.auto_responses else [] %}
-                            
-                            {% for i in range(1, 4) %}
-                            {% set item = resp_list[i-1] if resp_list|length >= i else None %}
-                            <div class="row g-2 mb-3">
-                                <div class="col-md-5">
-                                    <input type="text" class="form-control bg-dark text-white border-secondary" name="word{{ i }}" placeholder="الكلمة المفتاحية {{ i }}" value="{{ item[0] if item else '' }}">
-                                </div>
-                                <div class="col-md-7">
-                                    <input type="text" class="form-control bg-dark text-white border-secondary" name="resp{{ i }}" placeholder="الرد التلقائي للبوت {{ i }}" value="{{ item[1] if item else '' }}">
-                                </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="fw-bold m-0"><i class="fa-solid fa-robot text-success me-2"></i>الردود التلقائية (عدد غير محدود)</h4>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3" onclick="addResponseRow()"><i class="fa-solid fa-plus me-1"></i>إضافة رد جديد</button>
                             </div>
-                            {% endfor %}
+                            <p class="text-muted small">أضف الكلمة المفتاحية والرد المناسب لها. سيقوم البوت بالرد فوراً عند مطابقتها.</p>
+                            
+                            <div id="responsesContainer">
+                                {% if settings and settings.auto_responses %}
+                                    {% for word, resp in settings.auto_responses.items() %}
+                                    <div class="row g-2 mb-2 response-row">
+                                        <div class="col-md-5">
+                                            <input type="text" class="form-control bg-dark text-white border-secondary" name="resp_keys[]" placeholder="الكلمة المفتاحية" value="{{ word }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <input type="text" class="form-control bg-dark text-white border-secondary" name="resp_values[]" placeholder="الرد التلقائي للبوت" value="{{ resp }}">
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-center">
+                                            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.response-row').remove()"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
                         </div>
 
                     </div>
@@ -287,7 +293,7 @@
         </form>
     </div>
 
-    <!-- Toast Notification for AJAX Save -->
+    <!-- Toast Notification -->
     <div class="toast-container">
         <div id="saveToast" class="toast align-items-center text-bg-success border-0" role="alert">
             <div class="d-flex">
@@ -301,7 +307,26 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Live Discord Embed Preview Script
+        // Dynamic Response Rows Adder
+        function addResponseRow(key = '', value = '') {
+            const container = document.getElementById('responsesContainer');
+            const row = document.createElement('div');
+            row.className = 'row g-2 mb-2 response-row';
+            row.innerHTML = `
+                <div class="col-md-5">
+                    <input type="text" class="form-control bg-dark text-white border-secondary" name="resp_keys[]" placeholder="الكلمة المفتاحية" value="${key}">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" class="form-control bg-dark text-white border-secondary" name="resp_values[]" placeholder="الرد التلقائي للبوت" value="${value}">
+                </div>
+                <div class="col-md-1 d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.response-row').remove()"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        // Live Discord Embed Preview
         const titleInput = document.getElementById('preview_title_input');
         const descInput = document.getElementById('preview_desc_input');
         const previewTitle = document.getElementById('preview_title');
@@ -316,7 +341,7 @@
         descInput.addEventListener('input', updatePreview);
         updatePreview();
 
-        // AJAX Form Save بدون إعادة تحميل الصفحة
+        // AJAX Form Save
         document.getElementById('dashboardForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
