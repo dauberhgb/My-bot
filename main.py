@@ -1,4 +1,4 @@
-Import os
+import os
 import json
 import threading
 import io
@@ -571,7 +571,7 @@ async def clear_warns_command(interaction: discord.Interaction, member: discord.
         await interaction.response.send_message(f"ℹ️ {member.mention} لا يملك أي مخالفات مسجلة.", ephemeral=True)
 
 # ==========================================
-# 6. نظام التذاكر المطور (Private Threads & Transcripts)
+# 6. نظام التذاكر المطور (Categories, Claiming & Transcripts)
 # ==========================================
 class TicketCloseView(discord.ui.View):
     def __init__(self):
@@ -579,12 +579,13 @@ class TicketCloseView(discord.ui.View):
 
     @discord.ui.button(label="إغلاق التكت والأرشفة 🔒", style=discord.ButtonStyle.danger, custom_id="close_ticket_btn")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("جاري استخراج الترانسكريبت وأرشفة التكت...", ephemeral=True)
+        await interaction.response.send_message("⏳ جاري استخراج الترانسكريبت وأرشفة التكت وإغلاقها...", ephemeral=True)
 
         thread = interaction.channel
         settings = database.get_settings(interaction.guild_id)
         archive_ch_id = settings.get("ticket_archive_channel")
 
+        # جمع سجل المحادثات
         messages = []
         async for msg in thread.history(limit=500, oldest_first=True):
             time_str = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -594,6 +595,7 @@ class TicketCloseView(discord.ui.View):
         file_data = io.BytesIO(transcript_text.encode('utf-8'))
         transcript_file = discord.File(file_data, filename=f"transcript-{thread.name}.txt")
 
+        # إرسال الترانسكريبت لقناة الأرشيف إذا كانت مدعومة
         archive_channel = interaction.guild.get_channel(int(archive_ch_id)) if str(archive_ch_id).isdigit() else None
         if archive_channel:
             embed_archive = discord.Embed(
@@ -609,19 +611,55 @@ class TicketCloseView(discord.ui.View):
         await send_audit_log(interaction.guild, "إغلاق تكت", f"قام {interaction.user.mention} بإغلاق التكت: {thread.name}")
         
         await asyncio.sleep(2)
-        await thread.edit(archived=True, locked=True)
+        try:
+            await thread.edit(archived=True, locked=True)
+        except Exception:
+            await thread.delete()
 
-class TicketLaunchView(discord.ui.View):
+    @discord.ui.button(label="استلام التذكرة 🙋‍♂️", style=discord.ButtonStyle.success, custom_id="claim_ticket_btn")
+    async def claim_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not is_manager(interaction):
+            await interaction.response.send_message("❌ عذراً، هذا الزر مخصص للمشرفين فقط لاستلام التذاكر.", ephemeral=True)
+            return
+
+        button.disabled = True
+        button.label = f"استلمها: {interaction.user.display_name}"
+        button.style = discord.ButtonStyle.secondary
+        
+        try:
+            await interaction.response.edit_message(view=self)
+            await interaction.channel.send(f"✅ تم استلام هذه التذكرة بواسطة المشرف: {interaction.user.mention}")
+            await send_audit_log(interaction.guild, "استلام تذكرة", f"قام المشرف {interaction.user.mention} باستلام التذكرة: {interaction.channel.name}")
+        except Exception as e:
+            await interaction.response.send_message(f"❌ حدث خطأ أثناء الاستلام: {e}", ephemeral=True)
+
+
+class TicketSelect(discord.ui.Select):
     def __init__(self):
-        super().__init__(timeout=None)
+        options = [
+            discord.SelectOption(label="الدعم الفني العام", description="استفسارات عامة ومشاكل البوت", emoji="🛠️", value="general_support"),
+            discord.SelectOption(label="الشكاوى والبلاغات", description="الإبلاغ عن أعضاء أو مشكلة إدارية", emoji="⚠️", value="reports"),
+            discord.SelectOption(label="طلب رولات أو رتب", description="الحصول على رولات السيرفر الخاصة", emoji="🎖️", value="roles_request"),
+            discord.SelectOption(label="الشراكات والإعلانات", description="طلبات الشراكة ونشر السيرفرات", emoji="🤝", value="partnerships")
+        ]
+        super().__init__(placeholder="اختر قسم التذكرة المناسب لطلبك...", min_values=1, max_values=1, options=options, custom_id="ticket_select_menu")
 
-    @discord.ui.button(label="فتح تكت دعم 📩", style=discord.ButtonStyle.primary, custom_id="open_ticket_btn")
-    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
+        
+        category_name = self.values[0]
+        category_titles = {
+            "general_support": "الدعم الفني",
+            "reports": "الشكاوى والبلاغات",
+            "roles_request": "طلب رولات",
+            "partnerships": "الشراكات"
+        }
+        readable_cat = category_titles.get(category_name, "تذكرة")
 
         try:
+            # إنشاء تذكرة خاصة (Private Thread)
             thread = await interaction.channel.create_thread(
-                name=f"ticket-{interaction.user.name}",
+                name=f"ticket-{readable_cat}-{interaction.user.name}",
                 type=discord.ChannelType.private_thread,
                 invitable=False
             )
@@ -629,19 +667,27 @@ class TicketLaunchView(discord.ui.View):
             await thread.add_user(interaction.user)
 
             embed = discord.Embed(
-                title="🎫 تكت دعم جديد",
-                description=f"مرحباً بك {interaction.user.mention}، يرجى كتابة استفسارك هنا وسيقوم فريق الدعم بالرد عليك قريباً.",
+                title=f"🎫 تكت {readable_cat}",
+                description=f"مرحباً بك {interaction.user.mention}،\nلقد قمت بفتح تذكرة في قسم **{readable_cat}**. يرجى تفصيل مشكلتك أو طلبك وسيقوم فريق الإدارة بالرد عليك قريباً.",
                 color=discord.Color.blue()
             )
+            embed.set_footer(text="استخدم الأزرار أدناه للتحكم بالتذكرة")
             
             await thread.send(embed=embed, view=TicketCloseView())
-            await interaction.followup.send(f"✅ تم إنشاء التكت بنجاح: {thread.mention}", ephemeral=True)
-            await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت جديد: {thread.mention}")
+            await interaction.followup.send(f"✅ تم إنشاء تذكرتك بنجاح في القسم المخصص: {thread.mention}", ephemeral=True)
+            await send_audit_log(interaction.guild, "فتح تكت جديد", f"قام {interaction.user.mention} بفتح تكت في قسم ({readable_cat}): {thread.mention}")
 
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ أثناء إنشاء التكت (تأكد من تفعيل صلاحيات Private Threads للبوت): {e}", ephemeral=True)
 
-@bot.tree.command(name="setup-tickets", description="إرسال لوحة التذاكر المباشرة إلى القناة المحددة")
+
+class TicketLaunchView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(TicketSelect())
+
+
+@bot.tree.command(name="setup-tickets", description="إرسال لوحة التذاكر التفاعلية مع التصنيفات إلى القناة المحددة")
 @app_commands.checks.has_permissions(administrator=True)
 async def setup_tickets_command(interaction: discord.Interaction):
     settings = database.get_settings(interaction.guild_id)
@@ -657,12 +703,14 @@ async def setup_tickets_command(interaction: discord.Interaction):
         return
 
     embed = discord.Embed(
-        title="🎫 مركز الدعم والتعليمات",
-        description="اضغط على الزر أدناه لفتح تكت جديد للتواصل المباشر مع فريق الإدارة والدعم الفني.",
-        color=discord.Color.green()
+        title="🎫 مركز الدعم والخدمات المباشرة",
+        description="لفتح تذكرة جديدة ومراسلة الإدارة، يرجى اختيار القسم المناسب من القائمة المنسدلة أدناه وسيتم إنشاء قناة خاصة بك فوراً.",
+        color=discord.Color.from_rgb(79, 70, 229)
     )
+    embed.set_footer(text="نظام التذاكر الاحترافي الآمن")
+    
     await channel.send(embed=embed, view=TicketLaunchView())
-    await interaction.response.send_message(f"✅ تم إرسال لوحة التذاكر بنجاح إلى القناة: {channel.mention}", ephemeral=True)
+    await interaction.response.send_message(f"✅ تم إرسال لوحة التذاكر المحدثة بنجاح إلى القناة: {channel.mention}", ephemeral=True)
 
 # ==========================================
 # 7. الأحداث التلقائية للبوت (Events)
