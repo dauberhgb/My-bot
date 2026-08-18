@@ -563,6 +563,14 @@
                     <i class="fa-solid fa-door-open"></i>
                     <span>إعدادات الوداع</span>
                 </li>
+                <li class="sidebar-link" onclick="switchTab('section-tickets', this)">
+                    <i class="fa-solid fa-ticket"></i>
+                    <span>نظام التذاكر</span>
+                </li>
+                <li class="sidebar-link" onclick="switchTab('section-xp', this)">
+                    <i class="fa-solid fa-ranking-star"></i>
+                    <span>نظام المستويات</span>
+                </li>
             </ul>
         </nav>
 
@@ -760,6 +768,63 @@
                                     <option value="ban" {% if settings and settings.get('farewell_action') == 'ban' %}selected{% endif %}>زر الحظر (Ban)</option>
                                     <option value="timeout" {% if settings and settings.get('farewell_action') == 'timeout' %}selected{% endif %}>زر التايم أوت (Timeout)</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Ticket System Tab -->
+                <div id="section-tickets" class="tab-panel">
+                    <div class="form-section">
+                        <div class="section-header">
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-ticket"></i>
+                            </div>
+                            <h3>إعدادات نظام التذاكر</h3>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>قسم التذاكر (Category):</label>
+                                <select name="ticket_category">
+                                    <option value="">-- اختر القسم --</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.id }}" {% if settings and settings.get('ticket_category') == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>رول الدعم الفني:</label>
+                                <select name="ticket_support_role">
+                                    <option value="">-- اختر الرول --</option>
+                                    {% for r in roles %}
+                                        <option value="{{ r.id }}" {% if settings and settings.get('ticket_support_role') == r.id %}selected{% endif %}>{{ r.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. XP System Tab -->
+                <div id="section-xp" class="tab-panel">
+                    <div class="form-section">
+                        <div class="section-header">
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-ranking-star"></i>
+                            </div>
+                            <h3>نظام المستويات (XP)</h3>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>حالة نظام المستويات:</label>
+                                <select name="xp_enabled">
+                                    <option value="1" {% if settings and settings.get('xp_enabled') == 1 %}selected{% endif %}>مفعل</option>
+                                    <option value="0" {% if settings and settings.get('xp_enabled') == 0 %}selected{% endif %}>معطل</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>كمية XP لكل رسالة:</label>
+                                <input type="number" name="xp_per_message" value="{{ settings.get('xp_per_message', 15) if settings else 15 }}">
                             </div>
                         </div>
                     </div>
