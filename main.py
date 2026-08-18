@@ -134,7 +134,12 @@ def dashboard(guild_id):
 def save(guild_id):
   guild = bot.get_guild(int(guild_id))
 
+  # استقبال قنوات الميديا وحالات التفعيل بشكل صحيح
   media_channels = request.form.getlist("media_channels")
+  media_enabled = True if request.form.get("media_enabled") == "on" else False
+  banned_enabled = True if request.form.get("banned_enabled") == "on" else False
+  farewell_enabled = True if request.form.get("farewell_enabled") == "on" else False
+
   banned_words = [
       w.strip().lower()
       for w in request.form.get("banned_words", "").split(",")
@@ -150,8 +155,10 @@ def save(guild_id):
 
   settings = {
       "guild_id": guild_id,
+      "media_enabled": media_enabled,
       "media_channels": media_channels,
       "media_warning": request.form.get("media_warning", ""),
+      "banned_enabled": banned_enabled,
       "banned_words": banned_words,
       "max_violations": int(request.form.get("max_violations", 3)),
       "punishment_type": request.form.get("punishment_type", "timeout"),
@@ -159,6 +166,7 @@ def save(guild_id):
       "warning_title": request.form.get("warning_title", ""),
       "warning_msg_1": request.form.get("warning_msg_1", ""),
       "warning_msg_2": request.form.get("warning_msg_2", ""),
+      "farewell_enabled": farewell_enabled,
       "farewell_channel": request.form.get("farewell_channel", ""),
       "farewell_title": request.form.get("farewell_title", ""),
       "farewell_desc": request.form.get("farewell_desc", ""),
@@ -167,7 +175,6 @@ def save(guild_id):
       "auto_responses": auto_responses,
       "auto_role": request.form.get("auto_role", ""),
       "auto_nickname": request.form.get("auto_nickname", ""),
-      # الإضافات الجديدة (التذاكر والمستويات)
       "ticket_category": request.form.get("ticket_category", ""),
       "ticket_support_role": request.form.get("ticket_support_role", ""),
       "xp_enabled": int(request.form.get("xp_enabled", 1)),
@@ -202,7 +209,6 @@ threading.Thread(target=run_web_server, daemon=True).start()
 async def on_ready():
   print(f"تم تشغيل البوت بنجاح باسم: {bot.user}")
 
-  # --- [الإضافة الأمنية الجديدة]: تحميل الملفات من مجلد cogs تلقائياً ---
   if os.path.exists("./cogs"):
     for filename in os.listdir("./cogs"):
       if filename.endswith(".py"):
@@ -213,10 +219,8 @@ async def on_ready():
           print(f"❌ فشل تحميل النظام {filename[:-3]}: {e}")
   else:
     print("⚠️ مجلد cogs غير موجود، سيتم إنشاؤه لإضافة الأنظمة الجديدة لاحقاً.")
-  # -------------------------------------------------------------------
 
 
-# أمر السلاش /setup
 @bot.tree.command(
     name="setup",
     description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر",
@@ -253,7 +257,6 @@ async def setup(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-# الرول واللقب التلقائي الذكي
 @bot.event
 async def on_member_join(member):
   settings = database.get_settings(member.guild.id)
@@ -281,11 +284,10 @@ async def on_member_join(member):
       print(f"تعذر تغيير اللقب: {e}")
 
 
-# رسالة الوداع والزر
 @bot.event
 async def on_member_remove(member):
   settings = database.get_settings(member.guild.id)
-  if not settings or not settings.get("farewell_channel"):
+  if not settings or not settings.get("farewell_enabled", True) or not settings.get("farewell_channel"):
     return
 
   channel = (
@@ -335,7 +337,6 @@ async def on_member_remove(member):
     await channel.send(embed=embed, view=view)
 
 
-# الميديا والكلمات والردود والمستويات (XP)
 @bot.event
 async def on_message(message):
   if message.author.bot or not message.guild:
@@ -346,7 +347,6 @@ async def on_message(message):
     await bot.process_commands(message)
     return
 
-  # 1. نظام المستويات (XP) الجديد (تم تصحيح المسافات هنا)
   if settings.get("xp_enabled", 1) == 1:
     xp_gain = settings.get("xp_per_message", 15)
     if hasattr(database, "add_user_xp"):
@@ -377,69 +377,72 @@ async def on_message(message):
         except Exception as e:
           print(f"خطأ في منح رول المستوى: {e}")
 
-  media_channels = settings.get("media_channels", [])
-  if (
-      str(message.channel.id) in media_channels
-      or message.channel.name in media_channels
-  ):
-    has_media = len(message.attachments) > 0 or any(
-        ext in message.content.lower()
-        for ext in [".jpg", ".png", ".gif", ".mp4", "http://", "https://"]
-    )
-    if not has_media:
+  if settings.get("media_enabled", True):
+    media_channels = settings.get("media_channels", [])
+    if (
+        str(message.channel.id) in media_channels
+        or message.channel.name in media_channels
+    ):
+      has_media = len(message.attachments) > 0 or any(
+          ext in message.content.lower()
+          for ext in [".jpg", ".png", ".gif", ".mp4", "http://", "https://"]
+      )
+      if not has_media:
+        await message.delete()
+        warn_msg = settings.get(
+            "media_warning", "عذراً هذه القناة للميديا فقط!"
+        ).replace("{user}", message.author.mention)
+        await message.channel.send(warn_msg, delete_after=5)
+        return
+
+  if settings.get("banned_enabled", True):
+    banned_words = settings.get("banned_words", [])
+    msg_content = message.content.lower()
+    if any(word in msg_content for word in banned_words):
       await message.delete()
-      warn_msg = settings.get(
-          "media_warning", "عذراً هذه القناة للميديا فقط!"
-      ).replace("{user}", message.author.mention)
-      await message.channel.send(warn_msg, delete_after=5)
+
+      g_id = str(message.guild.id)
+      u_id = str(message.author.id)
+      violations.setdefault(g_id, {}).setdefault(u_id, 0)
+      violations[g_id][u_id] += 1
+
+      count = violations[g_id][u_id]
+      max_v = settings.get("max_violations", 3)
+
+      if count < max_v:
+        title = settings.get("warning_title", "تحذير")
+        msg_text = (
+            settings.get("warning_msg_1")
+            if count == 1
+            else settings.get("warning_msg_2")
+        )
+        msg_text = msg_text.replace("{user}", message.author.mention)
+        embed = discord.Embed(
+            title=title, description=msg_text, color=discord.Color.gold()
+        )
+        await message.channel.send(embed=embed)
+      else:
+        p_type = settings.get("punishment_type", "timeout")
+        t_min = settings.get("timeout_minutes", 10)
+        try:
+          if p_type == "timeout":
+            await message.author.timeout(
+                timedelta(minutes=t_min), reason="مخالفة القوانين"
+            )
+          elif p_type == "kick":
+            await message.author.kick(reason="مخالفة القوانين")
+          elif p_type == "mute":
+            await message.author.timeout(timedelta(days=7), reason="كتم كامل")
+          await message.channel.send(
+              f"تم تطبيق ({p_type}) على {message.author.mention}."
+          )
+        except Exception as e:
+          print(f"خطأ في العقوبة: {e}")
+        violations[g_id][u_id] = 0
       return
 
-  banned_words = settings.get("banned_words", [])
-  msg_content = message.content.lower()
-  if any(word in msg_content for word in banned_words):
-    await message.delete()
-
-    g_id = str(message.guild.id)
-    u_id = str(message.author.id)
-    violations.setdefault(g_id, {}).setdefault(u_id, 0)
-    violations[g_id][u_id] += 1
-
-    count = violations[g_id][u_id]
-    max_v = settings.get("max_violations", 3)
-
-    if count < max_v:
-      title = settings.get("warning_title", "تحذير")
-      msg_text = (
-          settings.get("warning_msg_1")
-          if count == 1
-          else settings.get("warning_msg_2")
-      )
-      msg_text = msg_text.replace("{user}", message.author.mention)
-      embed = discord.Embed(
-          title=title, description=msg_text, color=discord.Color.gold()
-      )
-      await message.channel.send(embed=embed)
-    else:
-      p_type = settings.get("punishment_type", "timeout")
-      t_min = settings.get("timeout_minutes", 10)
-      try:
-        if p_type == "timeout":
-          await message.author.timeout(
-              timedelta(minutes=t_min), reason="مخالفة القوانين"
-          )
-        elif p_type == "kick":
-          await message.author.kick(reason="مخالفة القوانين")
-        elif p_type == "mute":
-          await message.author.timeout(timedelta(days=7), reason="كتم كامل")
-        await message.channel.send(
-            f"تم تطبيق ({p_type}) على {message.author.mention}."
-        )
-      except Exception as e:
-        print(f"خطأ في العقوبة: {e}")
-      violations[g_id][u_id] = 0
-    return
-
   auto_resp = settings.get("auto_responses", {})
+  msg_content = message.content.lower()
   if msg_content in auto_resp:
     await message.channel.send(auto_resp[msg_content])
     return
@@ -447,9 +450,6 @@ async def on_message(message):
   await bot.process_commands(message)
 
 
-# ==========================================
-# 4. أمر المزامنة اليدوي (!sync)
-# ==========================================
 @bot.command(name="sync")
 async def sync_commands(ctx):
   if ctx.author.id != OWNER_ID:
@@ -467,11 +467,6 @@ async def sync_commands(ctx):
     await msg.edit(content=f"حدث خطأ أثناء المزامنة: {e}")
 
 
-# ==========================================
-# 5. أوامر السلاش الأصلية والإضافات الجديدة
-# ==========================================
-
-# 1. أمر عرض معلومات العضو
 @bot.tree.command(
     name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر"
 )
@@ -504,7 +499,6 @@ async def userinfo(
   await interaction.response.send_message(embed=embed)
 
 
-# 2. أمر عرض معلومات السيرفر
 @bot.tree.command(name="serverinfo", description="عرض معلومات وإحصائيات هذا السيرفر")
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
@@ -531,7 +525,6 @@ async def serverinfo(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed)
 
 
-# 3. أمر مسح الرسائل
 @bot.tree.command(
     name="clear", description="حذف عدد معين من الرسائل من القناة الحالية"
 )
@@ -561,7 +554,6 @@ async def clear(
   )
 
 
-# 4. أمر فحص سرعة الاستجابة (Ping)
 @bot.tree.command(name="ping", description="عرض سرعة اتصال البوت واستجابته")
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 3.0, key=lambda i: (i.guild_id, i.user.id))
@@ -577,7 +569,6 @@ async def ping(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed)
 
 
-# 5. أمر معلومات البوت ورابط Top.gg
 @bot.tree.command(name="botinfo", description="عرض معلومات البوت ورابط التصويت")
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
@@ -611,7 +602,6 @@ async def botinfo(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed, view=view)
 
 
-# 6. أمر إرسال لوحة التذاكر (Ticket Setup) المحدث
 class CloseTicketView(discord.ui.View):
 
   def __init__(self):
@@ -647,7 +637,6 @@ class TicketButtonView(discord.ui.View):
   async def create_ticket(
       self, interaction: discord.Interaction, button: discord.ui.Button
   ):
-    # حل مشكلة ECREX didn't respond in time بالاستجابة الفورية
     await interaction.response.defer(ephemeral=True)
 
     guild = interaction.guild
@@ -664,7 +653,6 @@ class TicketButtonView(discord.ui.View):
         else None
     )
 
-    # منع تكرار فتح تذكرة جديدة إذا كان العضو يملك واحدة مفتوحة بالفعل
     existing_channel = discord.utils.get(
         guild.text_channels, name=f"ticket-{interaction.user.name.lower()}"
     )
@@ -736,7 +724,6 @@ async def ticket_setup(interaction: discord.Interaction):
   )
 
 
-# 7. أمر عرض المستوى ونقاط الخبرة (Level) الجديد
 @bot.tree.command(name="level", description="عرض مستواك الحالي ونقاط الخبرة XP")
 @app_commands.describe(member="العضو المراد عرض مستواه (اختياري)")
 async def level_command(
@@ -759,7 +746,6 @@ async def level_command(
   await interaction.response.send_message(embed=embed)
 
 
-# أمر عرض قائمة المتصدرين (Leaderboard)
 @bot.tree.command(
     name="leaderboard", description="عرض قائمة أكثر الأعضاء تفاعلاً ونقاطاً XP"
 )
@@ -808,9 +794,6 @@ async def leaderboard(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed)
 
 
-# ==========================================
-# 6. معالجة الأخطاء العامة الشاملة لأوامر السلاش
-# ==========================================
 @bot.tree.error
 async def on_app_command_error(
     interaction: discord.Interaction, error: app_commands.AppCommandError
