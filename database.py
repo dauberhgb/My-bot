@@ -34,7 +34,8 @@ def init_db():
             xp_per_message INTEGER,
             xp_role_5 TEXT,
             xp_role_10 TEXT,
-            xp_role_20 TEXT
+            xp_role_20 TEXT,
+            language TEXT
         )
     """)
 
@@ -91,6 +92,7 @@ def get_settings(guild_id):
         "xp_role_5": row[22] or "",
         "xp_role_10": row[23] or "",
         "xp_role_20": row[24] or "",
+        "language": row[25] if len(row) > 25 and row[25] else "ar",
     }
   return {
       "guild_id": str(guild_id),
@@ -118,6 +120,7 @@ def get_settings(guild_id):
       "xp_role_5": "",
       "xp_role_10": "",
       "xp_role_20": "",
+      "language": "ar",
   }
 
 
@@ -127,7 +130,7 @@ def save_settings(guild_id, settings):
   cursor.execute(
       """
         INSERT OR REPLACE INTO guild_settings VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     """,
       (
@@ -156,6 +159,7 @@ def save_settings(guild_id, settings):
           str(settings.get("xp_role_5", "")),
           str(settings.get("xp_role_10", "")),
           str(settings.get("xp_role_20", "")),
+          str(settings.get("language", "ar")),
       ),
   )
   conn.commit()
