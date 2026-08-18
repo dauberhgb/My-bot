@@ -19,7 +19,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
-# ضع معرف حسابك في ديسكورد (User ID) هنا مكان هذا الرقم
+# معرف حسابك في ديسكورد (User ID)
 OWNER_ID = 1462429084377157832
 
 # ==========================================
@@ -37,7 +37,6 @@ def admin_required(f):
                 return jsonify({"status": "error", "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!"}), 404
             return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
 
-        # التحقق من وجود معرف العضو في الهيدر/الطلب أو المعلمات، مع فحص صلاحية إدارة السيرفر
         user_id = request.args.get('user_id') or request.headers.get('X-User-ID') or request.form.get('user_id')
         
         if user_id and user_id.isdigit():
@@ -57,14 +56,12 @@ def home():
         return redirect(url_for('guild_list', user_id=user_id))
     return redirect(url_for('guild_list'))
 
-# صفحة عرض السيرفرات المفلترة بحسب صلاحيات الأدمن فقط
 @app.route('/guilds')
 def guild_list():
     user_id = request.args.get('user_id')
     bot_guilds = []
 
     for guild in bot.guilds:
-        # إذا تم إرسال user_id يتم التصفية لعرض السيرفرات التي يملك المستخدم فيها صلاحية Manage Server
         if user_id and user_id.isdigit():
             member = guild.get_member(int(user_id))
             if member and member.guild_permissions.manage_guild:
@@ -74,29 +71,23 @@ def guild_list():
                     "icon": guild.icon.url if guild.icon else None
                 })
         else:
-            # عدم عرض أي سيرفر لتجنب إظهار سيرفرات الآخرين لجميع الزوار بدون تحكم
             pass
 
     return render_template('guilds.html', guilds=bot_guilds, user_id=user_id)
 
-# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب قنواته ورولاته تلقائياً (محمية)
 @app.route('/dashboard/<guild_id>')
 @admin_required
 def dashboard(guild_id):
     guild = bot.get_guild(int(guild_id))
 
-    # جلب جميع القنوات النصية والرولات تلقائياً
     channels = [{"id": str(c.id), "name": c.name} for c in guild.text_channels]
     roles = [{"id": str(r.id), "name": r.name} for r in guild.roles if not r.is_default()]
     
     settings = database.get_settings(guild_id)
-
-    # جلب رابط صورة السيرفر المباشر
     icon_url = guild.icon.url if guild.icon else None
 
     return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, icon_url=icon_url)
 
-# حفظ الإعدادات للسيرفر المختار (محمية)
 @app.route('/save/<guild_id>', methods=['POST'])
 @admin_required
 def save(guild_id):
@@ -149,10 +140,10 @@ threading.Thread(target=run_web_server, daemon=True).start()
 async def on_ready():
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
-# أمر السلاش /setup مع حماية Cooldown
+# أمر السلاش /setup
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر")
 @app_commands.checks.has_permissions(manage_guild=True)
-@app_commands.checks.cooldown(1, 5.0)  # مهلة 5 ثوانٍ بين الاستخدامات لمنع الحظر
+@app_commands.checks.cooldown(1, 5.0)
 async def setup(interaction: discord.Interaction):
     guild_id = str(interaction.guild_id)
     user_id = str(interaction.user.id)
@@ -175,20 +166,6 @@ async def setup(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-# معالجة خطأ الـ Cooldown والصلاحيات لأمر Setup
-@setup.error
-async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(
-            f"⏳ يرجى الانتظار {round(error.retry_after, 1)} ثانية قبل استخدام الأمر مرة أخرى!", 
-            ephemeral=True
-        )
-    elif isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message(
-            "🚫 عذراً، يجب أن تمتلك صلاحية (إدارة السيرفر Manage Server) للوصول للوحة التحكم!", 
-            ephemeral=True
-        )
-
 # الرول واللقب التلقائي الذكي
 @bot.event
 async def on_member_join(member):
@@ -196,7 +173,6 @@ async def on_member_join(member):
     if not settings:
         return
 
-    # 1. إعطاء الرول التلقائي
     if settings.get("auto_role"):
         role = discord.utils.get(member.guild.roles, name=settings["auto_role"])
         if role:
@@ -205,18 +181,14 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"تعذر إعطاء الرول: {e}")
 
-    # 2. اللقب التلقائي الذكي (Auto-Nickname)
     auto_nick = settings.get("auto_nickname", "").strip()
     if auto_nick:
         try:
-            # إذا كتب في اللوحة {user} سيضع اسم العضو مكانها
             if "{user}" in auto_nick:
                 new_nick = auto_nick.replace("{user}", member.display_name)
             else:
-                # إذا لم يكتب {user}، سيضيف الكلمة كبادئة قبل اسمه الأصلي تلقائياً
                 new_nick = f"{auto_nick} {member.display_name}"
 
-            # ديسكورد يقبل ألقاب حتى 32 حرفاً فقط
             await member.edit(nick=new_nick[:32])
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
@@ -266,7 +238,6 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    # 1. قنوات الميديا
     media_channels = settings.get("media_channels", [])
     if str(message.channel.id) in media_channels or message.channel.name in media_channels:
         has_media = len(message.attachments) > 0 or any(ext in message.content.lower() for ext in ['.jpg', '.png', '.gif', '.mp4', 'http://', 'https://'])
@@ -276,7 +247,6 @@ async def on_message(message):
             await message.channel.send(warn_msg, delete_after=5)
             return
 
-    # 2. الكلمات المحظورة
     banned_words = settings.get("banned_words", [])
     msg_content = message.content.lower()
     if any(word in msg_content for word in banned_words):
@@ -312,7 +282,6 @@ async def on_message(message):
             violations[g_id][u_id] = 0
         return
 
-    # 3. الردود التلقائية
     auto_resp = settings.get("auto_responses", {})
     if msg_content in auto_resp:
         await message.channel.send(auto_resp[msg_content])
@@ -325,7 +294,6 @@ async def on_message(message):
 # ==========================================
 @bot.command(name="sync")
 async def sync_commands(ctx):
-    # التحقق مما إذا كان منفذ الأمر هو صاحب البوت فقط
     if ctx.author.id != OWNER_ID:
         await ctx.send("عذراً! هذا الأمر مخصص لصاحب البوت فقط.")
         return
@@ -339,12 +307,13 @@ async def sync_commands(ctx):
         await msg.edit(content=f"حدث خطأ أثناء المزامنة: {e}")
 
 # ==========================================
-# 5. أوامر السلاش الجديدة (Slash Commands)
+# 5. أوامر السلاش الجديدة (مع تقييد صلاحية Manage Server لكل الأوامر)
 # ==========================================
 
 # 1. أمر عرض معلومات العضو
 @bot.tree.command(name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر")
 @app_commands.describe(member="العضو المراد عرض معلوماته (اختياري)")
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
@@ -364,6 +333,7 @@ async def userinfo(interaction: discord.Interaction, member: discord.Member = No
 
 # 2. أمر عرض معلومات السيرفر
 @bot.tree.command(name="serverinfo", description="عرض معلومات وإحصائيات هذا السيرفر")
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
 async def serverinfo(interaction: discord.Interaction):
     guild = interaction.guild
@@ -387,7 +357,7 @@ async def serverinfo(interaction: discord.Interaction):
 # 3. أمر مسح الرسائل
 @bot.tree.command(name="clear", description="حذف عدد معين من الرسائل من القناة الحالية")
 @app_commands.describe(amount="عدد الرسائل المراد مسحها (1 - 100)", member="تحديد عضو معين لتنظيف رسائله فقط (اختياري)")
-@app_commands.checks.has_permissions(manage_messages=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def clear(interaction: discord.Interaction, amount: int, member: discord.Member = None):
     if amount < 1 or amount > 100:
@@ -404,6 +374,7 @@ async def clear(interaction: discord.Interaction, amount: int, member: discord.M
 
 # 4. أمر فحص سرعة الاستجابة (Ping)
 @bot.tree.command(name="ping", description="عرض سرعة اتصال البوت واستجابته")
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 3.0, key=lambda i: (i.guild_id, i.user.id))
 async def ping(interaction: discord.Interaction):
     latency = round(bot.latency * 1000)
@@ -416,6 +387,7 @@ async def ping(interaction: discord.Interaction):
 
 # 5. أمر معلومات البوت ورابط Top.gg
 @bot.tree.command(name="botinfo", description="عرض معلومات البوت ورابط التصويت")
+@app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def botinfo(interaction: discord.Interaction):
     total_guilds = len(bot.guilds)
@@ -435,16 +407,33 @@ async def botinfo(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 # ==========================================
-# 6. معالجة الأخطاء العامة لأوامر السلاش
+# 6. معالجة الأخطاء العامة الشاملة لأوامر السلاش
 # ==========================================
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {round(error.retry_after, 1)} ثانية.", ephemeral=True)
-    elif isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message("عذراً، لا تمتلك الصلاحيات الكافية لاستخدام هذا الأمر.", ephemeral=True)
+    if isinstance(error, app_commands.MissingPermissions):
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة السيرفر - Manage Server).**", 
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة السيرفر - Manage Server).**", 
+                ephemeral=True
+            )
+    elif isinstance(error, app_commands.CommandOnCooldown):
+        msg = f"⏳ انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {round(error.retry_after, 1)} ثانية."
+        if not interaction.response.is_done():
+            await interaction.response.send_message(msg, ephemeral=True)
+        else:
+            await interaction.followup.send(msg, ephemeral=True)
     else:
-        await interaction.response.send_message("حدث خطأ غير متوقع أثناء تنفيذ الأمر.", ephemeral=True)
+        msg = "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
+        if not interaction.response.is_done():
+            await interaction.response.send_message(msg, ephemeral=True)
+        else:
+            await interaction.followup.send(msg, ephemeral=True)
 
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
