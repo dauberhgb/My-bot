@@ -16,7 +16,6 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-violations = {}
 
 # ==========================================
 # 2. إعداد خادم الويب (Flask Dashboard)
@@ -27,7 +26,6 @@ app = Flask(__name__)
 def home():
     return redirect(url_for('guild_list'))
 
-# صفحة عرض كافة السيرفرات المتواجد فيها البوت تلقائياً
 @app.route('/guilds')
 def guild_list():
     bot_guilds = []
@@ -39,7 +37,6 @@ def guild_list():
         })
     return render_template('guilds.html', guilds=bot_guilds)
 
-# صفحة لوحة التحكم الخاصة بسيرفر معين مع جلب الإحصائيات والقنوات والرولات
 @app.route('/dashboard/<guild_id>')
 def dashboard(guild_id):
     guild = bot.get_guild(int(guild_id))
@@ -49,7 +46,6 @@ def dashboard(guild_id):
     channels = [{"id": str(c.id), "name": c.name} for c in guild.text_channels]
     roles = [{"id": str(r.id), "name": r.name} for r in guild.roles if not r.is_default()]
     
-    # جلب إحصائيات السيرفر
     stats = {
         "member_count": guild.member_count,
         "channel_count": len(guild.channels),
@@ -60,7 +56,6 @@ def dashboard(guild_id):
 
     return render_template('index.html', guild=guild, channels=channels, roles=roles, settings=settings, stats=stats)
 
-# حفظ الإعدادات مع دعم AJAX لتجنب إعادة تحميل الصفحة
 @app.route('/save/<guild_id>', methods=['POST'])
 def save(guild_id):
     guild = bot.get_guild(int(guild_id))
@@ -70,12 +65,13 @@ def save(guild_id):
     media_channels = request.form.getlist('media_channels')
     banned_words = [w.strip().lower() for w in request.form.get('banned_words', '').split(',') if w.strip()]
     
+    # التقاط الردود التلقائية الديناميكية بلا حدود
     auto_responses = {}
-    for i in range(1, 4):
-        w = request.form.get(f'word{i}', '').strip().lower()
-        r = request.form.get(f'resp{i}', '').strip()
-        if w and r:
-            auto_responses[w] = r
+    keys = request.form.getlist('resp_keys[]')
+    values = request.form.getlist('resp_values[]')
+    for k, v in zip(keys, values):
+        if k.strip() and v.strip():
+            auto_responses[k.strip().lower()] = v.strip()
 
     settings = {
         "guild_id": guild_id,
@@ -103,7 +99,6 @@ def save(guild_id):
 
     database.save_settings(guild_id, settings)
     
-    # إذا كان الطلب AJAX يرجع JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({"status": "success", "message": "تم حفظ الإعدادات بنجاح!"})
         
@@ -130,7 +125,6 @@ async def on_ready():
         
     print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
 
-# أمر السلاش /setup مخصص فقط لمن يمتلك صلاحيات الأدمن administrator
 @bot.tree.command(name="setup", description="الانتقال المباشر إلى لوحة تحكم البوت (للإدارة فقط)")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.checks.cooldown(1, 5.0)
@@ -155,7 +149,6 @@ async def setup(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-# معالجة أخطاء الصلاحيات والـ Cooldown لأمر Setup
 @setup.error
 async def setup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
@@ -169,7 +162,6 @@ async def setup_error(interaction: discord.Interaction, error: app_commands.AppC
             ephemeral=True
         )
 
-# الرول واللقب التلقائي الذكي
 @bot.event
 async def on_member_join(member):
     settings = database.get_settings(member.guild.id)
@@ -196,7 +188,6 @@ async def on_member_join(member):
         except Exception as e:
             print(f"تعذر تغيير اللقب: {e}")
 
-# رسالة الوداع والزر
 @bot.event
 async def on_member_remove(member):
     settings = database.get_settings(member.guild.id)
@@ -230,7 +221,6 @@ async def on_member_remove(member):
 
         await channel.send(embed=embed, view=view)
 
-# الميديا والكلمات والردود
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild:
@@ -241,7 +231,7 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    # 1. قنوات الميديا (إذا كانت مفعلة)
+    # 1. قنوات الميديا
     if settings.get("media_enabled", True):
         media_channels = settings.get("media_channels", [])
         if str(message.channel.id) in media_channels or message.channel.name in media_channels:
@@ -252,7 +242,7 @@ async def on_message(message):
                 await message.channel.send(warn_msg, delete_after=5)
                 return
 
-    # 2. الكلمات المحظورة والعقوبات الذكية (إذا كانت مفعلة)
+    # 2. الكلمات المحظورة والمخالفات الدائمة في قاعدة البيانات
     if settings.get("banned_enabled", True):
         banned_words = settings.get("banned_words", [])
         msg_content = message.content.lower()
@@ -264,10 +254,9 @@ async def on_message(message):
             
             g_id = str(message.guild.id)
             u_id = str(message.author.id)
-            violations.setdefault(g_id, {}).setdefault(u_id, 0)
-            violations[g_id][u_id] += 1
             
-            count = violations[g_id][u_id]
+            # زيادة عداد المخالفات وحفظه في قاعدة البيانات
+            count = database.add_violation(g_id, u_id)
             
             try:
                 max_v = int(settings.get("max_violations", 3))
@@ -275,8 +264,6 @@ async def on_message(message):
                 max_v = 3
 
             title = settings.get("warning_title", "تحذير مخالفة")
-            
-            # تحديد نص التحذير: المرة الأولى -> التحذير 1 / المرات التالية -> التحذير 2
             if count == 1:
                 msg_text = settings.get("warning_msg_1", "انتبه يا {user}، الكلمة محظورة!")
             else:
@@ -285,10 +272,8 @@ async def on_message(message):
             msg_text = msg_text.replace("{user}", message.author.mention)
             embed = discord.Embed(title=title, description=msg_text, color=discord.Color.gold())
             
-            # 1. إرسال رسالة التحذير دائمًا أولاً وتختفي بعد 5 ثوانٍ
             await message.channel.send(embed=embed, delete_after=5)
 
-            # 2. إذا وصل العضو للحد الأقصى أو تجاوز -> تطبيق العقوبة فوراً
             if count >= max_v:
                 p_type = settings.get("punishment_type", "timeout")
                 try:
@@ -315,9 +300,7 @@ async def on_message(message):
                             color=discord.Color.red()
                         )
                         await message.channel.send(embed=embed_punish, delete_after=5)
-                        
-                        # تصفير عدد مخالفات العضو بعد العقوبة
-                        violations[g_id][u_id] = 0
+                        database.reset_violations(g_id, u_id)
 
                 except Exception as e:
                     print(f"خطأ في تطبيق العقوبة: {e}")
@@ -327,7 +310,7 @@ async def on_message(message):
                     )
             return
 
-    # 3. الردود التلقائية
+    # 3. الردود التلقائية الديناميكية
     auto_resp = settings.get("auto_responses", {})
     if message.content.lower() in auto_resp:
         await message.channel.send(auto_resp[message.content.lower()])
