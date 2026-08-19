@@ -89,11 +89,17 @@ def home():
 def guild_list():
   user_id = request.args.get("user_id")
   bot_guilds = []
+  current_lang = "ar"  # اللغة الافتراضية
 
   for guild in bot.guilds:
     if user_id and user_id.isdigit():
       member = guild.get_member(int(user_id))
       if member and member.guild_permissions.manage_guild:
+        # أخذ لغة أول سيرفر يملكه المستخدم لتعيين لغة الواجهة الحالية
+        if not bot_guilds:
+          settings = database.get_settings(guild.id)
+          current_lang = settings.get("language", "ar")
+
         bot_guilds.append({
             "id": str(guild.id),
             "name": guild.name,
@@ -102,7 +108,12 @@ def guild_list():
     else:
       pass
 
-  return render_template("guilds.html", guilds=bot_guilds, user_id=user_id)
+  return render_template(
+      "guilds.html",
+      guilds=bot_guilds,
+      user_id=user_id,
+      current_lang=current_lang,
+  )
 
 
 @app.route("/dashboard/<guild_id>")
@@ -147,9 +158,11 @@ def update_language():
 
   for guild in bot.guilds:
     try:
-      settings = database.get_settings(guild.id)
-      settings["language"] = new_lang
-      database.save_settings(guild.id, settings)
+      member = guild.get_member(int(user_id))
+      if member and member.guild_permissions.manage_guild:
+        settings = database.get_settings(guild.id)
+        settings["language"] = new_lang
+        database.save_settings(guild.id, settings)
     except Exception as e:
       print(f"Error saving language for guild {guild.id}: {e}")
 
