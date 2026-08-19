@@ -1,13 +1,16 @@
+from datetime import timedelta
+from functools import wraps
 import json
 import os
 import threading
-from datetime import timedelta
-from functools import wraps
+import database
 from discord import app_commands
 from discord.ext import commands
 import discord
 from flask import Flask, jsonify, redirect, render_template, request, url_for
-import database
+
+# استيراد نظام الترجمات ودالة الترجمة
+from translations import _
 
 # ==========================================
 # 1. إعداد وتشغيل بوت ديسكورد
@@ -118,6 +121,9 @@ def dashboard(guild_id):
   settings = database.get_settings(guild_id)
   icon_url = guild.icon.url if guild.icon else None
 
+  # تحديد اللغة الحالية (افتراضياً العربية إذا لم يتم تحديدها)
+  current_lang = settings.get("language", "ar")
+
   return render_template(
       "index.html",
       guild=guild,
@@ -126,6 +132,8 @@ def dashboard(guild_id):
       categories=categories,
       settings=settings,
       icon_url=icon_url,
+      current_lang=current_lang,
+      _,
   )
 
 
