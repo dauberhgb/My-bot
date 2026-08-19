@@ -205,6 +205,7 @@ def save(guild_id):
 
   settings = {
       "guild_id": guild_id,
+      "language": request.form.get("language", "ar"),
       "media_enabled": media_enabled,
       "media_channels": media_channels,
       "media_warning": request.form.get("media_warning", ""),
@@ -236,7 +237,6 @@ def save(guild_id):
       "xp_role_5": request.form.get("xp_role_5", ""),
       "xp_role_10": request.form.get("xp_role_10", ""),
       "xp_role_20": request.form.get("xp_role_20", ""),
-      "language": request.form.get("language", "ar"),
   }
 
   database.save_settings(guild_id, settings)
