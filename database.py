@@ -35,11 +35,24 @@ def init_db():
             xp_role_5 TEXT,
             xp_role_10 TEXT,
             xp_role_20 TEXT,
-            language TEXT
+            language TEXT,
+            welcome_enabled INTEGER,
+            welcome_channel TEXT,
+            welcome_msg TEXT,
+            welcome_img TEXT
         )
     """)
 
-  # 2. جدول نظام المستويات (XP) الجديد
+  # الترقية التلقائية لقاعدة البيانات عند وجود الجدول سابقاً
+  cursor.execute("PRAGMA table_info(guild_settings)")
+  columns = [col[1] for col in cursor.fetchall()]
+  if "welcome_enabled" not in columns:
+    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_enabled INTEGER DEFAULT 1")
+    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_channel TEXT DEFAULT ''")
+    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_msg TEXT DEFAULT ''")
+    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_img TEXT DEFAULT ''")
+
+  # 2. جدول نظام المستويات (XP)
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_levels (
             guild_id TEXT,
@@ -93,6 +106,10 @@ def get_settings(guild_id):
         "xp_role_10": row[23] or "",
         "xp_role_20": row[24] or "",
         "language": row[25] if len(row) > 25 and row[25] else "ar",
+        "welcome_enabled": row[26] if len(row) > 26 and row[26] is not None else 1,
+        "welcome_channel": row[27] if len(row) > 27 and row[27] else "",
+        "welcome_msg": row[28] if len(row) > 28 and row[28] else "أهلاً بك يا {user} في السيرفر! 🎉",
+        "welcome_img": row[29] if len(row) > 29 and row[29] else "",
     }
   return {
       "guild_id": str(guild_id),
@@ -121,6 +138,10 @@ def get_settings(guild_id):
       "xp_role_10": "",
       "xp_role_20": "",
       "language": "ar",
+      "welcome_enabled": 1,
+      "welcome_channel": "",
+      "welcome_msg": "أهلاً بك يا {user} في السيرفر! 🎉",
+      "welcome_img": "",
   }
 
 
@@ -130,7 +151,7 @@ def save_settings(guild_id, settings):
   cursor.execute(
       """
         INSERT OR REPLACE INTO guild_settings VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
     """,
       (
@@ -160,13 +181,17 @@ def save_settings(guild_id, settings):
           str(settings.get("xp_role_10", "")),
           str(settings.get("xp_role_20", "")),
           str(settings.get("language", "ar")),
+          int(settings.get("welcome_enabled", 1)),
+          str(settings.get("welcome_channel", "")),
+          str(settings.get("welcome_msg", "")),
+          str(settings.get("welcome_img", "")),
       ),
   )
   conn.commit()
   conn.close()
 
 
-# دوال إدارة نظام المستويات والخبرة (XP) الجديدة
+# دوال إدارة نظام المستويات والخبرة (XP)
 def add_user_xp(guild_id, user_id, xp_amount=15):
   conn = sqlite3.connect(DB_NAME)
   cursor = conn.cursor()
