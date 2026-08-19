@@ -338,9 +338,10 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       font_path = "arial.ttf"
 
     try:
-      font_title = ImageFont.truetype(font_path, 42)
-      font_name = ImageFont.truetype(font_path, 48)
-      font_sub = ImageFont.truetype(font_path, 32)
+      # تعديل أحجام الخطوط لتناسب أبعاد الصورة وتكون متناسقة
+      font_title = ImageFont.truetype(font_path, 32)
+      font_name = ImageFont.truetype(font_path, 38)
+      font_sub = ImageFont.truetype(font_path, 24)
     except IOError:
       font_title = font_name = font_sub = ImageFont.load_default()
 
