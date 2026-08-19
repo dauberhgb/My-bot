@@ -536,7 +536,7 @@
             {% else %}
                 <div class="server-icon-placeholder">{{ guild.name[0] }}</div>
             {% endif %}
-            <span class="server-name">{{ guild.name }}</span>
+            <span class="server-name" id="serverNameElement">{{ guild.name }}</span>
         </div>
         <a href="/guilds{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
             <i class="fa-solid fa-arrow-{{ 'left' if current_lang == 'en' else 'right' }}"></i> {% if current_lang == 'en' %}Servers List{% else %}قائمة السيرفرات{% endif %}
@@ -898,8 +898,11 @@
             const form = document.getElementById('settingsForm');
             const formData = new FormData(form);
 
-            // جلب اللغة الحالية مباشرة من خاصية lang في وسم الـ html لتغيير الرسالة بشكل فوري
+            // جلب اللغة الحالية مباشرة من خاصية lang في وسم الـ html
             const currentLang = document.documentElement.lang || 'ar';
+            // جلب اسم السيرفر ديناميكياً من الصفحة
+            const serverNameElement = document.getElementById('serverNameElement');
+            const serverName = serverNameElement ? serverNameElement.innerText : '';
 
             fetch(form.action, {
                 method: 'POST',
@@ -907,29 +910,45 @@
             })
             .then(async response => {
                 const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    return await response.json();
+                let serverMsg = "";
+                if (currentLang === 'en') {
+                    serverMsg = `Settings for [${serverName}] saved successfully ✨`;
                 } else {
-                    const defaultMsg = currentLang === 'en' 
-                        ? "Settings saved successfully ✨" 
-                        : "تم حفظ التعديلات بنجاح ✨";
-                    return { status: "success", message: defaultMsg };
+                    serverMsg = `تم حفظ إعدادات السيرفر [${serverName}] بنجاح ✨`;
+                }
+
+                if (contentType && contentType.includes("application/json")) {
+                    const jsonData = await response.json();
+                    return jsonData;
+                } else {
+                    return { status: "success", message: serverMsg };
                 }
             })
             .then(data => {
-                const successMsg = currentLang === 'en' ? "Settings saved successfully ✨" : "تم حفظ التعديلات بنجاح ✨";
+                let defaultSuccessMsg = "";
+                if (currentLang === 'en') {
+                    defaultSuccessMsg = `Settings for [${serverName}] saved successfully ✨`;
+                } else {
+                    defaultSuccessMsg = `تم حفظ إعدادات السيرفر [${serverName}] بنجاح ✨`;
+                }
+
                 const errorMsg = currentLang === 'en' ? "An error occurred while saving!" : "حدث خطأ أثناء حفظ التعديلات!";
                 
                 if (!data || data.status === "success" || data.status === undefined) {
-                    showToast(data && data.message ? data.message : successMsg);
+                    showToast(data && data.message ? data.message : defaultSuccessMsg);
                 } else {
                     showToast(data.message || errorMsg);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                const successMsg = currentLang === 'en' ? "Settings saved successfully ✨" : "تم حفظ التعديلات بنجاح ✨";
-                showToast(successMsg);
+                let defaultSuccessMsg = "";
+                if (currentLang === 'en') {
+                    defaultSuccessMsg = `Settings for [${serverName}] saved successfully ✨`;
+                } else {
+                    defaultSuccessMsg = `تم حفظ إعدادات السيرفر [${serverName}] بنجاح ✨`;
+                }
+                showToast(defaultSuccessMsg);
             });
         }
 
