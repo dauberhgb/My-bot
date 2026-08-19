@@ -898,6 +898,9 @@
             const form = document.getElementById('settingsForm');
             const formData = new FormData(form);
 
+            // جلب اللغة الحالية مباشرة من خاصية lang في وسم الـ html لتغيير الرسالة بشكل فوري
+            const currentLang = document.documentElement.lang || 'ar';
+
             fetch(form.action, {
                 method: 'POST',
                 body: formData
@@ -907,19 +910,26 @@
                 if (contentType && contentType.includes("application/json")) {
                     return await response.json();
                 } else {
-                    return { status: "success", message: "{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}" };
+                    const defaultMsg = currentLang === 'en' 
+                        ? "Settings saved successfully ✨" 
+                        : "تم حفظ التعديلات بنجاح ✨";
+                    return { status: "success", message: defaultMsg };
                 }
             })
             .then(data => {
+                const successMsg = currentLang === 'en' ? "Settings saved successfully ✨" : "تم حفظ التعديلات بنجاح ✨";
+                const errorMsg = currentLang === 'en' ? "An error occurred while saving!" : "حدث خطأ أثناء حفظ التعديلات!";
+                
                 if (!data || data.status === "success" || data.status === undefined) {
-                    showToast(data && data.message ? data.message : "{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}");
+                    showToast(data && data.message ? data.message : successMsg);
                 } else {
-                    showToast(data.message || "{% if current_lang == 'en' %}An error occurred while saving!{% else %}حدث خطأ أثناء حفظ التعديلات!{% endif %}");
+                    showToast(data.message || errorMsg);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast("{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}");
+                const successMsg = currentLang === 'en' ? "Settings saved successfully ✨" : "تم حفظ التعديلات بنجاح ✨";
+                showToast(successMsg);
             });
         }
 
