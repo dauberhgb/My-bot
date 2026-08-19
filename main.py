@@ -313,17 +313,19 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     avatar_size = 200
     avatar_y = (height - avatar_size) // 2
 
-    # 3. معالجة النصوص وتعديل الاتجاه داخل الصورة
+    # 3. معالجة النصوص وتعديل الاتجاه داخل الصورة (تم تصحيح ترتيب الكلمات والحروف العربية)
     if user_lang == "ar":
       avatar_x = width - avatar_size - 50
       text_x = 50  # محاذاة النص لليسار ليتناسب مع موقع البروفايل باليمين
 
-      # إصلاح معالجة اللغة العربية داخل الصورة فقط
-      welcome_title = get_display(arabic_reshaper.reshape("أهلاً بك في السيرفر"))
-      member_count_text = get_display(arabic_reshaper.reshape(f"العضو رقم #{member.guild.member_count}"))
+      raw_title = "أهلاً بك في السيرفر"
+      welcome_title = arabic_reshaper.reshape(" ".join(raw_title.split()[::-1]))
+
+      raw_count = f"العضو رقم #{member.guild.member_count}"
+      member_count_text = arabic_reshaper.reshape(" ".join(raw_count.split()[::-1]))
       
       reshaped_name = arabic_reshaper.reshape(member.name[:18])
-      display_name = get_display(reshaped_name)
+      display_name = reshaped_name
     else:
       avatar_x = 50
       text_x = 280
