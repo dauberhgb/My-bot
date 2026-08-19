@@ -495,11 +495,7 @@ async def on_member_join(member):
         if custom_msg:
           welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
         else:
-          # تم تحديث النص هنا ليطابق لغة السيرفر المختارة (عربي أو إنجليزي) تلقائياً
-          if lang == "en":
-            welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉"
-          else:
-            welcome_text = f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
+          welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
         
         await channel.send(content=welcome_text, file=card_file)
 
