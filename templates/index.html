@@ -538,7 +538,7 @@
             {% endif %}
             <span class="server-name" id="serverNameElement">{{ guild.name }}</span>
         </div>
-        <a href="/guilds{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
+        <a href="/guilds?{% if current_lang %}lang={{ current_lang }}{% endif %}{% if request.args.get('user_id') %}{% if current_lang %}&{% endif %}user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
             <i class="fa-solid fa-arrow-{{ 'left' if current_lang == 'en' else 'right' }}"></i> {% if current_lang == 'en' %}Servers List{% else %}قائمة السيرفرات{% endif %}
         </a>
     </header>
