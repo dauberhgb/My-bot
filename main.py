@@ -12,6 +12,10 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import aiohttp
 
+# استيراد مكتبات تشكيل النصوص العربية للرسم على الصور
+import arabic_reshaper
+from bidi.algorithm import get_display
+
 # استيراد نظام الترجمات ودالة الترجمة
 from translations import _
 
@@ -256,13 +260,19 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 # 3. دالة توليد بطاقة الترحيب المتعددة اللغات والكبيرة (Welcome Card Generator)
 # ==========================================
+def process_text(text):
+  """دالة مساعدة لإعادة تشكيل النص العربي ليرسم بالاتجاه الصحيح وبدون رموز مشوهة"""
+  reshaped = arabic_reshaper.reshape(text)
+  return get_display(reshaped)
+
+
 async def generate_welcome_card(member, bg_url=None, lang="ar"):
   try:
     width, height = 900, 400
-    base = Image.new("RGBA", (width, height), (30, 30, 35, 255))
+    base = Image.new("RGBA", (width, height), (15, 23, 42, 255))
     draw = ImageDraw.Draw(base)
 
-    # تحميل الخلفية أو رسم خلفية متدرجة
+    # تحميل الخلفية إن وجدت أو رسم خلفية متدرجة
     bg = None
     if bg_url:
       try:
@@ -283,13 +293,13 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         draw.line([(x, 0), (x, height)], fill=color)
 
     # طبقة شفافة داكنة لزيادة التباين ووضوح النصوص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 160))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
-    # معالجة صورة البروفايل بحجم 200x200 مع إطار مضيء
+    # معالجة صورة البروفايل بحجم 200x200 وتوسيطها رأسياً
     avatar_size = 200
-    avatar_x, avatar_y = 50, 100
+    avatar_x, avatar_y = 50, (height - avatar_size) // 2
     avatar_url = member.display_avatar.url
 
     async with aiohttp.ClientSession() as session:
@@ -303,45 +313,49 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
           mask_draw = ImageDraw.Draw(mask)
           mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
-          # إطار دائري حول البروفايل
+          # إطار دائري مضيء
           draw.ellipse(
               (avatar_x - 5, avatar_y - 5, avatar_x + avatar_size + 5, avatar_y + avatar_size + 5),
-              outline=(99, 102, 241, 255),
-              width=6
+              outline=(59, 130, 246, 255),
+              width=5
           )
 
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
-    # اختيار النصوص حسب اللغة
-    if lang == "en":
-      welcome_title = "WELCOME TO THE SERVER"
+    # اختيار النصوص حسب اللغة مع معالجة العربية
+    if str(lang).lower() == "en":
+      welcome_title = "WELCOME"
       member_count_text = f"Member #{member.guild.member_count}"
     else:
-      welcome_title = "أهلاً بك في السيرفر"
-      member_count_text = f"العضو رقم #{member.guild.member_count}"
+      welcome_title = process_text("أهلاً بك في السيرفر")
+      member_count_text = process_text(f"العضو رقم #{member.guild.member_count}")
 
-    # تحميل الخطوط بأحجام كبيرة وواضحة
+    display_name = member.name[:18] + "..." if len(member.name) > 18 else member.name
+
+    # تحميل الخطوط مع الاعتماد على خط يسهل العثور عليه يدعم العربية
+    font_path = "tajawal.ttf"
+    if not os.path.exists(font_path):
+      font_path = "arial.ttf"
+
     try:
-      font_title = ImageFont.truetype("arial.ttf", 36)
-      font_name = ImageFont.truetype("arial.ttf", 52)
-      font_sub = ImageFont.truetype("arial.ttf", 32)
+      font_title = ImageFont.truetype(font_path, 42)
+      font_name = ImageFont.truetype(font_path, 48)
+      font_sub = ImageFont.truetype(font_path, 32)
     except IOError:
-      font_title = ImageFont.load_default()
-      font_name = ImageFont.load_default()
-      font_sub = ImageFont.load_default()
+      font_title = font_name = font_sub = ImageFont.load_default()
 
-    text_x = 280
+    text_x = 300
 
-    # 1. العنوان الرئيسي مع ظلال داكنة
-    draw.text((text_x + 2, 102), welcome_title, fill=(0, 0, 0), font=font_title)
-    draw.text((text_x, 100), welcome_title, fill=(147, 197, 253), font=font_title)
+    # 1. العنوان الرئيسي
+    draw.text((text_x + 2, 92), welcome_title, fill=(0, 0, 0, 200), font=font_title)
+    draw.text((text_x, 90), welcome_title, fill=(147, 197, 253), font=font_title)
 
     # 2. اسم العضو
-    draw.text((text_x + 2, 162), member.name, fill=(0, 0, 0), font=font_name)
-    draw.text((text_x, 160), member.name, fill=(255, 255, 255), font=font_name)
+    draw.text((text_x + 2, 162), display_name, fill=(0, 0, 0, 200), font=font_name)
+    draw.text((text_x, 160), display_name, fill=(255, 255, 255), font=font_name)
 
     # 3. رقم العضو
-    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0), font=font_sub)
+    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 200), font=font_sub)
     draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub)
 
     final_buffer = BytesIO()
