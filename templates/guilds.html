@@ -240,6 +240,38 @@
             color: #ffffff !important;
         }
 
+        /* تنسيق زر تغيير اللغة العلوي */
+        .language-selector-wrapper {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        .lang-select {
+            background: var(--bg-card);
+            color: var(--text-white);
+            border: 1px solid var(--border-glass);
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .lang-select:hover, .lang-select:focus {
+            border-color: var(--border-hover);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .lang-select option {
+            background-color: #12141d;
+            color: #ffffff;
+        }
+
         @media (max-width: 576px) {
             .server-card {
                 flex-direction: column;
@@ -253,6 +285,13 @@
                 width: 100%;
                 justify-content: center;
             }
+            .language-selector-wrapper {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 15px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -265,6 +304,14 @@
     </div>
 
 <div class="container py-5">
+    <!-- قائمة تغيير اللغة المضافة -->
+    <div class="language-selector-wrapper">
+        <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+            <option value="ar" {% if settings and settings.get('language') == 'ar' %}selected{% endif %}>العربية 🇸🇦</option>
+            <option value="en" {% if settings and settings.get('language') == 'en' %}selected{% endif %}>English 🇺🇸</option>
+        </select>
+    </div>
+
     <div class="hero-section">
         <h1 class="fw-bold mb-3">سيرفراتك المتاحة</h1>
         <div class="verified-badge">
@@ -295,6 +342,34 @@
         </div>
     </div>
 </div>
+
+<script>
+    function changeLanguage(lang) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+
+        const formData = new URLSearchParams();
+        formData.append('language', lang);
+        if (userId) {
+            formData.append('user_id', userId);
+        }
+
+        fetch('/update_language', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
 
 </body>
 </html>
