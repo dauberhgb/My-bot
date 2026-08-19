@@ -2,3 +2,5 @@ discord.py
 Flask
 Requests
 Pillow
+arabic-reshaper
+python-bidi
