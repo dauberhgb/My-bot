@@ -331,7 +331,6 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       welcome_title = process_text("أهلاً بك في السيرفر")
       member_count_text = process_text(f"العضو رقم #{member.guild.member_count}")
     else:
-      # اللغة الإنجليزية (أو أي لغة أخرى)
       welcome_title = "WELCOME TO THE SERVER"
       member_count_text = f"Member #{member.guild.member_count}"
 
@@ -347,7 +346,6 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       font_path = "arial.ttf"
 
     try:
-      # تكبير الخطوط لتلائم أبعاد الصورة 900x400
       font_title = ImageFont.truetype(font_path, 42)
       font_name = ImageFont.truetype(font_path, 52)
       font_sub = ImageFont.truetype(font_path, 32)
