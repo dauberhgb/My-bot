@@ -599,6 +599,14 @@
 
                         <div class="grid-2">
                             <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Bot & Welcome Language:{% else %}لغة البوت والبطاقة الترحيبية:{% endif %}</label>
+                                <select name="language">
+                                    <option value="ar" {% if settings and settings.get('language') == 'ar' %}selected{% endif %}>العربية (Arabic)</option>
+                                    <option value="en" {% if settings and settings.get('language') == 'en' %}selected{% endif %}>English (الإنجليزي)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
                                 <select name="welcome_enabled">
                                     <option value="1" {% if settings and settings.get('welcome_enabled') == 1 %}selected{% endif %}>{% if current_lang == 'en' %}Enabled{% else %}مفعل{% endif %}</option>
@@ -705,7 +713,7 @@
                                 <label>{% if current_lang == 'en' %}Punishment Type:{% else %}نوع العقوبة:{% endif %}</label>
                                 <select name="punishment_type">
                                     <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout{% else %}تايم أوت (Timeout){% endif %}</option>
-                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}Mute{% else %}كتم كامل (Mute){% endif %}</option>
+                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}كتم كامل (Mute){% endif %}</option>
                                     <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>{% if current_lang == 'en' %}Kick{% else %}طرد (Kick){% endif %}</option>
                                 </select>
                             </div>
