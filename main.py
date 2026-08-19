@@ -133,7 +133,7 @@ def dashboard(guild_id):
       settings=settings,
       icon_url=icon_url,
       current_lang=current_lang,
-      _,
+      **{'_': translate}
   )
 
 
