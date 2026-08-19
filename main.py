@@ -495,6 +495,11 @@ async def on_member_join(member):
           welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
         else:
           welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
+        
+        # التعديل المضاف: معالجة النص الترحيبي النصي لكي يظهر بشكل سليم وغير معكوس باللغة العربية
+        if lang == "ar":
+          welcome_text = get_display(arabic_reshaper.reshape(welcome_text))
+
         await channel.send(content=welcome_text, file=card_file)
 
 
