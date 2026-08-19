@@ -313,12 +313,12 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     avatar_size = 200
     avatar_y = (height - avatar_size) // 2
 
-    # 3. معالجة النصوص وتعديل الاتجاه
+    # 3. معالجة النصوص وتعديل الاتجاه داخل الصورة
     if user_lang == "ar":
       avatar_x = width - avatar_size - 50
       text_x = 50  # محاذاة النص لليسار ليتناسب مع موقع البروفايل باليمين
 
-      # إصلاح معالجة اللغة العربية
+      # إصلاح معالجة اللغة العربية داخل الصورة فقط
       welcome_title = get_display(arabic_reshaper.reshape("أهلاً بك في السيرفر"))
       member_count_text = get_display(arabic_reshaper.reshape(f"العضو رقم #{member.guild.member_count}"))
       
@@ -496,10 +496,7 @@ async def on_member_join(member):
         else:
           welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
         
-        # التعديل المضاف: معالجة النص الترحيبي النصي لكي يظهر بشكل سليم وغير معكوس باللغة العربية
-        if lang == "ar":
-          welcome_text = get_display(arabic_reshaper.reshape(welcome_text))
-
+        # تم إزالة معالجة العكس لتظهر رسالة الترحيب في الشات بشكل طبيعي وسليم تماماً
         await channel.send(content=welcome_text, file=card_file)
 
 
