@@ -571,10 +571,6 @@
                     <i class="fa-solid fa-ranking-star"></i>
                     <span>نظام المستويات</span>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-language', this)">
-                    <i class="fa-solid fa-globe"></i>
-                    <span>لغة البوت</span>
-                </li>
             </ul>
         </nav>
 
@@ -860,25 +856,6 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 8. Language Settings Tab -->
-                <div id="section-language" class="tab-panel">
-                    <div class="form-section">
-                        <div class="section-header">
-                            <div class="section-header-icon">
-                                <i class="fa-solid fa-globe"></i>
-                            </div>
-                            <h3>لغة البوت (Bot Language)</h3>
-                        </div>
-                        <div class="form-group">
-                            <label>اختر لغة البوت الافتراضية في السيرفر:</label>
-                            <select name="language">
-                                <option value="ar" {% if settings and settings.get('language') == 'ar' %}selected{% endif %}>العربية (Arabic)</option>
-                                <option value="en" {% if settings and settings.get('language') == 'en' %}selected{% endif %}>الإنجليزية (English)</option>
-                            </select>
                         </div>
                     </div>
                 </div>
