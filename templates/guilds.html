@@ -338,7 +338,8 @@
                         <small class="text-muted">ID: {{ guild.id }}</small>
                     </div>
                 </div>
-                <a href="/dashboard/{{ guild.id }}{% if user_id %}?user_id={{ user_id }}{% elif request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn btn-manage">
+                <!-- تم تعديل الرابط أدناه لتمرير اللغة الحالية والمعرف معاً بشكل صحيح -->
+                <a href="/dashboard/{{ guild.id }}?{% if current_lang %}lang={{ current_lang }}&{% endif %}{% if user_id %}user_id={{ user_id }}{% elif request.args.get('user_id') %}user_id={{ request.args.get('user_id') }}{% endif %}" class="btn btn-manage">
                     <i class="fa-solid fa-gear {% if current_lang == 'en' %}me-1{% else %}ms-1{% endif %}"></i> {% if current_lang == 'en' %}Server Settings{% else %}إعدادات السيرفر{% endif %}
                 </a>
             </div>
