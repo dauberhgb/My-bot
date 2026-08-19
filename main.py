@@ -254,16 +254,15 @@ threading.Thread(target=run_web_server, daemon=True).start()
 
 
 # ==========================================
-# 3. دالة توليد بطاقة الترحيب الاحترافية (Welcome Card Generator)
+# 3. دالة توليد بطاقة الترحيب المتعددة اللغات والكبيرة (Welcome Card Generator)
 # ==========================================
-async def generate_welcome_card(member, bg_url=None):
+async def generate_welcome_card(member, bg_url=None, lang="ar"):
   try:
-    # أبعاد البطاقة
     width, height = 900, 400
     base = Image.new("RGBA", (width, height), (30, 30, 35, 255))
     draw = ImageDraw.Draw(base)
 
-    # محاولة تحميل الخلفية المخصصة أو إنشاء خلفية متدرجة فخمة افتراضية
+    # تحميل الخلفية أو رسم خلفية متدرجة
     bg = None
     if bg_url:
       try:
@@ -279,46 +278,72 @@ async def generate_welcome_card(member, bg_url=None):
     if bg:
       base.paste(bg, (0, 0))
     else:
-      # رسم تدرج لون خلفية افتراضي أنيق إذا لم تتوفر خلفية
       for x in range(width):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
         draw.line([(x, 0), (x, height)], fill=color)
 
-    # إضافة طبقة شفافة داكنة لزيادة وضوح النصوص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 120))
+    # طبقة شفافة داكنة لزيادة التباين ووضوح النصوص
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
-    # جلب صورة البروفايل الخاصة بالعضو وقصها بشكل دائري فخم
+    # معالجة صورة البروفايل بحجم 200x200 مع إطار مضيء
+    avatar_size = 200
+    avatar_x, avatar_y = 50, 100
     avatar_url = member.display_avatar.url
+
     async with aiohttp.ClientSession() as session:
       async with session.get(avatar_url) as resp:
         if resp.status == 200:
           avatar_data = await resp.read()
           avatar = Image.open(BytesIO(avatar_data)).convert("RGBA")
-          avatar = avatar.resize((180, 180))
+          avatar = avatar.resize((avatar_size, avatar_size))
 
-          # إنشاء قناع دائري للبروفايل
-          mask = Image.new("L", (180, 180), 0)
+          mask = Image.new("L", (avatar_size, avatar_size), 0)
           mask_draw = ImageDraw.Draw(mask)
-          mask_draw.ellipse((0, 0, 180, 180), fill=255)
+          mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
-          # لصق الصورة الدائرية في منتصف اليسار من البطاقة
-          base.paste(avatar, (60, 110), mask)
+          # إطار دائري حول البروفايل
+          draw.ellipse(
+              (avatar_x - 5, avatar_y - 5, avatar_x + avatar_size + 5, avatar_y + avatar_size + 5),
+              outline=(99, 102, 241, 255),
+              width=6
+          )
 
-    # كتابة النصوص (الاسم والترحيب)
+          base.paste(avatar, (avatar_x, avatar_y), mask)
+
+    # اختيار النصوص حسب اللغة
+    if lang == "en":
+      welcome_title = "WELCOME TO THE SERVER"
+      member_count_text = f"Member #{member.guild.member_count}"
+    else:
+      welcome_title = "أهلاً بك في السيرفر"
+      member_count_text = f"العضو رقم #{member.guild.member_count}"
+
+    # تحميل الخطوط بأحجام كبيرة وواضحة
     try:
-      font_large = ImageFont.truetype("arial.ttf", 40)
-      font_small = ImageFont.truetype("arial.ttf", 24)
+      font_title = ImageFont.truetype("arial.ttf", 36)
+      font_name = ImageFont.truetype("arial.ttf", 52)
+      font_sub = ImageFont.truetype("arial.ttf", 32)
     except IOError:
-      font_large = ImageFont.load_default()
-      font_small = ImageFont.load_default()
+      font_title = ImageFont.load_default()
+      font_name = ImageFont.load_default()
+      font_sub = ImageFont.load_default()
 
-    draw.text((270, 120), "WELCOME TO SERVER", fill=(147, 197, 253), font=font_small)
-    draw.text((270, 155), member.name, fill=(255, 255, 255), font=font_large)
-    draw.text((270, 220), f"Member #{member.guild.member_count}", fill=(209, 213, 219), font=font_small)
+    text_x = 280
 
-    # حفظ الصورة الناتجة مؤقتاً في الذاكرة الحية (RAM) للإرسال المباشر
+    # 1. العنوان الرئيسي مع ظلال داكنة
+    draw.text((text_x + 2, 102), welcome_title, fill=(0, 0, 0), font=font_title)
+    draw.text((text_x, 100), welcome_title, fill=(147, 197, 253), font=font_title)
+
+    # 2. اسم العضو
+    draw.text((text_x + 2, 162), member.name, fill=(0, 0, 0), font=font_name)
+    draw.text((text_x, 160), member.name, fill=(255, 255, 255), font=font_name)
+
+    # 3. رقم العضو
+    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0), font=font_sub)
+    draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub)
+
     final_buffer = BytesIO()
     base.convert("RGB").save(final_buffer, format="PNG")
     final_buffer.seek(0)
@@ -442,9 +467,11 @@ async def on_member_join(member):
     channel = member.guild.get_channel(int(welcome_channel_id))
     if channel:
       bg_url = settings.get("welcome_img") or settings.get("farewell_img")
-      card_file = await generate_welcome_card(member, bg_url)
+      lang = settings.get("language", "ar")
+      
+      # تمرير اللغة لدالة إنشاء البطاقة
+      card_file = await generate_welcome_card(member, bg_url, lang=lang)
       if card_file:
-        lang = settings.get("language", "ar")
         custom_msg = settings.get("welcome_msg", "")
         if custom_msg:
           welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
