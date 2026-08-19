@@ -898,13 +898,13 @@
             const form = document.getElementById('settingsForm');
             const formData = new FormData(form);
 
-            // جلب اللغة الحالية مباشرة من خاصية lang في وسم الـ html
-            const currentLang = document.documentElement.lang || 'ar';
+            // تم استبدال القراءة من الـ DOM بقراءة المتغير من البايثون مباشرة لضمان الدقة
+            const currentLang = "{{ current_lang if current_lang else 'ar' }}";
             // جلب اسم السيرفر ديناميكياً من الصفحة
             const serverNameElement = document.getElementById('serverNameElement');
             const serverName = serverNameElement ? serverNameElement.innerText : '';
 
-            // صياغة رسائل النجاح والخطأ بناءً على لغة الصفحة الفعالة ديناميكياً
+            // صياغة رسائل النجاح والخطأ بناءً على لغة القالب الفعالة
             let serverMsg = "";
             let errorMsg = "";
             if (currentLang === 'en') {
