@@ -548,7 +548,11 @@
         <!-- Left Menu Navigation -->
         <nav class="sidebar">
             <ul class="sidebar-menu">
-                <li class="sidebar-link active" onclick="switchTab('section-media', this)">
+                <li class="sidebar-link active" onclick="switchTab('section-welcome', this)">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>{% if current_lang == 'en' %}Welcome System{% else %}نظام الترحيب{% endif %}</span>
+                </li>
+                <li class="sidebar-link" onclick="switchTab('section-media', this)">
                     <i class="fa-solid fa-photo-film"></i>
                     <span>{% if current_lang == 'en' %}Media Channels{% else %}قنوات الميديا{% endif %}</span>
                 </li>
@@ -583,8 +587,53 @@
         <main class="main-content">
             <form id="settingsForm" action="/save/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" method="POST">
                 
+                <!-- 0. Welcome System Tab -->
+                <div id="section-welcome" class="tab-panel active">
+                    <div class="form-section">
+                        <div class="section-header">
+                            <div class="section-header-icon">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </div>
+                            <h3>{% if current_lang == 'en' %}Welcome Settings{% else %}إعدادات نظام الترحيب{% endif %}</h3>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
+                                <select name="welcome_enabled">
+                                    <option value="1" {% if settings and settings.get('welcome_enabled') == 1 %}selected{% endif %}>{% if current_lang == 'en' %}Enabled{% else %}مفعل{% endif %}</option>
+                                    <option value="0" {% if settings and settings.get('welcome_enabled') == 0 %}selected{% endif %}>{% if current_lang == 'en' %}Disabled{% else %}معطل{% endif %}</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Welcome Channel:{% else %}قناة الترحيب:{% endif %}</label>
+                                <select name="welcome_channel">
+                                    <option value="">{% if current_lang == 'en' %}-- Select Channel --{% else %}-- اختر القناة --{% endif %}</option>
+                                    {% for ch in channels %}
+                                        <option value="{{ ch.id }}" {% if settings and settings.get('welcome_channel') == ch.id %}selected{% endif %}>
+                                            # {{ ch.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>{% if current_lang == 'en' %}Welcome Message:{% else %}رسالة الترحيب:{% endif %}</label>
+                            <span class="sub-label">{% if current_lang == 'en' %}Use {user} to mention the new member.{else %}استخدم {user} للإشارة للعضو الجديد.{% endif %}</span>
+                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg', 'أهلاً بك يا {user} في السيرفر! 🎉') if settings else 'أهلاً بك يا {user} في السيرفر! 🎉' }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>{% if current_lang == 'en' %}Welcome Image URL:{% else %}رابط صورة الترحيب (URL):{% endif %}</label>
+                            <input type="text" name="welcome_img" value="{{ settings.get('welcome_img', '') if settings else '' }}" placeholder="https://example.com/welcome.png">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 1. Media Channels Tab -->
-                <div id="section-media" class="tab-panel active">
+                <div id="section-media" class="tab-panel">
                     <div class="form-section">
                         <div class="section-header">
                             <div class="section-header-icon">
