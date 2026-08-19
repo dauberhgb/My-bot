@@ -31,6 +31,14 @@ OWNER_ID = 1462429084377157832
 app = Flask(__name__)
 
 
+# دالة مساعدة لجلب لغة السيرفر
+def get_guild_lang(guild_id):
+  if not guild_id:
+    return "ar"
+  settings = database.get_settings(guild_id)
+  return settings.get("language", "ar")
+
+
 # دالة ديكوراتور للتحقق من هوية وصلاحية المشرف
 def admin_required(f):
   @wraps(f)
@@ -174,7 +182,6 @@ def update_language():
 def save(guild_id):
   guild = bot.get_guild(int(guild_id))
 
-  # استقبال قنوات الميديا وحالات التفعيل بشكل صحيح
   media_channels = request.form.getlist("media_channels")
   media_enabled = True if request.form.get("media_enabled") == "on" else False
   banned_enabled = True if request.form.get("banned_enabled") == "on" else False
@@ -262,6 +269,30 @@ async def on_ready():
     print("⚠️ مجلد cogs غير موجود، سيتم إنشاؤه لإضافة الأنظمة الجديدة لاحقاً.")
 
 
+# ==========================================
+# إضافة أمر تغيير اللغة الجديد (/language)
+# ==========================================
+@bot.tree.command(
+    name="language", description="تغيير لغة ردود وبوتات السيرفر"
+)
+@app_commands.describe(lang="اختر اللغة المفضلة / Select your preferred language")
+@app_commands.choices(lang=[
+    app_commands.Choice(name="العربية (Arabic)", value="ar"),
+    app_commands.Choice(name="English (الإنجليزية)", value="en")
+])
+@app_commands.checks.has_permissions(manage_guild=True)
+async def language_command(interaction: discord.Interaction, lang: app_commands.Choice[str]):
+  guild_id = interaction.guild.id
+  settings = database.get_settings(guild_id)
+  settings["language"] = lang.value
+  database.save_settings(guild_id, settings)
+
+  if lang.value == "en":
+    await interaction.response.send_message("✅ Successfully changed the bot response language to **English**!", ephemeral=True)
+  else:
+    await interaction.response.send_message("✅ تم تغيير لغة ردود البوت إلى **العربية** بنجاح!", ephemeral=True)
+
+
 @bot.tree.command(
     name="setup",
     description="الانتقال إلى صفحة سيرفراتك في لوحة التحكم",
@@ -270,6 +301,7 @@ async def on_ready():
 @app_commands.checks.cooldown(1, 5.0)
 async def setup(interaction: discord.Interaction):
   user_id = str(interaction.user.id)
+  lang = get_guild_lang(interaction.guild.id)
 
   base_url = os.getenv("DASHBOARD_URL", "").rstrip("/")
   if not base_url:
@@ -279,19 +311,24 @@ async def setup(interaction: discord.Interaction):
 
   view = discord.ui.View()
   button = discord.ui.Button(
-      label="عرض سيرفراتي ⚙️",
+      label="View My Servers ⚙️" if lang == "en" else "عرض سيرفراتي ⚙️",
       url=guilds_link,
       style=discord.ButtonStyle.link,
   )
   view.add_item(button)
 
-  embed = discord.Embed(
-      title="🛠️ لوحة تحكم البوت",
-      description=(
-          "مرحباً بك! يمكنك إدارة جميع سيرفراتك التي تمتلك صلاحية إدارتها عبر الضغط على الزر أدناه:"
-      ),
-      color=discord.Color.blue(),
-  )
+  if lang == "en":
+    embed = discord.Embed(
+        title="🛠️ Bot Control Panel",
+        description="Welcome! You can manage all your servers where you have management permissions by clicking the button below:",
+        color=discord.Color.blue(),
+    )
+  else:
+    embed = discord.Embed(
+        title="🛠️ لوحة تحكم البوت",
+        description="مرحباً بك! يمكنك إدارة جميع سيرفراتك التي تمتلك صلاحية إدارتها عبر الضغط على الزر أدناه:",
+        color=discord.Color.blue(),
+    )
 
   await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -338,8 +375,10 @@ async def on_member_remove(member):
   )
 
   if channel:
+    lang = settings.get("language", "ar")
+    default_title = "Goodbye" if lang == "en" else "وداعاً"
     embed = discord.Embed(
-        title=settings.get("farewell_title", "وداعاً"),
+        title=settings.get("farewell_title", default_title),
         description=settings.get("farewell_desc", "").replace(
             "{user}", member.mention
         ),
@@ -355,21 +394,19 @@ async def on_member_remove(member):
       class FarewellView(discord.ui.View):
 
         @discord.ui.button(
-            label=f"تطبيق {action.upper()}", style=discord.ButtonStyle.danger
+            label=f"Apply {action.upper()}" if lang == "en" else f"تطبيق {action.upper()}", style=discord.ButtonStyle.danger
         )
         async def btn_callback(self, interaction, button):
           if action == "ban":
-            await member.ban(reason="عن طريق زر الوداع")
-            await interaction.response.send_message(
-                "تم حظر العضو.", ephemeral=True
-            )
+            await member.ban(reason="Farewell button action" if lang == "en" else "عن طريق زر الوداع")
+            msg = "Member banned." if lang == "en" else "تم حظر العضو."
+            await interaction.response.send_message(msg, ephemeral=True)
           elif action == "timeout":
             await member.timeout(
-                timedelta(minutes=10), reason="عن طريق زر الوداع"
+                timedelta(minutes=10), reason="Farewell button action" if lang == "en" else "عن طريق زر الوداع"
             )
-            await interaction.response.send_message(
-                "تم إعطاء تايم أوت.", ephemeral=True
-            )
+            msg = "Member timed out." if lang == "en" else "تم إعطاء تايم أوت."
+            await interaction.response.send_message(msg, ephemeral=True)
 
       view = FarewellView()
 
@@ -386,6 +423,8 @@ async def on_message(message):
     await bot.process_commands(message)
     return
 
+  lang = settings.get("language", "ar")
+
   if settings.get("xp_enabled", 1) == 1:
     xp_gain = settings.get("xp_per_message", 15)
     if hasattr(database, "add_user_xp"):
@@ -394,9 +433,10 @@ async def on_message(message):
       )
       if leveled_up:
         try:
-          await message.channel.send(
-              f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى **{new_level}** 🚀"
-          )
+          if lang == "en":
+            await message.channel.send(f"🎉 Congratulations {message.author.mention}! You leveled up to **{new_level}** 🚀")
+          else:
+            await message.channel.send(f"🎉 مبروك {message.author.mention}! لقد ترقيت إلى المستوى **{new_level}** 🚀")
 
           role_id_to_give = None
           if new_level == 5:
@@ -410,9 +450,10 @@ async def on_message(message):
             target_role = message.guild.get_role(int(role_id_to_give))
             if target_role:
               await message.author.add_roles(target_role)
-              await message.channel.send(
-                  f"🎁 لقد حصلت على رول التميز: **{target_role.name}**!"
-              )
+              if lang == "en":
+                await message.channel.send(f"🎁 You received the role: **{target_role.name}**!")
+              else:
+                await message.channel.send(f"🎁 لقد حصلت على رول التميز: **{target_role.name}**!")
         except Exception as e:
           print(f"خطأ في منح رول المستوى: {e}")
 
@@ -428,9 +469,8 @@ async def on_message(message):
       )
       if not has_media:
         await message.delete()
-        warn_msg = settings.get(
-            "media_warning", "عذراً هذه القناة للميديا فقط!"
-        ).replace("{user}", message.author.mention)
+        default_warn = "Sorry, this channel is for media only!" if lang == "en" else "عذراً هذه القناة للميديا فقط!"
+        warn_msg = settings.get("media_warning", default_warn).replace("{user}", message.author.mention)
         await message.channel.send(warn_msg, delete_after=5)
         return
 
@@ -449,12 +489,15 @@ async def on_message(message):
       max_v = settings.get("max_violations", 3)
 
       if count < max_v:
-        title = settings.get("warning_title", "تحذير")
+        default_title = "Warning" if lang == "en" else "تحذير"
+        title = settings.get("warning_title", default_title)
         msg_text = (
             settings.get("warning_msg_1")
             if count == 1
             else settings.get("warning_msg_2")
         )
+        if not msg_text:
+          msg_text = "Please follow the rules!" if lang == "en" else "يرجى الالتزام بالقوانين!"
         msg_text = msg_text.replace("{user}", message.author.mention)
         embed = discord.Embed(
             title=title, description=msg_text, color=discord.Color.gold()
@@ -466,15 +509,15 @@ async def on_message(message):
         try:
           if p_type == "timeout":
             await message.author.timeout(
-                timedelta(minutes=t_min), reason="مخالفة القوانين"
+                timedelta(minutes=t_min), reason="Rule violation" if lang == "en" else "مخالفة القوانين"
             )
           elif p_type == "kick":
-            await message.author.kick(reason="مخالفة القوانين")
+            await message.author.kick(reason="Rule violation" if lang == "en" else "مخالفة القوانين")
           elif p_type == "mute":
-            await message.author.timeout(timedelta(days=7), reason="كتم كامل")
-          await message.channel.send(
-              f"تم تطبيق ({p_type}) على {message.author.mention}."
-          )
+            await message.author.timeout(timedelta(days=7), reason="Full mute" if lang == "en" else "كتم كامل")
+          
+          punishment_msg = f"Applied ({p_type}) to {message.author.mention}." if lang == "en" else f"تم تطبيق ({p_type}) على {message.author.mention}."
+          await message.channel.send(punishment_msg)
         except Exception as e:
           print(f"خطأ في العقوبة: {e}")
         violations[g_id][u_id] = 0
@@ -516,24 +559,24 @@ async def userinfo(
     interaction: discord.Interaction, member: discord.Member = None
 ):
   target = member or interaction.user
+  lang = get_guild_lang(interaction.guild.id)
 
-  embed = discord.Embed(
-      title=f"معلومات العضو: {target.display_name}", color=discord.Color.blue()
-  )
-  embed.set_thumbnail(url=target.display_avatar.url)
-  embed.add_field(name="الاسم:", value=target.name, inline=True)
-  embed.add_field(name="المعرف (ID):", value=target.id, inline=True)
-  embed.add_field(
-      name="تاريخ إنشاء الحساب:",
-      value=target.created_at.strftime("%Y-%m-%d"),
-      inline=False,
-  )
-  embed.add_field(
-      name="تاريخ الانضمام للسيرفر:",
-      value=target.joined_at.strftime("%Y-%m-%d"),
-      inline=False,
-  )
-  embed.add_field(name="أعلى رول:", value=target.top_role.mention, inline=True)
+  if lang == "en":
+    embed = discord.Embed(title=f"User Info: {target.display_name}", color=discord.Color.blue())
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="Name:", value=target.name, inline=True)
+    embed.add_field(name="ID:", value=target.id, inline=True)
+    embed.add_field(name="Account Created:", value=target.created_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="Server Joined:", value=target.joined_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="Top Role:", value=target.top_role.mention, inline=True)
+  else:
+    embed = discord.Embed(title=f"معلومات العضو: {target.display_name}", color=discord.Color.blue())
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="الاسم:", value=target.name, inline=True)
+    embed.add_field(name="المعرف (ID):", value=target.id, inline=True)
+    embed.add_field(name="تاريخ إنشاء الحساب:", value=target.created_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="تاريخ الانضمام للسيرفر:", value=target.joined_at.strftime("%Y-%m-%d"), inline=False)
+    embed.add_field(name="أعلى رول:", value=target.top_role.mention, inline=True)
 
   await interaction.response.send_message(embed=embed)
 
@@ -543,23 +586,28 @@ async def userinfo(
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
 async def serverinfo(interaction: discord.Interaction):
   guild = interaction.guild
+  lang = get_guild_lang(guild.id)
 
-  embed = discord.Embed(
-      title=f"إحصائيات {guild.name}", color=discord.Color.purple()
-  )
-  if guild.icon:
-    embed.set_thumbnail(url=guild.icon.url)
-
-  embed.add_field(name="معرف السيرفر (ID):", value=guild.id, inline=True)
-  embed.add_field(name="مالك السيرفر:", value=f"<@{guild.owner_id}>", inline=True)
-  embed.add_field(name="عدد الأعضاء الإجمالي:", value=guild.member_count, inline=True)
-  embed.add_field(name="عدد القنوات:", value=len(guild.channels), inline=True)
-  embed.add_field(name="عدد الرولات:", value=len(guild.roles), inline=True)
-  embed.add_field(
-      name="تاريخ الإنشاء:",
-      value=guild.created_at.strftime("%Y-%m-%d"),
-      inline=False,
-  )
+  if lang == "en":
+    embed = discord.Embed(title=f"Statistics for {guild.name}", color=discord.Color.purple())
+    if guild.icon:
+      embed.set_thumbnail(url=guild.icon.url)
+    embed.add_field(name="Server ID:", value=guild.id, inline=True)
+    embed.add_field(name="Server Owner:", value=f"<@{guild.owner_id}>", inline=True)
+    embed.add_field(name="Total Members:", value=guild.member_count, inline=True)
+    embed.add_field(name="Channels Count:", value=len(guild.channels), inline=True)
+    embed.add_field(name="Roles Count:", value=len(guild.roles), inline=True)
+    embed.add_field(name="Creation Date:", value=guild.created_at.strftime("%Y-%m-%d"), inline=False)
+  else:
+    embed = discord.Embed(title=f"إحصائيات {guild.name}", color=discord.Color.purple())
+    if guild.icon:
+      embed.set_thumbnail(url=guild.icon.url)
+    embed.add_field(name="معرف السيرفر (ID):", value=guild.id, inline=True)
+    embed.add_field(name="مالك السيرفر:", value=f"<@{guild.owner_id}>", inline=True)
+    embed.add_field(name="عدد الأعضاء الإجمالي:", value=guild.member_count, inline=True)
+    embed.add_field(name="عدد القنوات:", value=len(guild.channels), inline=True)
+    embed.add_field(name="عدد الرولات:", value=len(guild.roles), inline=True)
+    embed.add_field(name="تاريخ الإنشاء:", value=guild.created_at.strftime("%Y-%m-%d"), inline=False)
 
   await interaction.response.send_message(embed=embed)
 
@@ -576,10 +624,11 @@ async def serverinfo(interaction: discord.Interaction):
 async def clear(
     interaction: discord.Interaction, amount: int, member: discord.Member = None
 ):
+  lang = get_guild_lang(interaction.guild.id)
+
   if amount < 1 or amount > 100:
-    await interaction.response.send_message(
-        "يرجى إدخال رقم بين 1 و 100.", ephemeral=True
-    )
+    msg = "Please enter a number between 1 and 100." if lang == "en" else "يرجى إدخال رقم بين 1 و 100."
+    await interaction.response.send_message(msg, ephemeral=True)
     return
 
   await interaction.response.defer(ephemeral=True)
@@ -588,9 +637,8 @@ async def clear(
     return msg.author == member if member else True
 
   deleted = await interaction.channel.purge(limit=amount, check=check)
-  await interaction.followup.send(
-      f"تم مسح {len(deleted)} رسالة بنجاح.", ephemeral=True
-  )
+  success_msg = f"Successfully cleared {len(deleted)} messages." if lang == "en" else f"تم مسح {len(deleted)} رسالة بنجاح."
+  await interaction.followup.send(success_msg, ephemeral=True)
 
 
 @bot.tree.command(name="ping", description="عرض سرعة اتصال البوت واستجابته")
@@ -598,13 +646,20 @@ async def clear(
 @app_commands.checks.cooldown(1, 3.0, key=lambda i: (i.guild_id, i.user.id))
 async def ping(interaction: discord.Interaction):
   latency = round(bot.latency * 1000)
-  embed = discord.Embed(
-      title="🏓 Pong!",
-      description=f"سرعة استجابة البوت (Latency): **{latency} ms**",
-      color=discord.Color.green()
-      if latency < 150
-      else discord.Color.red(),
-  )
+  lang = get_guild_lang(interaction.guild.id)
+
+  if lang == "en":
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"Bot Latency: **{latency} ms**",
+        color=discord.Color.green() if latency < 150 else discord.Color.red(),
+    )
+  else:
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"سرعة استجابة البوت (Latency): **{latency} ms**",
+        color=discord.Color.green() if latency < 150 else discord.Color.red(),
+    )
   await interaction.response.send_message(embed=embed)
 
 
@@ -614,25 +669,31 @@ async def ping(interaction: discord.Interaction):
 async def botinfo(interaction: discord.Interaction):
   total_guilds = len(bot.guilds)
   total_users = sum(g.member_count for g in bot.guilds)
+  lang = get_guild_lang(interaction.guild.id)
 
-  embed = discord.Embed(
-      title="معلومات البوت ورابط الدعم",
-      description=(
-          "شكراً لاستخدامك البوت! يمكنك دعمنا وتقييمنا على منصة Top.gg."
-      ),
-      color=discord.Color.gold(),
-  )
-  embed.add_field(
-      name="السيرفرات الخادمة:", value=f"{total_guilds} سيرفر", inline=True
-  )
-  embed.add_field(
-      name="إجمالي المستخدمين:", value=f"{total_users} عضو", inline=True
-  )
+  if lang == "en":
+    embed = discord.Embed(
+        title="Bot Information & Support",
+        description="Thanks for using the bot! You can support and rate us on Top.gg.",
+        color=discord.Color.gold(),
+    )
+    embed.add_field(name="Serving Servers:", value=f"{total_guilds} servers", inline=True)
+    embed.add_field(name="Total Users:", value=f"{total_users} members", inline=True)
+    btn_label = "Support Bot on Top.gg"
+  else:
+    embed = discord.Embed(
+        title="معلومات البوت ورابط الدعم",
+        description="شكراً لاستخدامك البوت! يمكنك دعمنا وتقييمنا على منصة Top.gg.",
+        color=discord.Color.gold(),
+    )
+    embed.add_field(name="السيرفرات الخادمة:", value=f"{total_guilds} سيرفر", inline=True)
+    embed.add_field(name="إجمالي المستخدمين:", value=f"{total_users} عضو", inline=True)
+    btn_label = "دعم البوت على Top.gg"
 
   view = discord.ui.View()
   view.add_item(
       discord.ui.Button(
-          label="دعم البوت على Top.gg",
+          label=btn_label,
           url="https://top.gg",
           style=discord.ButtonStyle.link,
       )
@@ -643,8 +704,10 @@ async def botinfo(interaction: discord.Interaction):
 
 class CloseTicketView(discord.ui.View):
 
-  def __init__(self):
+  def __init__(self, lang="ar"):
     super().__init__(timeout=None)
+    self.lang = lang
+    self.children[0].label = "Close Ticket 🔒" if lang == "en" else "إغلاق التذكرة 🔒"
 
   @discord.ui.button(
       label="إغلاق التذكرة 🔒",
@@ -654,9 +717,9 @@ class CloseTicketView(discord.ui.View):
   async def close_ticket(
       self, interaction: discord.Interaction, button: discord.ui.Button
   ):
-    await interaction.response.send_message(
-        "جاري إغلاق القناة...", ephemeral=True
-    )
+    lang = get_guild_lang(interaction.guild.id)
+    closing_msg = "Closing channel..." if lang == "en" else "جاري إغلاق القناة..."
+    await interaction.response.send_message(closing_msg, ephemeral=True)
     try:
       await interaction.channel.delete()
     except:
@@ -665,8 +728,10 @@ class CloseTicketView(discord.ui.View):
 
 class TicketButtonView(discord.ui.View):
 
-  def __init__(self):
+  def __init__(self, lang="ar"):
     super().__init__(timeout=None)
+    self.lang = lang
+    self.children[0].label = "Open Ticket 🎫" if lang == "en" else "فتح تذكرة 🎫"
 
   @discord.ui.button(
       label="فتح تذكرة 🎫",
@@ -680,6 +745,7 @@ class TicketButtonView(discord.ui.View):
 
     guild = interaction.guild
     settings = database.get_settings(guild.id)
+    lang = settings.get("language", "ar")
     cat_id = settings.get("ticket_category")
     support_role_id = settings.get("ticket_support_role")
 
@@ -696,10 +762,8 @@ class TicketButtonView(discord.ui.View):
         guild.text_channels, name=f"ticket-{interaction.user.name.lower()}"
     )
     if existing_channel:
-      await interaction.followup.send(
-          f"لديك تذكرة مفتوحة بالفعل هنا: {existing_channel.mention}",
-          ephemeral=True,
-      )
+      msg = f"You already have an open ticket here: {existing_channel.mention}" if lang == "en" else f"لديك تذكرة مفتوحة بالفعل هنا: {existing_channel.mention}"
+      await interaction.followup.send(msg, ephemeral=True)
       return
 
     overwrites = {
@@ -724,27 +788,29 @@ class TicketButtonView(discord.ui.View):
           channel_name, category=category, overwrites=overwrites
       )
 
-      embed = discord.Embed(
-          title="🎫 تذكرة دعم فني جديدة",
-          description=(
-              f"مرحباً {interaction.user.mention}، يرجى كتابة مشكلتك وسيتم الرد"
-              " عليك قريباً من قبل فريق الدعم."
-          ),
-          color=0x6366f1,
-      )
+      if lang == "en":
+        embed = discord.Embed(
+            title="🎫 New Support Ticket",
+            description=f"Welcome {interaction.user.mention}, please describe your issue and support staff will reply soon.",
+            color=0x6366f1,
+        )
+      else:
+        embed = discord.Embed(
+            title="🎫 تذكرة دعم فني جديدة",
+            description=f"مرحباً {interaction.user.mention}، يرجى كتابة مشكلتك وسيتم الرد عليك قريباً من قبل فريق الدعم.",
+            color=0x6366f1,
+        )
+
       await ticket_chan.send(
           content=interaction.user.mention,
           embed=embed,
-          view=CloseTicketView(),
+          view=CloseTicketView(lang=lang),
       )
-      await interaction.followup.send(
-          f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}", ephemeral=True
-      )
+      success_msg = f"Ticket created successfully: {ticket_chan.mention}" if lang == "en" else f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}"
+      await interaction.followup.send(success_msg, ephemeral=True)
     except Exception as e:
-      await interaction.followup.send(
-          "حدث خطأ أثناء إنشاء التذكرة، يرجى التحقق من صلاحيات البوت.",
-          ephemeral=True,
-      )
+      err_msg = "An error occurred while creating the ticket, please check bot permissions." if lang == "en" else "حدث خطأ أثناء إنشاء التذكرة، يرجى التحقق من صلاحيات البوت."
+      await interaction.followup.send(err_msg, ephemeral=True)
 
 
 @bot.tree.command(
@@ -752,15 +818,24 @@ class TicketButtonView(discord.ui.View):
 )
 @app_commands.checks.has_permissions(manage_guild=True)
 async def ticket_setup(interaction: discord.Interaction):
-  embed = discord.Embed(
-      title="🎫 نظام التذاكر والدعم الفني",
-      description="اضغط على الزر بالأسفل لفتح تذكرة جديدة والتواصل مع الإدارة.",
-      color=0xa855f7,
-  )
-  await interaction.channel.send(embed=embed, view=TicketButtonView())
-  await interaction.response.send_message(
-      "تم إرسال لوحة التذاكر بنجاح!", ephemeral=True
-  )
+  lang = get_guild_lang(interaction.guild.id)
+  if lang == "en":
+    embed = discord.Embed(
+        title="🎫 Ticket & Support System",
+        description="Click the button below to open a new ticket and contact staff.",
+        color=0xa855f7,
+    )
+    sent_msg = "Ticket panel sent successfully!"
+  else:
+    embed = discord.Embed(
+        title="🎫 نظام التذاكر والدعم الفني",
+        description="اضغط على الزر بالأسفل لفتح تذكرة جديدة والتواصل مع الإدارة.",
+        color=0xa855f7,
+    )
+    sent_msg = "تم إرسال لوحة التذاكر بنجاح!"
+
+  await interaction.channel.send(embed=embed, view=TicketButtonView(lang=lang))
+  await interaction.response.send_message(sent_msg, ephemeral=True)
 
 
 @bot.tree.command(name="level", description="عرض مستواك الحالي ونقاط الخبرة XP")
@@ -769,6 +844,8 @@ async def level_command(
     interaction: discord.Interaction, member: discord.Member = None
 ):
   target = member or interaction.user
+  lang = get_guild_lang(interaction.guild.id)
+
   if hasattr(database, "get_user_level"):
     xp, lvl = database.get_user_level(interaction.guild.id, target.id)
   else:
@@ -776,11 +853,15 @@ async def level_command(
 
   next_xp = lvl * 100 + 100
 
-  embed = discord.Embed(
-      title=f"📊 رتبة العضو {target.name}", color=discord.Color.pink()
-  )
-  embed.add_field(name="المستوى", value=str(lvl), inline=True)
-  embed.add_field(name="نقاط الخبرة (XP)", value=f"{xp} / {next_xp}", inline=True)
+  if lang == "en":
+    embed = discord.Embed(title=f"📊 User Rank: {target.name}", color=discord.Color.pink())
+    embed.add_field(name="Level", value=str(lvl), inline=True)
+    embed.add_field(name="XP Points", value=f"{xp} / {next_xp}", inline=True)
+  else:
+    embed = discord.Embed(title=f"📊 رتبة العضو {target.name}", color=discord.Color.pink())
+    embed.add_field(name="المستوى", value=str(lvl), inline=True)
+    embed.add_field(name="نقاط الخبرة (XP)", value=f"{xp} / {next_xp}", inline=True)
+
   embed.set_thumbnail(url=target.display_avatar.url)
   await interaction.response.send_message(embed=embed)
 
@@ -791,6 +872,7 @@ async def level_command(
 @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))
 async def leaderboard(interaction: discord.Interaction):
   guild_id = interaction.guild.id
+  lang = get_guild_lang(guild_id)
 
   top_users = (
       database.get_top_users(guild_id, limit=10)
@@ -798,23 +880,28 @@ async def leaderboard(interaction: discord.Interaction):
       else []
   )
 
-  embed = discord.Embed(
-      title=f"🏆 قائمة المتصدرين في {interaction.guild.name}",
-      description="أكثر الأعضاء تفاعلاً وحصولاً على نقاط الخبرة (XP):",
-      color=discord.Color.gold(),
-  )
+  if lang == "en":
+    embed = discord.Embed(
+        title=f"🏆 Leaderboard for {interaction.guild.name}",
+        description="Most active members with the highest XP points:",
+        color=discord.Color.gold(),
+    )
+  else:
+    embed = discord.Embed(
+        title=f"🏆 قائمة المتصدرين في {interaction.guild.name}",
+        description="أكثر الأعضاء تفاعلاً وحصولاً على نقاط الخبرة (XP):",
+        color=discord.Color.gold(),
+    )
 
   if not top_users:
-    embed.add_field(
-        name="لا توجد بيانات بعد",
-        value="ابدأ بإرسال الرسائل لتكون أول المتصدرين!",
-        inline=False,
-    )
+    no_data_name = "No data yet" if lang == "en" else "لا توجد بيانات بعد"
+    no_data_val = "Start sending messages to be on top!" if lang == "en" else "ابدأ بإرسال الرسائل لتكون أول المتصدرين!"
+    embed.add_field(name=no_data_name, value=no_data_val, inline=False)
   else:
     desc_list = []
     for index, (uid, xp, lvl) in enumerate(top_users, start=1):
       member = interaction.guild.get_member(int(uid))
-      name = member.mention if member else f"مستخدم مغادر ({uid})"
+      name = member.mention if member else (f"Left user ({uid})" if lang == "en" else f"مستخدم مغادر ({uid})")
       medal = (
           "🥇"
           if index == 1
@@ -824,7 +911,8 @@ async def leaderboard(interaction: discord.Interaction):
           if index == 3
           else f"**#{index}**"
       )
-      desc_list.append(f"{medal} {name} — المستوى: **{lvl}** (`{xp} XP`)")
+      lvl_text = "Level" if lang == "en" else "المستوى"
+      desc_list.append(f"{medal} {name} — {lvl_text}: **{lvl}** (`{xp} XP`)")
     embed.description = "\n".join(desc_list)
 
   if interaction.guild.icon:
@@ -837,30 +925,30 @@ async def leaderboard(interaction: discord.Interaction):
 async def on_app_command_error(
     interaction: discord.Interaction, error: app_commands.AppCommandError
 ):
+  lang = get_guild_lang(interaction.guild_id) if interaction.guild_id else "ar"
+
   if isinstance(error, app_commands.MissingPermissions):
-    if not interaction.response.is_done():
-      await interaction.response.send_message(
-          "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة"
-          " السيرفر - Manage Server).**",
-          ephemeral=True,
-      )
+    if lang == "en":
+      msg = "❌ **Sorry! This command is only for members with (Manage Server) permission.**"
     else:
-      await interaction.followup.send(
-          "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة"
-          " السيرفر - Manage Server).**",
-          ephemeral=True,
-      )
+      msg = "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة السيرفر - Manage Server).**"
+
+    if not interaction.response.is_done():
+      await interaction.response.send_message(msg, ephemeral=True)
+    else:
+      await interaction.followup.send(msg, ephemeral=True)
   elif isinstance(error, app_commands.CommandOnCooldown):
-    msg = (
-        "⏳ انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد"
-        f" {round(error.retry_after, 1)} ثانية."
-    )
+    if lang == "en":
+      msg = f"⏳ Please wait! You can use this command again in {round(error.retry_after, 1)} seconds."
+    else:
+      msg = f"⏳ انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {round(error.retry_after, 1)} ثانية."
+
     if not interaction.response.is_done():
       await interaction.response.send_message(msg, ephemeral=True)
     else:
       await interaction.followup.send(msg, ephemeral=True)
   else:
-    msg = "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
+    msg = "An unexpected error occurred while executing the command." if lang == "en" else "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
     if not interaction.response.is_done():
       await interaction.response.send_message(msg, ephemeral=True)
     else:
