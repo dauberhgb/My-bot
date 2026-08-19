@@ -313,19 +313,18 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     avatar_size = 200
     avatar_y = (height - avatar_size) // 2
 
-    # 3. معالجة النصوص وتعديل الاتجاه داخل الصورة (تم تصحيح ترتيب الكلمات والحروف العربية)
+    # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
-      avatar_x = width - avatar_size - 50
-      text_x = 50  # محاذاة النص لليسار ليتناسب مع موقع البروفايل باليمين
+      avatar_x = width - avatar_size - 50  # البروفايل على اليمين
+      text_x = width - 330                 # بدء النصوص من اليمين لليسار طبيعياً
 
       raw_title = "أهلاً بك في السيرفر"
-      welcome_title = arabic_reshaper.reshape(" ".join(raw_title.split()[::-1]))
+      welcome_title = arabic_reshaper.reshape(raw_title)
 
       raw_count = f"العضو رقم #{member.guild.member_count}"
-      member_count_text = arabic_reshaper.reshape(" ".join(raw_count.split()[::-1]))
+      member_count_text = arabic_reshaper.reshape(raw_count)
       
-      reshaped_name = arabic_reshaper.reshape(member.name[:18])
-      display_name = reshaped_name
+      display_name = arabic_reshaper.reshape(member.name[:18])
     else:
       avatar_x = 50
       text_x = 280
@@ -354,15 +353,15 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
           )
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
-    # 5. رسم النصوص
-    draw.text((text_x + 2, 62), welcome_title, fill=(0, 0, 0, 220), font=font_title)
-    draw.text((text_x, 60), welcome_title, fill=(147, 197, 253), font=font_title)
+    # 5. رسم النصوص (باستخدام anchor="ra" لضبط محاذاة الجملة العربية من اليمين لليسار)
+    draw.text((text_x + 2, 62), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 60), welcome_title, fill=(147, 197, 253), font=font_title, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((text_x + 2, 142), display_name, fill=(0, 0, 0, 220), font=font_name)
-    draw.text((text_x, 140), display_name, fill=(255, 255, 255), font=font_name)
+    draw.text((text_x + 2, 142), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 140), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 220), font=font_sub)
-    draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub)
+    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
 
     final_buffer = BytesIO()
     base.convert("RGB").save(final_buffer, format="PNG")
@@ -498,7 +497,6 @@ async def on_member_join(member):
         else:
           welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
         
-        # تم إزالة معالجة العكس لتظهر رسالة الترحيب في الشات بشكل طبيعي وسليم تماماً
         await channel.send(content=welcome_text, file=card_file)
 
 
