@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ current_lang if current_lang else 'ar' }}" dir="{{ 'ltr' if current_lang == 'en' else 'rtl' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم السيرفر | {{ guild.name }}</title>
+    <title>{% if current_lang == 'en' %}Server Dashboard | {{ guild.name }}{% else %}لوحة تحكم السيرفر | {{ guild.name }}{% endif %}</title>
     <!-- Google Fonts: Cairo -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
@@ -202,7 +202,11 @@
             backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
             padding: 30px 18px;
+            {% if current_lang == 'en' %}
+            border-left: 1px solid var(--border-glass);
+            {% else %}
             border-right: 1px solid var(--border-glass);
+            {% endif %}
             order: 2;
             position: sticky;
             top: 90px;
@@ -247,7 +251,7 @@
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-white);
             border-color: rgba(255, 255, 255, 0.1);
-            transform: translateX(-4px);
+            transform: {% if current_lang == 'en' %}translateX(4px){% else %}translateX(-4px){% endif %};
         }
 
         .sidebar-link:hover i {
@@ -311,7 +315,7 @@
             content: '';
             position: absolute;
             top: 0;
-            right: 0;
+            {% if current_lang == 'en' %}left{% else %}right{% endif %}: 0;
             width: 100%;
             height: 3px;
             background: var(--accent-gradient);
@@ -417,7 +421,7 @@
         .submit-container {
             margin-top: 35px;
             display: flex;
-            justify-content: flex-end;
+            justify-content: {% if current_lang == 'en' %}flex-end{% else %}flex-end{% endif %};
         }
 
         .btn-save {
@@ -505,6 +509,7 @@
                 height: auto;
                 position: static;
                 border-right: none;
+                border-left: none;
                 border-bottom: 1px solid var(--border-glass);
             }
             .sidebar-menu { flex-direction: row; overflow-x: auto; }
@@ -534,7 +539,7 @@
             <span class="server-name">{{ guild.name }}</span>
         </div>
         <a href="/guilds{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
-            <i class="fa-solid fa-arrow-right"></i> قائمة السيرفرات
+            <i class="fa-solid fa-arrow-{{ 'left' if current_lang == 'en' else 'right' }}"></i> {% if current_lang == 'en' %}Servers List{% else %}قائمة السيرفرات{% endif %}
         </a>
     </header>
 
@@ -545,31 +550,31 @@
             <ul class="sidebar-menu">
                 <li class="sidebar-link active" onclick="switchTab('section-media', this)">
                     <i class="fa-solid fa-photo-film"></i>
-                    <span>قنوات الميديا</span>
+                    <span>{% if current_lang == 'en' %}Media Channels{% else %}قنوات الميديا{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-banned', this)">
                     <i class="fa-solid fa-ban"></i>
-                    <span>الكلمات المحظورة</span>
+                    <span>{% if current_lang == 'en' %}Banned Words{% else %}الكلمات المحظورة{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-responses', this)">
                     <i class="fa-solid fa-reply"></i>
-                    <span>الردود التلقائية</span>
+                    <span>{% if current_lang == 'en' %}Auto Responses{% else %}الردود التلقائية{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-roles', this)">
                     <i class="fa-solid fa-user-tag"></i>
-                    <span>الرول واللقب</span>
+                    <span>{% if current_lang == 'en' %}Roles & Nicknames{% else %}الرول واللقب{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-farewell', this)">
                     <i class="fa-solid fa-door-open"></i>
-                    <span>إعدادات الوداع</span>
+                    <span>{% if current_lang == 'en' %}Farewell Settings{% else %}إعدادات الوداع{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-tickets', this)">
                     <i class="fa-solid fa-ticket"></i>
-                    <span>نظام التذاكر</span>
+                    <span>{% if current_lang == 'en' %}Ticket System{% else %}نظام التذاكر{% endif %}</span>
                 </li>
                 <li class="sidebar-link" onclick="switchTab('section-xp', this)">
                     <i class="fa-solid fa-ranking-star"></i>
-                    <span>نظام المستويات</span>
+                    <span>{% if current_lang == 'en' %}XP & Levels{% else %}نظام المستويات{% endif %}</span>
                 </li>
             </ul>
         </nav>
@@ -585,11 +590,11 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-photo-film"></i>
                             </div>
-                            <h3>إعدادات قنوات الميديا</h3>
+                            <h3>{% if current_lang == 'en' %}Media Channels Settings{% else %}إعدادات قنوات الميديا{% endif %}</h3>
                         </div>
                         
                         <div class="form-group">
-                            <label>اختر قنوات الميديا (اضغط Ctrl لمضاعفة الاختيار):</label>
+                            <label>{% if current_lang == 'en' %}Select Media Channels (Hold Ctrl for multiple):{% else %}اختر قنوات الميديا (اضغط Ctrl لمضاعفة الاختيار):{% endif %}</label>
                             <select name="media_channels" multiple>
                                 {% for ch in channels %}
                                     <option value="{{ ch.id }}" {% if settings and ch.id in settings.get('media_channels', []) %}selected{% endif %}>
@@ -600,8 +605,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label>رسالة التحذير المخصصة للميديا:</label>
-                            <span class="sub-label">ملاحظة: يمكنك استخدام التاج {user} للإشارة للعضو.</span>
+                            <label>{% if current_lang == 'en' %}Custom Media Warning Message:{% else %}رسالة التحذير المخصصة للميديا:{% endif %}</label>
+                            <span class="sub-label">{% if current_lang == 'en' %}Note: You can use {user} tag to mention the member.{else %}ملاحظة: يمكنك استخدام التاج {user} للإشارة للعضو.{% endif %}</span>
                             <input type="text" name="media_warning" value="{{ settings.get('media_warning', 'عذراً {user} هذه القناة للميديا فقط!') if settings else 'عذراً {user} هذه القناة للميديا فقط!' }}">
                         </div>
                     </div>
@@ -614,50 +619,50 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-ban"></i>
                             </div>
-                            <h3>نظام حظر الكلمات والعقوبات</h3>
+                            <h3>{% if current_lang == 'en' %}Banned Words & Punishments System{% else %}نظام حظر الكلمات والعقوبات{% endif %}</h3>
                         </div>
 
                         <div class="form-group">
-                            <label>الكلمات المحظورة (افصل بينها بفصلة ,):</label>
-                            <input type="text" name="banned_words" value="{{ settings.get('banned_words', [])|join(', ') if settings else '' }}" placeholder="كلمة1, كلمة2, كلمة3">
+                            <label>{% if current_lang == 'en' %}Banned Words (Separate with comma ,):{% else %}الكلمات المحظورة (افصل بينها بفصلة ,):{% endif %}</label>
+                            <input type="text" name="banned_words" value="{{ settings.get('banned_words', [])|join(', ') if settings else '' }}" placeholder="word1, word2, word3">
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>عنوان رسالة التحذير:</label>
+                                <label>{% if current_lang == 'en' %}Warning Message Title:{% else %}عنوان رسالة التحذير:{% endif %}</label>
                                 <input type="text" name="warning_title" value="{{ settings.get('warning_title', 'تحذير مخالفة القوانين') if settings else 'تحذير مخالفة القوانين' }}">
                             </div>
 
                             <div class="form-group">
-                                <label>الحد الأقصى للمخالفات قبل العقوبة:</label>
+                                <label>{% if current_lang == 'en' %}Max Violations Before Punishment:{% else %}الحد الأقصى للمخالفات قبل العقوبة:{% endif %}</label>
                                 <input type="number" name="max_violations" value="{{ settings.get('max_violations', 3) if settings else 3 }}" min="1">
                             </div>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>رسالة التحذير الأول:</label>
+                                <label>{% if current_lang == 'en' %}First Warning Message:{% else %}رسالة التحذير الأول:{% endif %}</label>
                                 <input type="text" name="warning_msg_1" value="{{ settings.get('warning_msg_1', 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.') if settings else 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.' }}">
                             </div>
 
                             <div class="form-group">
-                                <label>رسالة التحذير الثاني:</label>
+                                <label>{% if current_lang == 'en' %}Second Warning Message:{% else %}رسالة التحذير الثاني:{% endif %}</label>
                                 <input type="text" name="warning_msg_2" value="{{ settings.get('warning_msg_2', 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.') if settings else 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.' }}">
                             </div>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>نوع العقوبة:</label>
+                                <label>{% if current_lang == 'en' %}Punishment Type:{% else %}نوع العقوبة:{% endif %}</label>
                                 <select name="punishment_type">
-                                    <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>تايم أوت (Timeout)</option>
-                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>كتم كامل (Mute)</option>
-                                    <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>طرد (Kick)</option>
+                                    <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout{% else %}تايم أوت (Timeout){% endif %}</option>
+                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}Mute{% else %}كتم كامل (Mute){% endif %}</option>
+                                    <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>{% if current_lang == 'en' %}Kick{% else %}طرد (Kick){% endif %}</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label>مدة التايم أوت (بالدقائق):</label>
+                                <label>{% if current_lang == 'en' %}Timeout Duration (minutes):{% else %}مدة التايم أوت (بالدقائق):{% endif %}</label>
                                 <input type="number" name="timeout_minutes" value="{{ settings.get('timeout_minutes', 10) if settings else 10 }}" min="1">
                             </div>
                         </div>
@@ -671,7 +676,7 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-reply"></i>
                             </div>
-                            <h3>الردود التلقائية</h3>
+                            <h3>{% if current_lang == 'en' %}Auto Responses{% else %}الردود التلقائية{% endif %}</h3>
                         </div>
 
                         {% set responses = settings.get('auto_responses', {}) if settings else {} %}
@@ -681,8 +686,8 @@
                             {% set curr_key = keys[i-1] if keys|length >= i else '' %}
                             {% set curr_val = responses[curr_key] if curr_key else '' %}
                             <div class="response-row">
-                                <input type="text" name="word{{ i }}" value="{{ curr_key }}" placeholder="الكلمة المفتاحية {{ i }}">
-                                <input type="text" name="resp{{ i }}" value="{{ curr_val }}" placeholder="الرد التلقائي المقابل {{ i }}">
+                                <input type="text" name="word{{ i }}" value="{{ curr_key }}" placeholder="{% if current_lang == 'en' %}Keyword {{ i }}{% else %}الكلمة المفتاحية {{ i }}{% endif %}">
+                                <input type="text" name="resp{{ i }}" value="{{ curr_val }}" placeholder="{% if current_lang == 'en' %}Auto Response {{ i }}{% else %}الرد التلقائي المقابل {{ i }}{% endif %}">
                             </div>
                         {% endfor %}
                     </div>
@@ -695,14 +700,14 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-user-tag"></i>
                             </div>
-                            <h3>الرول واللقب التلقائي</h3>
+                            <h3>{% if current_lang == 'en' %}Auto Roles & Nicknames{% else %}الرول واللقب التلقائي{% endif %}</h3>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>الرول التلقائي للأعضاء الجدد:</label>
+                                <label>{% if current_lang == 'en' %}Auto Role for New Members:{% else %}الرول التلقائي للأعضاء الجدد:{% endif %}</label>
                                 <select name="auto_role">
-                                    <option value="">-- بدون رول --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- No Role --{% else %}-- بدون رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.name }}" {% if settings and settings.get('auto_role') == r.name %}selected{% endif %}>
                                             @{{ r.name }}
@@ -712,9 +717,9 @@
                             </div>
 
                             <div class="form-group">
-                                <label>اللقب التلقائي (Auto-Nickname):</label>
-                                <span class="sub-label">استخدم {user} لاسم العضو أو اكتب كلمة لتكون بادئة.</span>
-                                <input type="text" name="auto_nickname" value="{{ settings.get('auto_nickname', '') if settings else '' }}" placeholder="مثال: Member | {user}">
+                                <label>{% if current_lang == 'en' %}Auto-Nickname:{% else %}اللقب التلقائي (Auto-Nickname):{% endif %}</label>
+                                <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member name or write a prefix.{else %}استخدم {user} لاسم العضو أو اكتب كلمة لتكون بادئة.{% endif %}</span>
+                                <input type="text" name="auto_nickname" value="{{ settings.get('auto_nickname', '') if settings else '' }}" placeholder="{% if current_lang == 'en' %}Example: Member | {user}{else %}مثال: Member | {user}{% endif %}">
                             </div>
                         </div>
                     </div>
@@ -727,14 +732,14 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-door-open"></i>
                             </div>
-                            <h3>إعدادات رسالة الوداع</h3>
+                            <h3>{% if current_lang == 'en' %}Farewell Settings{% else %}إعدادات رسالة الوداع{% endif %}</h3>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>قناة الوداع:</label>
+                                <label>{% if current_lang == 'en' %}Farewell Channel:{% else %}قناة الوداع:{% endif %}</label>
                                 <select name="farewell_channel">
-                                    <option value="">-- إيقاف رسائل الوداع --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Disable Farewell Messages --{% else %}-- إيقاف رسائل الوداع --{% endif %}</option>
                                     {% for ch in channels %}
                                         <option value="{{ ch.id }}" {% if settings and settings.get('farewell_channel') == ch.id %}selected{% endif %}>
                                             # {{ ch.name }}
@@ -744,29 +749,29 @@
                             </div>
 
                             <div class="form-group">
-                                <label>عنوان إمبد الوداع:</label>
+                                <label>{% if current_lang == 'en' %}Farewell Embed Title:{% else %}عنوان إمبد الوداع:{% endif %}</label>
                                 <input type="text" name="farewell_title" value="{{ settings.get('farewell_title', 'وداعاً!') if settings else 'وداعاً!' }}">
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>وصف رسالة الوداع:</label>
-                            <span class="sub-label">يمكنك استخدام {user} للإشارة لمن غادر.</span>
+                            <label>{% if current_lang == 'en' %}Farewell Message Description:{% else %}وصف رسالة الوداع:{% endif %}</label>
+                            <span class="sub-label">{% if current_lang == 'en' %}You can use {user} to mention who left.{else %}يمكنك استخدام {user} للإشارة لمن غادر.{% endif %}</span>
                             <input type="text" name="farewell_desc" value="{{ settings.get('farewell_desc', 'غادر العضو {user} السيرفر.') if settings else 'غادر العضو {user} السيرفر.' }}">
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>رابط صورة الوداع (URL):</label>
+                                <label>{% if current_lang == 'en' %}Farewell Image URL:{% else %}رابط صورة الوداع (URL):{% endif %}</label>
                                 <input type="text" name="farewell_img" value="{{ settings.get('farewell_img', '') if settings else '' }}" placeholder="https://example.com/image.png">
                             </div>
 
                             <div class="form-group">
-                                <label>إجراء الزر التفاعلي مع المغادرة:</label>
+                                <label>{% if current_lang == 'en' %}Farewell Interactive Button Action:{% else %}إجراء الزر التفاعلي مع المغادرة:{% endif %}</label>
                                 <select name="farewell_action">
-                                    <option value="none" {% if settings and settings.get('farewell_action') == 'none' %}selected{% endif %}>بدون إجراء (زر عادي)</option>
-                                    <option value="ban" {% if settings and settings.get('farewell_action') == 'ban' %}selected{% endif %}>زر الحظر (Ban)</option>
-                                    <option value="timeout" {% if settings and settings.get('farewell_action') == 'timeout' %}selected{% endif %}>زر التايم أوت (Timeout)</option>
+                                    <option value="none" {% if settings and settings.get('farewell_action') == 'none' %}selected{% endif %}>{% if current_lang == 'en' %}No Action (Normal Button){% else %}بدون إجراء (زر عادي){% endif %}</option>
+                                    <option value="ban" {% if settings and settings.get('farewell_action') == 'ban' %}selected{% endif %}>{% if current_lang == 'en' %}Ban Button{% else %}زر الحظر (Ban){% endif %}</option>
+                                    <option value="timeout" {% if settings and settings.get('farewell_action') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout Button{% else %}زر التايم أوت (Timeout){% endif %}</option>
                                 </select>
                             </div>
                         </div>
@@ -780,22 +785,22 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-ticket"></i>
                             </div>
-                            <h3>إعدادات نظام التذاكر</h3>
+                            <h3>{% if current_lang == 'en' %}Ticket System Settings{% else %}إعدادات نظام التذاكر{% endif %}</h3>
                         </div>
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>قسم التذاكر (Category):</label>
+                                <label>{% if current_lang == 'en' %}Ticket Category:{% else %}قسم التذاكر (Category):{% endif %}</label>
                                 <select name="ticket_category">
-                                    <option value="">-- اختر القسم --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Select Category --{% else %}-- اختر القسم --{% endif %}</option>
                                     {% for cat in categories %}
                                         <option value="{{ cat.id }}" {% if settings and settings.get('ticket_category') == cat.id %}selected{% endif %}>{{ cat.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>رول الدعم الفني:</label>
+                                <label>{% if current_lang == 'en' %}Support Role:{% else %}رول الدعم الفني:{% endif %}</label>
                                 <select name="ticket_support_role">
-                                    <option value="">-- اختر الرول --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر الرول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('ticket_support_role') == r.id %}selected{% endif %}>{{ r.name }}</option>
                                     {% endfor %}
@@ -812,45 +817,45 @@
                             <div class="section-header-icon">
                                 <i class="fa-solid fa-ranking-star"></i>
                             </div>
-                            <h3>نظام المستويات (XP)</h3>
+                            <h3>{% if current_lang == 'en' %}XP & Levels System{% else %}نظام المستويات (XP){% endif %}</h3>
                         </div>
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>حالة نظام المستويات:</label>
+                                <label>{% if current_lang == 'en' %}XP System Status:{% else %}حالة نظام المستويات:{% endif %}</label>
                                 <select name="xp_enabled">
-                                    <option value="1" {% if settings and settings.get('xp_enabled') == 1 %}selected{% endif %}>مفعل</option>
-                                    <option value="0" {% if settings and settings.get('xp_enabled') == 0 %}selected{% endif %}>معطل</option>
+                                    <option value="1" {% if settings and settings.get('xp_enabled') == 1 %}selected{% endif %}>{% if current_lang == 'en' %}Enabled{% else %}مفعل{% endif %}</option>
+                                    <option value="0" {% if settings and settings.get('xp_enabled') == 0 %}selected{% endif %}>{% if current_lang == 'en' %}Disabled{% else %}معطل{% endif %}</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>كمية XP لكل رسالة:</label>
+                                <label>{% if current_lang == 'en' %}XP Amount Per Message:{% else %}كمية XP لكل رسالة:{% endif %}</label>
                                 <input type="number" name="xp_per_message" value="{{ settings.get('xp_per_message', 15) if settings else 15 }}">
                             </div>
                         </div>
 
                         <div class="grid-3" style="margin-top: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                             <div class="form-group">
-                                <label>رول المستوى 5:</label>
+                                <label>{% if current_lang == 'en' %}Level 5 Role:{% else %}رول المستوى 5:{% endif %}</label>
                                 <select name="xp_role_5">
-                                    <option value="">-- اختر رول --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_5') == r.id %}selected{% endif %}>{{ r.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>رول المستوى 10:</label>
+                                <label>{% if current_lang == 'en' %}Level 10 Role:{% else %}رول المستوى 10:{% endif %}</label>
                                 <select name="xp_role_10">
-                                    <option value="">-- اختر رول --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_10') == r.id %}selected{% endif %}>{{ r.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>رول المستوى 20:</label>
+                                <label>{% if current_lang == 'en' %}Level 20 Role:{% else %}رول المستوى 20:{% endif %}</label>
                                 <select name="xp_role_20">
-                                    <option value="">-- اختر رول --</option>
+                                    <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_20') == r.id %}selected{% endif %}>{{ r.name }}</option>
                                     {% endfor %}
@@ -863,7 +868,7 @@
                 <!-- Save Action Container -->
                 <div class="submit-container">
                     <button type="button" onclick="saveSettings()" class="btn-save">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> حفظ الإعدادات
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> {% if current_lang == 'en' %}Save Settings{% else %}حفظ الإعدادات{% endif %}
                     </button>
                 </div>
 
@@ -874,7 +879,7 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast">
         <i class="fa-solid fa-circle-check"></i>
-        <span id="toast-text">تم حفظ التعديلات بنجاح ✨</span>
+        <span id="toast-text">{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}</span>
     </div>
 
     <script>
@@ -902,19 +907,19 @@
                 if (contentType && contentType.includes("application/json")) {
                     return await response.json();
                 } else {
-                    return { status: "success", message: "تم حفظ التعديلات بنجاح ✨" };
+                    return { status: "success", message: "{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}" };
                 }
             })
             .then(data => {
                 if (!data || data.status === "success" || data.status === undefined) {
-                    showToast(data && data.message ? data.message : "تم حفظ التعديلات بنجاح ✨");
+                    showToast(data && data.message ? data.message : "{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}");
                 } else {
-                    showToast(data.message || "حدث خطأ أثناء حفظ التعديلات!");
+                    showToast(data.message || "{% if current_lang == 'en' %}An error occurred while saving!{% else %}حدث خطأ أثناء حفظ التعديلات!{% endif %}");
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast("تم حفظ التعديلات بنجاح ✨");
+                showToast("{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}");
             });
         }
 
