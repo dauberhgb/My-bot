@@ -272,7 +272,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     base = Image.new("RGBA", (width, height), (15, 23, 42, 255))
     draw = ImageDraw.Draw(base)
 
-    # تحميل الخلفية إن وجدت أو رسم خلفية متدرجة
+    # 1. تحميل الخلفية
     bg = None
     if bg_url:
       try:
@@ -292,16 +292,53 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
         draw.line([(x, 0), (x, height)], fill=color)
 
-    # طبقة خفيفة داكنة لزيادة وضوح النص
+    # طبقة داكنة لزيادة وضوح النص
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
-    # رسم صورة البروفايل الدائرية
-    avatar_size = 200
-    avatar_x, avatar_y = 50, (height - avatar_size) // 2
-    avatar_url = member.display_avatar.url
+    # 2. جلب وتجهيز الخط
+    font_path = "tajawal.ttf"
+    if not os.path.exists(font_path):
+      font_url = "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf"
+      async with aiohttp.ClientSession() as session:
+        async with session.get(font_url) as resp:
+          if resp.status == 200:
+            font_data = await resp.read()
+            with open(font_path, "wb") as f:
+              f.write(font_data)
 
+    try:
+      font_title = ImageFont.truetype(font_path, 38)
+      font_name = ImageFont.truetype(font_path, 48)
+      font_sub = ImageFont.truetype(font_path, 28)
+    except Exception:
+      font_title = font_name = font_sub = ImageFont.load_default()
+
+    user_lang = str(lang).lower().strip()
+    avatar_size = 200
+    avatar_y = (height - avatar_size) // 2
+
+    # 3. معالجة النصوص والمواقع حسَب اللغة المختارة باللوحة
+    if user_lang == "ar":
+      # العربية: البروفايل على اليمين والنص على اليسار
+      avatar_x = width - avatar_size - 50
+      text_x = 320
+
+      welcome_title = process_text("أهلاً بك في السيرفر")
+      member_count_text = process_text(f"العضو رقم #{member.guild.member_count}")
+      display_name = process_text(member.name[:18])
+    else:
+      # الإنجليزية: البروفايل على اليسار والنص على اليمين
+      avatar_x = 50
+      text_x = 280
+
+      welcome_title = "WELCOME TO THE SERVER"
+      member_count_text = f"Member #{member.guild.member_count}"
+      display_name = member.name[:18]
+
+    # 4. رسم صورة البروفايل
+    avatar_url = member.display_avatar.url
     async with aiohttp.ClientSession() as session:
       async with session.get(avatar_url) as resp:
         if resp.status == 200:
@@ -319,55 +356,21 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
               outline=(59, 130, 246, 255),
               width=5
           )
-
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
-    # ==========================================
-    # تحديد النصوص المكتوبة على الصورة بناءً على لغة السيرفر
-    # ==========================================
-    user_lang = str(lang).lower()
-
-    if user_lang == "ar":
-      welcome_title = process_text("أهلاً بك في السيرفر")
-      member_count_text = process_text(f"العضو رقم #{member.guild.member_count}")
-    else:
-      welcome_title = "WELCOME TO THE SERVER"
-      member_count_text = f"Member #{member.guild.member_count}"
-
-    display_name = member.name[:18] + "..." if len(member.name) > 18 else member.name
-    if user_lang == "ar":
-      display_name = process_text(display_name)
-
-    # ==========================================
-    # إعداد الخطوط بأحجام كبيرة وواضحة جداً
-    # ==========================================
-    font_path = "tajawal.ttf"
-    if not os.path.exists(font_path):
-      font_path = "arial.ttf"
-
-    try:
-      font_title = ImageFont.truetype(font_path, 42)
-      font_name = ImageFont.truetype(font_path, 52)
-      font_sub = ImageFont.truetype(font_path, 32)
-    except IOError:
-      font_title = font_name = font_sub = ImageFont.load_default()
-
-    # إحداثيات رسم النصوص المطبوعة
-    text_x = 280
-
-    # 1. طباعة عنوان الترحيب
+    # 5. رسم النصوص
+    # العنوان
     draw.text((text_x + 2, 62), welcome_title, fill=(0, 0, 0, 220), font=font_title)
     draw.text((text_x, 60), welcome_title, fill=(147, 197, 253), font=font_title)
 
-    # 2. طباعة اسم العضو
+    # الاسم
     draw.text((text_x + 2, 142), display_name, fill=(0, 0, 0, 220), font=font_name)
     draw.text((text_x, 140), display_name, fill=(255, 255, 255), font=font_name)
 
-    # 3. طباعة رقم العضو
+    # عدد الأعضاء
     draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 220), font=font_sub)
     draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub)
 
-    # حفظ الصورة وإرسالها
     final_buffer = BytesIO()
     base.convert("RGB").save(final_buffer, format="PNG")
     final_buffer.seek(0)
