@@ -242,33 +242,31 @@ async def on_ready():
 
 @bot.tree.command(
     name="setup",
-    description="الانتقال المباشر إلى لوحة تحكم البوت لهذا السيرفر",
+    description="الانتقال إلى صفحة سيرفراتك في لوحة التحكم",
 )
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0)
 async def setup(interaction: discord.Interaction):
-  guild_id = str(interaction.guild_id)
   user_id = str(interaction.user.id)
 
   base_url = os.getenv("DASHBOARD_URL", "").rstrip("/")
   if not base_url:
-    dashboard_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/dashboard/{guild_id}?user_id={user_id}"
+    guilds_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/guilds?user_id={user_id}"
   else:
-    dashboard_link = f"{base_url}/dashboard/{guild_id}?user_id={user_id}"
+    guilds_link = f"{base_url}/guilds?user_id={user_id}"
 
   view = discord.ui.View()
   button = discord.ui.Button(
-      label="فتح لوحة التحكم ⚙️",
-      url=dashboard_link,
+      label="عرض سيرفراتي ⚙️",
+      url=guilds_link,
       style=discord.ButtonStyle.link,
   )
   view.add_item(button)
 
   embed = discord.Embed(
-      title="🛠️ لوحة تحكم السيرفر",
+      title="🛠️ لوحة تحكم البوت",
       description=(
-          "مرحباً بك! يمكنك ضبط جميع إعدادات البوت لسيرفر"
-          f" **{interaction.guild.name}** عبر الضغط على الزر أدناه:"
+          "مرحباً بك! يمكنك إدارة جميع سيرفراتك التي تمتلك صلاحية إدارتها عبر الضغط على الزر أدناه:"
       ),
       color=discord.Color.blue(),
   )
