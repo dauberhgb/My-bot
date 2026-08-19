@@ -146,11 +146,12 @@ def update_language():
     return jsonify({"status": "error", "message": "بيانات غير صالحة!"}), 400
 
   for guild in bot.guilds:
-    member = guild.get_member(int(user_id))
-    if member and member.guild_permissions.manage_guild:
+    try:
       settings = database.get_settings(guild.id)
       settings["language"] = new_lang
       database.save_settings(guild.id, settings)
+    except Exception as e:
+      print(f"Error saving language for guild {guild.id}: {e}")
 
   return jsonify({"status": "success", "message": "تم تحديث اللغة بنجاح"})
 
