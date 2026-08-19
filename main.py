@@ -292,12 +292,12 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
         draw.line([(x, 0), (x, height)], fill=color)
 
-    # طبقة شفافة داكنة لزيادة التباين ووضوح النصوص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 160))
+    # طبقة خفيفة داكنة لزيادة وضوح النص
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
-    # معالجة صورة البروفايل بحجم 200x200 وتوسيطها رأسياً
+    # رسم صورة البروفايل الدائرية
     avatar_size = 200
     avatar_x, avatar_y = 50, (height - avatar_size) // 2
     avatar_url = member.display_avatar.url
@@ -313,7 +313,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
           mask_draw = ImageDraw.Draw(mask)
           mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
-          # إطار دائري مضيء
+          # إطار مضيء حول الصورة
           draw.ellipse(
               (avatar_x - 5, avatar_y - 5, avatar_x + avatar_size + 5, avatar_y + avatar_size + 5),
               outline=(59, 130, 246, 255),
@@ -322,43 +322,54 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
 
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
-    # اختيار النصوص حسب اللغة مع معالجة العربية
-    if str(lang).lower() == "en":
-      welcome_title = "WELCOME"
-      member_count_text = f"Member #{member.guild.member_count}"
-    else:
+    # ==========================================
+    # تحديد النصوص المكتوبة على الصورة بناءً على لغة السيرفر
+    # ==========================================
+    user_lang = str(lang).lower()
+
+    if user_lang == "ar":
       welcome_title = process_text("أهلاً بك في السيرفر")
       member_count_text = process_text(f"العضو رقم #{member.guild.member_count}")
+    else:
+      # اللغة الإنجليزية (أو أي لغة أخرى)
+      welcome_title = "WELCOME TO THE SERVER"
+      member_count_text = f"Member #{member.guild.member_count}"
 
     display_name = member.name[:18] + "..." if len(member.name) > 18 else member.name
+    if user_lang == "ar":
+      display_name = process_text(display_name)
 
-    # تحميل الخطوط مع الاعتماد على خط يسهل العثور عليه يدعم العربية
+    # ==========================================
+    # إعداد الخطوط بأحجام كبيرة وواضحة جداً
+    # ==========================================
     font_path = "tajawal.ttf"
     if not os.path.exists(font_path):
       font_path = "arial.ttf"
 
     try:
-      # تعديل أحجام الخطوط لتناسب أبعاد الصورة وتكون متناسقة
-      font_title = ImageFont.truetype(font_path, 32)
-      font_name = ImageFont.truetype(font_path, 38)
-      font_sub = ImageFont.truetype(font_path, 24)
+      # تكبير الخطوط لتلائم أبعاد الصورة 900x400
+      font_title = ImageFont.truetype(font_path, 42)
+      font_name = ImageFont.truetype(font_path, 52)
+      font_sub = ImageFont.truetype(font_path, 32)
     except IOError:
       font_title = font_name = font_sub = ImageFont.load_default()
 
-    text_x = 300
+    # إحداثيات رسم النصوص المطبوعة
+    text_x = 280
 
-    # 1. العنوان الرئيسي
-    draw.text((text_x + 2, 92), welcome_title, fill=(0, 0, 0, 200), font=font_title)
-    draw.text((text_x, 90), welcome_title, fill=(147, 197, 253), font=font_title)
+    # 1. طباعة عنوان الترحيب
+    draw.text((text_x + 2, 62), welcome_title, fill=(0, 0, 0, 220), font=font_title)
+    draw.text((text_x, 60), welcome_title, fill=(147, 197, 253), font=font_title)
 
-    # 2. اسم العضو
-    draw.text((text_x + 2, 162), display_name, fill=(0, 0, 0, 200), font=font_name)
-    draw.text((text_x, 160), display_name, fill=(255, 255, 255), font=font_name)
+    # 2. طباعة اسم العضو
+    draw.text((text_x + 2, 142), display_name, fill=(0, 0, 0, 220), font=font_name)
+    draw.text((text_x, 140), display_name, fill=(255, 255, 255), font=font_name)
 
-    # 3. رقم العضو
-    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 200), font=font_sub)
+    # 3. طباعة رقم العضو
+    draw.text((text_x + 2, 242), member_count_text, fill=(0, 0, 0, 220), font=font_sub)
     draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub)
 
+    # حفظ الصورة وإرسالها
     final_buffer = BytesIO()
     base.convert("RGB").save(final_buffer, format="PNG")
     final_buffer.seek(0)
