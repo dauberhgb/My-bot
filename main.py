@@ -184,6 +184,7 @@ def save(guild_id):
   media_enabled = True if request.form.get("media_enabled") == "on" else False
   banned_enabled = True if request.form.get("banned_enabled") == "on" else False
   farewell_enabled = True if request.form.get("farewell_enabled") == "on" else False
+  welcome_enabled = True if request.form.get("welcome_enabled") == "on" else False
 
   banned_words = [
       w.strip().lower()
@@ -211,6 +212,10 @@ def save(guild_id):
       "warning_title": request.form.get("warning_title", ""),
       "warning_msg_1": request.form.get("warning_msg_1", ""),
       "warning_msg_2": request.form.get("warning_msg_2", ""),
+      "welcome_enabled": welcome_enabled,
+      "welcome_channel": request.form.get("welcome_channel", ""),
+      "welcome_msg": request.form.get("welcome_msg", ""),
+      "welcome_img": request.form.get("welcome_img", ""),
       "farewell_enabled": farewell_enabled,
       "farewell_channel": request.form.get("farewell_channel", ""),
       "farewell_title": request.form.get("farewell_title", ""),
@@ -432,15 +437,19 @@ async def on_member_join(member):
       print(f"تعذر تغيير اللقب: {e}")
 
   # 3. إرسال بطاقة الترحيب التفاعلية المتطورة في القناة المخصصة (إن وجدت)
-  farewell_channel_id = settings.get("farewell_channel")
-  if farewell_channel_id and farewell_channel_id.isdigit():
-    channel = member.guild.get_channel(int(farewell_channel_id))
+  welcome_channel_id = settings.get("welcome_channel") or settings.get("farewell_channel")
+  if welcome_channel_id and str(welcome_channel_id).isdigit():
+    channel = member.guild.get_channel(int(welcome_channel_id))
     if channel:
-      bg_url = settings.get("farewell_img")
+      bg_url = settings.get("welcome_img") or settings.get("farewell_img")
       card_file = await generate_welcome_card(member, bg_url)
       if card_file:
         lang = settings.get("language", "ar")
-        welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
+        custom_msg = settings.get("welcome_msg", "")
+        if custom_msg:
+          welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
+        else:
+          welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
         await channel.send(content=welcome_text, file=card_file)
 
 
