@@ -898,13 +898,12 @@
             const form = document.getElementById('settingsForm');
             const formData = new FormData(form);
 
-            // تم استبدال القراءة من الـ DOM بقراءة المتغير من البايثون مباشرة لضمان الدقة
+            // الاعتماد الكلي ودون استثناء على لغة الواجهة الحالية (current_lang) من القالب
             const currentLang = "{{ current_lang if current_lang else 'ar' }}";
-            // جلب اسم السيرفر ديناميكياً من الصفحة
             const serverNameElement = document.getElementById('serverNameElement');
             const serverName = serverNameElement ? serverNameElement.innerText : '';
 
-            // صياغة رسائل النجاح والخطأ بناءً على لغة القالب الفعالة
+            // فرض رسائل النجاح والخطأ حسب لغة الواجهة (current_lang) حصرياً فوراً
             let serverMsg = "";
             let errorMsg = "";
             if (currentLang === 'en') {
@@ -923,20 +922,22 @@
                 const contentType = response.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
                     const jsonData = await response.json();
-                    return jsonData;
+                    // تجاهل أي رد نصي ثابت من الخادم واستخدام رسالة الواجهة المعتمدة على current_lang
+                    return { status: jsonData.status, message: serverMsg };
                 } else {
                     return { status: "success", message: serverMsg };
                 }
             })
             .then(data => {
                 if (!data || data.status === "success" || data.status === undefined) {
-                    showToast(data && data.message ? data.message : serverMsg);
+                    showToast(serverMsg);
                 } else {
-                    showToast(data.message || errorMsg);
+                    showToast(errorMsg);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                // حتى عند حدوث خطأ في الاتصال، سيتم إظهار الرسالة باللغة الإنجليزية فوراً إذا كانت الواجهة إنجليزية
                 showToast(serverMsg);
             });
         }
