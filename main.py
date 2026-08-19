@@ -8,6 +8,9 @@ from discord import app_commands
 from discord.ext import commands
 import discord
 from flask import Flask, jsonify, redirect, render_template, request, url_for
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import aiohttp
 
 # استيراد نظام الترجمات ودالة الترجمة
 from translations import _
@@ -97,13 +100,12 @@ def home():
 def guild_list():
   user_id = request.args.get("user_id")
   bot_guilds = []
-  current_lang = "ar"  # اللغة الافتراضية
+  current_lang = "ar"
 
   for guild in bot.guilds:
     if user_id and user_id.isdigit():
       member = guild.get_member(int(user_id))
       if member and member.guild_permissions.manage_guild:
-        # أخذ لغة أول سيرفر يملكه المستخدم لتعيين لغة الواجهة الحالية
         if not bot_guilds:
           settings = database.get_settings(guild.id)
           current_lang = settings.get("language", "ar")
@@ -113,8 +115,6 @@ def guild_list():
             "name": guild.name,
             "icon": guild.icon.url if guild.icon else None,
         })
-    else:
-      pass
 
   return render_template(
       "guilds.html",
@@ -139,8 +139,6 @@ def dashboard(guild_id):
 
   settings = database.get_settings(guild_id)
   icon_url = guild.icon.url if guild.icon else None
-
-  # تحديد اللغة الحالية (افتراضياً العربية إذا لم يتم تحديدها)
   current_lang = settings.get("language", "ar")
 
   return render_template(
@@ -251,7 +249,82 @@ threading.Thread(target=run_web_server, daemon=True).start()
 
 
 # ==========================================
-# 3. أحداث وأوامر البوت (Discord Events & Commands)
+# 3. دالة توليد بطاقة الترحيب الاحترافية (Welcome Card Generator)
+# ==========================================
+async def generate_welcome_card(member, bg_url=None):
+  try:
+    # أبعاد البطاقة
+    width, height = 900, 400
+    base = Image.new("RGBA", (width, height), (30, 30, 35, 255))
+    draw = ImageDraw.Draw(base)
+
+    # محاولة تحميل الخلفية المخصصة أو إنشاء خلفية متدرجة فخمة افتراضية
+    bg = None
+    if bg_url:
+      try:
+        async with aiohttp.ClientSession() as session:
+          async with session.get(bg_url) as resp:
+            if resp.status == 200:
+              bg_data = await resp.read()
+              bg = Image.open(BytesIO(bg_data)).convert("RGBA")
+              bg = bg.resize((width, height))
+      except Exception:
+        bg = None
+
+    if bg:
+      base.paste(bg, (0, 0))
+    else:
+      # رسم تدرج لون خلفية افتراضي أنيق إذا لم تتوفر خلفية
+      for x in range(width):
+        color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
+        draw.line([(x, 0), (x, height)], fill=color)
+
+    # إضافة طبقة شفافة داكنة لزيادة وضوح النصوص
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 120))
+    base = Image.alpha_composite(base, overlay)
+    draw = ImageDraw.Draw(base)
+
+    # جلب صورة البروفايل الخاصة بالعضو وقصها بشكل دائري فخم
+    avatar_url = member.display_avatar.url
+    async with aiohttp.ClientSession() as session:
+      async with session.get(avatar_url) as resp:
+        if resp.status == 200:
+          avatar_data = await resp.read()
+          avatar = Image.open(BytesIO(avatar_data)).convert("RGBA")
+          avatar = avatar.resize((180, 180))
+
+          # إنشاء قناع دائري للبروفايل
+          mask = Image.new("L", (180, 180), 0)
+          mask_draw = ImageDraw.Draw(mask)
+          mask_draw.ellipse((0, 0, 180, 180), fill=255)
+
+          # لصق الصورة الدائرية في منتصف اليسار من البطاقة
+          base.paste(avatar, (60, 110), mask)
+
+    # كتابة النصوص (الاسم والترحيب)
+    try:
+      font_large = ImageFont.truetype("arial.ttf", 40)
+      font_small = ImageFont.truetype("arial.ttf", 24)
+    except IOError:
+      font_large = ImageFont.load_default()
+      font_small = ImageFont.load_default()
+
+    draw.text((270, 120), "WELCOME TO SERVER", fill=(147, 197, 253), font=font_small)
+    draw.text((270, 155), member.name, fill=(255, 255, 255), font=font_large)
+    draw.text((270, 220), f"Member #{member.guild.member_count}", fill=(209, 213, 219), font=font_small)
+
+    # حفظ الصورة الناتجة مؤقتاً في الذاكرة الحية (RAM) للإرسال المباشر
+    final_buffer = BytesIO()
+    base.convert("RGB").save(final_buffer, format="PNG")
+    final_buffer.seek(0)
+    return discord.File(final_buffer, filename="welcome_card.png")
+  except Exception as e:
+    print(f"خطأ في توليد بطاقة الترحيب: {e}")
+    return None
+
+
+# ==========================================
+# 4. أحداث وأوامر البوت (Discord Events & Commands)
 # ==========================================
 @bot.event
 async def on_ready():
@@ -269,9 +342,6 @@ async def on_ready():
     print("⚠️ مجلد cogs غير موجود، سيتم إنشاؤه لإضافة الأنظمة الجديدة لاحقاً.")
 
 
-# ==========================================
-# إضافة أمر تغيير اللغة الجديد (/language)
-# ==========================================
 @bot.tree.command(
     name="language", description="تغيير لغة ردود وبوتات السيرفر"
 )
@@ -339,6 +409,7 @@ async def on_member_join(member):
   if not settings:
     return
 
+  # 1. إعطاء الرول التلقائي إن وجد
   if settings.get("auto_role"):
     role = discord.utils.get(member.guild.roles, name=settings["auto_role"])
     if role:
@@ -347,6 +418,7 @@ async def on_member_join(member):
       except Exception as e:
         print(f"تعذر إعطاء الرول: {e}")
 
+  # 2. تغيير اللقب التلقائي إن وجد
   auto_nick = settings.get("auto_nickname", "").strip()
   if auto_nick:
     try:
@@ -358,6 +430,18 @@ async def on_member_join(member):
       await member.edit(nick=new_nick[:32])
     except Exception as e:
       print(f"تعذر تغيير اللقب: {e}")
+
+  # 3. إرسال بطاقة الترحيب التفاعلية المتطورة في القناة المخصصة (إن وجدت)
+  farewell_channel_id = settings.get("farewell_channel")
+  if farewell_channel_id and farewell_channel_id.isdigit():
+    channel = member.guild.get_channel(int(farewell_channel_id))
+    if channel:
+      bg_url = settings.get("farewell_img")
+      card_file = await generate_welcome_card(member, bg_url)
+      if card_file:
+        lang = settings.get("language", "ar")
+        welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
+        await channel.send(content=welcome_text, file=card_file)
 
 
 @bot.event
