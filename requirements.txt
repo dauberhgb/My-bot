@@ -1,6 +1,8 @@
+
 discord.py
 Flask
-Requests
 Pillow
+aiohttp
+requests
 arabic-reshaper
 python-bidi
