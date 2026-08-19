@@ -129,6 +129,24 @@ def dashboard(guild_id):
   )
 
 
+@app.route("/update_language", methods=["POST"])
+def update_language():
+  user_id = request.form.get("user_id")
+  new_lang = request.form.get("language")
+
+  if not user_id or not user_id.isdigit() or not new_lang:
+    return jsonify({"status": "error", "message": "بيانات غير صالحة!"}), 400
+
+  for guild in bot.guilds:
+    member = guild.get_member(int(user_id))
+    if member and member.guild_permissions.manage_guild:
+      settings = database.get_settings(guild.id)
+      settings["language"] = new_lang
+      database.save_settings(guild.id, settings)
+
+  return jsonify({"status": "success", "message": "تم تحديث اللغة بنجاح"})
+
+
 @app.route("/save/<guild_id>", methods=["POST"])
 @admin_required
 def save(guild_id):
