@@ -311,7 +311,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
 
     user_lang = str(lang).lower().strip()
     avatar_size = 440
-    avatar_y = ((height - avatar_size) // 2) - 10
+    avatar_y = ((height - avatar_size) // 2) - 22
 
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
@@ -328,7 +328,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     else:
       avatar_x = 96
       title_x = 775
-      name_x = 925
+      name_x = 915
       sub_x = 870
 
       welcome_title = "WELCOME TO THE SERVER"
