@@ -311,7 +311,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
 
     user_lang = str(lang).lower().strip()
     avatar_size = 440
-    avatar_y = (height - avatar_size) // 2
+    avatar_y = ((height - avatar_size) // 2) - 10
 
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
