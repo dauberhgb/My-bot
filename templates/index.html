@@ -609,8 +609,8 @@
                             <div class="form-group">
                                 <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
                                 <select name="welcome_enabled">
-                                    <option value="1" {{ 'selected' if settings and settings.get('welcome_enabled')|string == '1' else '' }}>{{ 'Enabled' if current_lang == 'en' else 'مفعل' }}</option>
-                                    <option value="0" {{ 'selected' if not settings or settings.get('welcome_enabled')|string == '0' else '' }}>{{ 'Disabled' if current_lang == 'en' else 'معطل' }}</option>
+                                    <option value="1" {% if settings and (settings.get('welcome_enabled') == True or settings.get('welcome_enabled') == '1' or settings.get('welcome_enabled') == 1) %}selected{% endif %}>{{ 'Enabled' if current_lang == 'en' else 'مفعل' }}</option>
+                                    <option value="0" {% if not settings or settings.get('welcome_enabled') == False or settings.get('welcome_enabled') == '0' or settings.get('welcome_enabled') == 0 %}selected{% endif %}>{{ 'Disabled' if current_lang == 'en' else 'معطل' }}</option>
                                 </select>
                             </div>
 
