@@ -326,7 +326,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       
       display_name = arabic_reshaper.reshape(member.name[:18])
     else:
-      avatar_x = 50
+      avatar_x = 120
       text_x = 280
 
       welcome_title = "WELCOME TO THE SERVER"
