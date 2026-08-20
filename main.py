@@ -354,11 +354,11 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص (باستخدام anchor="ra" لضبط محاذاة الجملة العربية من اليمين لليسار)
-    draw.text((text_x + 2, 525), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((text_x, 525), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x + 2, 529), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 529), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((text_x + 2, 318), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((text_x, 318), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x + 2, 315), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 315), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
 
     draw.text((text_x + 2, 731), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
     draw.text((text_x, 731), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
