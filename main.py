@@ -316,7 +316,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
       avatar_x = width - avatar_size - 50  # البروفايل على اليمين
-      text_x = width - 330                 # بدء النصوص من اليمين لليسار طبيعياً
+      title_x = width - 330
+      name_x = width - 330
+      sub_x = width - 330               # بدء النصوص من اليمين لليسار طبيعياً
 
       raw_title = "أهلاً بك في السيرفر"
       welcome_title = arabic_reshaper.reshape(raw_title)
