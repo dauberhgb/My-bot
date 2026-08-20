@@ -263,7 +263,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 async def generate_welcome_card(member, bg_url=None, lang="ar"):
   try:
     width, height = 900, 400
-    base = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+    base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(base)
 
     # 1. تحميل الخلفية
