@@ -280,14 +280,14 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         bg = None
 
     if bg:
-      base.paste(bg, (0, 0), bg) # تم إضافة القناة كقناع للحفاظ على الشفافية إن وجدت في الخلفية
+      base.paste(bg, (0, 0), bg)
     else:
       for x in range(width):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
         draw.line([(x, 0), (x, height)], fill=color)
 
     # طبقة داكنة لزيادة وضوح النص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 70))
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 40))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
