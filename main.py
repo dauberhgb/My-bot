@@ -326,8 +326,8 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       
       display_name = arabic_reshaper.reshape(member.name[:18])
     else:
-      avatar_x = 135
-      text_x = 650
+      avatar_x = 155
+      text_x = 1050
 
       welcome_title = "WELCOME TO THE SERVER"
       member_count_text = f"Member #{member.guild.member_count}"
@@ -354,14 +354,14 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص (باستخدام anchor="ra" لضبط محاذاة الجملة العربية من اليمين لليسار)
-    draw.text((text_x + 2, 380), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((text_x, 380), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x + 2, 365), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 365), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((text_x + 2, 480), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((text_x, 480), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x + 2, 490), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 490), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((text_x + 2, 600), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((text_x, 600), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x + 2, 630), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((text_x, 630), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
 
     final_buffer = BytesIO()
     # التعديل هنا: الحفاظ على صيغة RGBA والحفظ بصيغة PNG حصراً لكي لا تظهر الخلفية الشفافة باللون الأسود
