@@ -630,7 +630,7 @@
                         <div class="form-group">
                             <label>{% if current_lang == 'en' %}Welcome Message:{% else %}رسالة الترحيب:{% endif %}</label>
                             <span class="sub-label">{% if current_lang == 'en' %}Use {user} to mention the new member.{else %}استخدم {user} للإشارة للعضو الجديد.{% endif %}</span>
-                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg', 'أهلاً بك يا {user} في السيرفر! 🎉' if current_lang != 'en' else 'Welcome {user} to the server! 🎉') if settings else ('أهلاً بك يا {user} في السيرفر! 🎉' if current_lang != 'en' else 'Welcome {user} to the server! 🎉') }}" placeholder="{{ 'أهلاً بك يا {user} في السيرفر! 🎉' if current_lang != 'en' else 'Welcome {user} to the server! 🎉' }}">
+                            <input type="text" name="welcome_msg" value="{{ ('Welcome {user} to the server! 🎉' if current_lang == 'en' else 'أهلاً بك يا {user} في السيرفر! 🎉') if (not settings or not settings.get('welcome_msg') or settings.get('welcome_msg') in ['أهلاً بك يا {user} في السيرفر! 🎉', 'Welcome {user} to the server! 🎉']) else settings.get('welcome_msg') }}" placeholder="{{ 'Welcome {user} to the server! 🎉' if current_lang == 'en' else 'أهلاً بك يا {user} في السيرفر! 🎉' }}">
                         </div>
 
                         <div class="form-group">
