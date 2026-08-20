@@ -586,6 +586,7 @@
         <!-- Main Form Body -->
         <main class="main-content">
             <form id="settingsForm" action="/save/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" method="POST">
+                <input type="hidden" name="language" value="{{ current_lang }}">
                 
                 <!-- 0. Welcome System Tab -->
                 <div id="section-welcome" class="tab-panel active">
@@ -596,16 +597,7 @@
                             </div>
                             <h3>{% if current_lang == 'en' %}Welcome Settings{% else %}إعدادات نظام الترحيب{% endif %}</h3>
                         </div>
-
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Bot & Welcome Language:{% else %}لغة البوت والبطاقة الترحيبية:{% endif %}</label>
-                                <select name="language">
-                                    <option value="ar" {% if settings and settings.get('language') == 'ar' %}selected{% endif %}>العربية (Arabic)</option>
-                                    <option value="en" {% if settings and settings.get('language') == 'en' %}selected{% endif %}>English (الإنجليزي)</option>
-                                </select>
-                            </div>
-
+                        
                             <div class="form-group">
                                 <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
                                 <select name="welcome_enabled">
