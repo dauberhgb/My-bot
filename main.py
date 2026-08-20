@@ -280,7 +280,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         bg = None
 
     if bg:
-      base.paste(bg, (0, 0))
+      base.paste(bg, (0, 0), bg) # تم إضافة القناة كقناع للحفاظ على الشفافية إن وجدت في الخلفية
     else:
       for x in range(width):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
@@ -364,7 +364,8 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     draw.text((text_x, 240), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
 
     final_buffer = BytesIO()
-    base.convert("RGB").save(final_buffer, format="PNG")
+    # التعديل هنا: الحفاظ على صيغة RGBA والحفظ بصيغة PNG حصراً لكي لا تظهر الخلفية الشفافة باللون الأسود
+    base.save(final_buffer, format="PNG")
     final_buffer.seek(0)
     return discord.File(final_buffer, filename="welcome_card.png")
   except Exception as e:
