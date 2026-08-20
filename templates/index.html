@@ -586,7 +586,6 @@
         <!-- Main Form Body -->
         <main class="main-content">
             <form id="settingsForm" action="/save/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" method="POST">
-                <input type="hidden" name="language" value="{{ current_lang }}">
                 
                 <!-- 0. Welcome System Tab -->
                 <div id="section-welcome" class="tab-panel active">
