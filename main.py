@@ -287,7 +287,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
         draw.line([(x, 0), (x, height)], fill=color)
 
     # طبقة داكنة لزيادة وضوح النص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 70))
     base = Image.alpha_composite(base, overlay)
     draw = ImageDraw.Draw(base)
 
