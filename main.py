@@ -279,8 +279,8 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
       except Exception:
         bg = None
 
-    if bg:
-      base.paste(bg, (0, 0), bg)
+        if bg:
+      base = Image.alpha_composite(base, bg)
     else:
       for x in range(width):
         color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
