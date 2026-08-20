@@ -188,7 +188,7 @@ def save(guild_id):
   media_enabled = True if request.form.get("media_enabled") == "on" else False
   banned_enabled = True if request.form.get("banned_enabled") == "on" else False
   farewell_enabled = True if request.form.get("farewell_enabled") == "on" else False
-  welcome_enabled = request.form.get("welcome_enabled") == "1"
+  Welcome_enabled = True if request.form.get("welcome_enabled") == "on" else False
 
   banned_words = [
       w.strip().lower()
