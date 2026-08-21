@@ -303,9 +303,21 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
     # إنشاء خلفية شفافة بالكامل
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(base)
-
-    # 1. تم حذف الخلفية الملونة لتكون شفافة بالكامل
-
+    
+    user_lang = str(lang).lower().strip()
+    # 1. دمج الإطار الشفاف كطبقة أخيرة
+    if frame_key and frame_key in AVAILABLE_FRAMES:
+      frame_info = AVAILABLE_FRAMES[frame_key]
+      frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
+      
+      if os.path.exists(frame_path):
+        try:
+          frame_img = Image.open(frame_path).convert("RGBA")
+          frame_img = frame_img.resize((width, height))
+          base = Image.alpha_composite(base, frame_img)
+        except Exception as fe:
+          print(f"❌ خطأ أثناء دمج إطار البطاقة: {fe}")
+            
     # 2. جلب وتجهيز الخط
     font_path = "tajawal.ttf"
     if not os.path.exists(font_path):
@@ -324,7 +336,6 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
     except Exception:
       font_title = font_name = font_sub = ImageFont.load_default()
 
-    user_lang = str(lang).lower().strip()
     avatar_size = 440
     avatar_y = ((height - avatar_size) // 2) - 20
 
@@ -381,19 +392,6 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
 
     draw.text((sub_x + 2, 731), member_count_text, fill=(0, 0, 0, 255), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
     draw.text((sub_x, 731), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
-
-    # 6. دمج الإطار الشفاف كطبقة أخيرة
-    if frame_key and frame_key in AVAILABLE_FRAMES:
-      frame_info = AVAILABLE_FRAMES[frame_key]
-      frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
-      
-      if os.path.exists(frame_path):
-        try:
-          frame_img = Image.open(frame_path).convert("RGBA")
-          frame_img = frame_img.resize((width, height))
-          base = Image.alpha_composite(base, frame_img)
-        except Exception as fe:
-          print(f"❌ خطأ أثناء دمج إطار البطاقة: {fe}")
 
     final_buffer = BytesIO()
     base.save(final_buffer, format="PNG")
