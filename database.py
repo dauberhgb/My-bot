@@ -158,7 +158,7 @@ def save_settings(guild_id, settings):
         INSERT OR REPLACE INTO guild_settings VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
-    """, I'm
+    """,
       (
           str(guild_id),
           json.dumps(settings.get("media_channels", [])),
