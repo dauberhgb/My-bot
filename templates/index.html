@@ -596,7 +596,10 @@
                                 <i class="fa-solid fa-user-plus"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Welcome Settings{% else %}إعدادات نظام الترحيب{% endif %}</h3>
-                        
+                        </div>
+
+                        <!-- الصف الأول: الحالة والقناة -->
+                        <div class="grid-2">
                             <div class="form-group">
                                 <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
                                 <select name="welcome_enabled">
@@ -618,19 +621,26 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Welcome Message:{% else %}رسالة الترحيب:{% endif %}</label>
-                            <span class="sub-label">{% if current_lang == 'en' %}Use {user} to mention the new member.{else %}استخدم {user} للإشارة للعضو الجديد.{% endif %}</span>
-                            <input type="text" name="welcome_msg" value="{{ ('Welcome {user} to the server! 🎉' if current_lang == 'en' else 'أهلاً بك يا {user} في السيرفر! 🎉') if (not settings or not settings.get('welcome_msg') or settings.get('welcome_msg') in ['أهلاً بك يا {user} في السيرفر! 🎉', 'Welcome {user} to the server! 🎉']) else settings.get('welcome_msg') }}" placeholder="{{ 'Welcome {user} to the server! 🎉' if current_lang == 'en' else 'أهلاً بك يا {user} في السيرفر! 🎉' }}">
-                        </div>
+                        <!-- الصف الثاني: رابط الصورة والإطار -->
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Welcome Image URL:{% else %}رابط صورة الترحيب:{% endif %}</label>
+                                <input type="text" name="welcome_image" placeholder="https://example.com/image.png" value="{{ settings.get('welcome_image', '') if settings else '' }}">
+                            </div>
 
-                        <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Welcome Image URL:{% else %}رابط صورة الترحيب (URL):{% endif %}</label>
-                            <input type="text" name="welcome_img" value="{{ settings.get('welcome_img', '') if settings else '' }}" placeholder="https://example.com/welcome.png">
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Welcome Card Frame:{% else %}إطار بطاقة الترحيب:{% endif %}</label>
+                                <select name="welcome_frame">
+                                    <option value="admin_gold" {% if settings and settings.get('welcome_frame') == 'admin_gold' %}selected{% endif %}>{{ 'Admin Gold Frame' if current_lang == 'en' else 'إطار الإدارة الذهبي (Admin Gold)' }}</option>
+                                    <option value="cyberpunk" {% if settings and settings.get('welcome_frame') == 'cyberpunk' %}selected{% endif %}>{{ 'Cyberpunk Frame' if current_lang == 'en' else 'إطار السايبر بانك (Cyberpunk)' }}</option>
+                                    <option value="galaxy_space" {% if settings and settings.get('welcome_frame') == 'galaxy_space' %}selected{% endif %}>{{ 'Galaxy Space Frame' if current_lang == 'en' else 'إطار الفضاء (Galaxy Space)' }}</option>
+                                    <option value="mafia_gangs" {% if settings and settings.get('welcome_frame') == 'mafia_gangs' %}selected{% endif %}>{{ 'Mafia & Gangs Frame' if current_lang == 'en' else 'إطار المافيا (Mafia & Gangs)' }}</option>
+                                    <option value="royal_blue" {% if settings and settings.get('welcome_frame') == 'royal_blue' %}selected{% endif %}>{{ 'Royal Blue Frame' if current_lang == 'en' else 'إطار الملكي الأزرق (Royal Blue)' }}</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-
                 <!-- 1. Media Channels Tab -->
                 <div id="section-media" class="tab-panel">
                     <div class="form-section">
