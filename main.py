@@ -295,38 +295,16 @@ threading.Thread(target=run_web_server, daemon=True).start()
 
 
 # ==========================================
-# 3. دالة توليد بطاقة الترحيب المتعددة اللغات والكبيرة (Welcome Card Generator)
+# 3. دالة توليد بطاقة الترحيب الشفافة مع النصوص والإطار
 # ==========================================
 async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
   try:
     width, height = 1536, 1024
+    # إنشاء خلفية شفافة بالكامل
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(base)
 
-    # 1. تحميل الخلفية
-    bg = None
-    if bg_url:
-      try:
-        async with aiohttp.ClientSession() as session:
-          async with session.get(bg_url) as resp:
-            if resp.status == 200:
-              bg_data = await resp.read()
-              bg = Image.open(BytesIO(bg_data)).convert("RGBA")
-              bg = bg.resize((width, height))
-      except Exception:
-        bg = None
-
-    if bg:
-        base = Image.alpha_composite(base, bg)
-    else:
-        for x in range(width):
-            color = (int(30 + (x / width) * 40), int(30 + (x / width) * 20), int(60 + (x / width) * 100))
-            draw.line([(x, 0), (x, height)], fill=color)
-
-    # طبقة داكنة لزيادة وضوح النص
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    base = Image.alpha_composite(base, overlay)
-    draw = ImageDraw.Draw(base)
+    # 1. تم حذف الخلفية الملونة لتكون شفافة بالكامل
 
     # 2. جلب وتجهيز الخط
     font_path = "tajawal.ttf"
@@ -355,7 +333,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
       avatar_x = width - avatar_size - 50  # البروفايل على اليمين
       title_x = width - 330
       name_x = width - 330
-      sub_x = width - 330               # بدء النصوص من اليمين لليسار طبيعياً
+      sub_x = width - 330
 
       raw_title = "أهلاً بك في السيرفر"
       welcome_title = arabic_reshaper.reshape(raw_title)
@@ -395,34 +373,34 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص (باستخدام anchor="ra" لضبط محاذاة الجملة العربية من اليمين لليسار)
-    draw.text((title_x + 2, 529), welcome_title, fill=(0, 0, 0, 220), font=font_title, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((title_x + 2, 529), welcome_title, fill=(0, 0, 0, 255), font=font_title, anchor="ra" if user_lang == "ar" else "la")
     draw.text((title_x, 529), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((name_x + 2, 315), display_name, fill=(0, 0, 0, 220), font=font_name, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((name_x + 2, 315), display_name, fill=(0, 0, 0, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
     draw.text((name_x, 315), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
 
-    draw.text((sub_x + 2, 731), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((sub_x + 2, 731), member_count_text, fill=(0, 0, 0, 255), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
     draw.text((sub_x, 731), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
 
-    # 6. دمج الإطار كطبقة فوقية إن وجد ومُحدد
+    # 6. دمج الإطار الشفاف كطبقة أخيرة
     if frame_key and frame_key in AVAILABLE_FRAMES:
       frame_info = AVAILABLE_FRAMES[frame_key]
       frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
+      
       if os.path.exists(frame_path):
         try:
           frame_img = Image.open(frame_path).convert("RGBA")
           frame_img = frame_img.resize((width, height))
           base = Image.alpha_composite(base, frame_img)
         except Exception as fe:
-          print(f"خطأ في دمج إطار البطاقة: {fe}")
+          print(f"❌ خطأ أثناء دمج إطار البطاقة: {fe}")
 
     final_buffer = BytesIO()
-    # الحفاظ على صيغة RGBA والحفظ بصيغة PNG حصراً لكي لا تظهر الخلفية باللون الأسود
     base.save(final_buffer, format="PNG")
     final_buffer.seek(0)
     return discord.File(final_buffer, filename="welcome_card.png")
   except Exception as e:
-    print(f"خطأ في توليد بطاقة الترحيب: {e}")
+    print(f"❌ خطأ عام في توليد بطاقة الترحيب: {e}")
     return None
 
 
