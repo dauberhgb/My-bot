@@ -302,10 +302,10 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
     width, height = 1536, 1024
     # إنشاء خلفية شفافة بالكامل
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(base)
     
     user_lang = str(lang).lower().strip()
-    # 1. دمج الإطار الشفاف كطبقة أخيرة
+    
+    # 1. دمج الإطار الشفاف أولاً (ليكون في الخلفية)
     if frame_key and frame_key in AVAILABLE_FRAMES:
       frame_info = AVAILABLE_FRAMES[frame_key]
       frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
@@ -363,6 +363,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
       member_count_text = f"Member #{member.guild.member_count}"
       display_name = member.name[:18]
 
+    # إنشاء أداة الرسم للعمليات العلوية (البروفايل والنصوص)
+    draw = ImageDraw.Draw(base)
+
     # 4. رسم صورة البروفايل
     avatar_url = member.display_avatar.url
     async with aiohttp.ClientSession() as session:
@@ -383,7 +386,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
           )
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
-    # 5. رسم النصوص (باستخدام anchor="ra" لضبط محاذاة الجملة العربية من اليمين لليسار)
+    # 5. رسم النصوص في النهاية (لتظهر فوق كل شيء بما فيها الإطار)
     draw.text((title_x + 2, 529), welcome_title, fill=(0, 0, 0, 255), font=font_title, anchor="ra" if user_lang == "ar" else "la")
     draw.text((title_x, 529), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
 
