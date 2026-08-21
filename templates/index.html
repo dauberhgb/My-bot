@@ -621,6 +621,13 @@
                             </div>
                         </div>
 
+                        <!-- الصف الجديد: نص رسالة الترحيب مع المثال التلقائي حسب لغة السيرفر -->
+                        <div class="form-group">
+                            <label>{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
+                            <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
+                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg', '') if settings else '' }}" placeholder="{% if current_lang == 'en' %}e.g., Welcome {user} to {server}! 🎉{% else %}مثال: أهلاً بك يا {user} في سيرفر {server}! 🎉{% endif %}">
+                        </div>
+
                         <!-- الصف الثاني: رابط الصورة والإطار -->
                         <div class="grid-2">
                             <div class="form-group">
@@ -632,7 +639,7 @@
                                 <label>{% if current_lang == 'en' %}Welcome Card Frame:{% else %}إطار بطاقة الترحيب:{% endif %}</label>
                                 <select name="welcome_frame">
                                     <option value="admin_gold" {% if settings and settings.get('welcome_frame') == 'admin_gold' %}selected{% endif %}>{{ 'Admin Gold Frame' if current_lang == 'en' else 'إطار الإدارة الذهبي (Admin Gold)' }}</option>
-                                    <option value="cyberpunk" {% if settings and settings.get('welcome_frame') == 'cyberpunk' %}selected{% endif %}>{{ 'Cyberpunk Frame' if current_lang == 'en' else 'إطار السايبر بانك (Cyberpunk)' }}</option>
+                                    <option value="cyberpunk" {% if settings and settings.get('cyberpunk') == 'cyberpunk' %}selected{% endif %}>{{ 'Cyberpunk Frame' if current_lang == 'en' else 'إطار السايبر بانك (Cyberpunk)' }}</option>
                                     <option value="galaxy_space" {% if settings and settings.get('welcome_frame') == 'galaxy_space' %}selected{% endif %}>{{ 'Galaxy Space Frame' if current_lang == 'en' else 'إطار الفضاء (Galaxy Space)' }}</option>
                                     <option value="mafia_gangs" {% if settings and settings.get('welcome_frame') == 'mafia_gangs' %}selected{% endif %}>{{ 'Mafia & Gangs Frame' if current_lang == 'en' else 'إطار المافيا (Mafia & Gangs)' }}</option>
                                     <option value="royal_blue" {% if settings and settings.get('welcome_frame') == 'royal_blue' %}selected{% endif %}>{{ 'Royal Blue Frame' if current_lang == 'en' else 'إطار الملكي الأزرق (Royal Blue)' }}</option>
