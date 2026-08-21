@@ -33,6 +33,42 @@ violations = {}
 OWNER_ID = 1462429084377157832
 
 # ==========================================
+# لصق قاموس الإطارات هنا تماماً 👇
+# ==========================================
+AVAILABLE_FRAMES = {
+    "admin_gold": {
+        "en_name": "Admin Gold Luxury",
+        "ar_name": "إطار الإدارة الذهبي الفاخر",
+        "en_file": "frames/admin_gold.png",
+        "ar_file": "frames/admin_gold_ar.png"
+    },
+    "cyberpunk": {
+        "en_name": "Cyberpunk Neon",
+        "ar_name": "إطار السايبر بانك و النيون",
+        "en_file": "frames/cyberpunk.png",
+        "ar_file": "frames/cyberpunk_ar.png"
+    },
+    "galaxy_space": {
+        "en_name": "Deep Space Galaxy",
+        "ar_name": "إطار الفضاء والمجرات",
+        "en_file": "frames/galaxy_space.png",
+        "ar_file": "frames/galaxy_space_ar.png"
+    },
+    "mafia_gangs": {
+        "en_name": "Mafia & Gangs",
+        "ar_name": "إطار العصابات والمافيا",
+        "en_file": "frames/mafia_gangs.png",
+        "ar_file": "frames/mafia_gangs_ar.png"
+    },
+    "royal_blue": {
+        "en_name": "Royal Blue Classic",
+        "ar_name": "إطار مكلي كلاسيكي",
+        "en_file": "frames/royal_blue.png",
+        "ar_file": "frames/royal_blue_ar.png"
+    }
+}
+
+# ==========================================
 # 2. إعداد خادم الويب (Flask Dashboard)
 # ==========================================
 app = Flask(__name__)
