@@ -33,7 +33,7 @@ violations = {}
 OWNER_ID = 1462429084377157832
 
 # ==========================================
-# لصق قاموس الإطارات هنا تماماً 👇
+# قاموس الإطارات المتاحة
 # ==========================================
 AVAILABLE_FRAMES = {
     "admin_gold": {
@@ -257,6 +257,7 @@ def save(guild_id):
       "welcome_channel": request.form.get("welcome_channel", ""),
       "welcome_msg": request.form.get("welcome_msg", ""),
       "welcome_img": request.form.get("welcome_img", ""),
+      "welcome_frame": request.form.get("welcome_frame", ""),
       "farewell_enabled": farewell_enabled,
       "farewell_channel": request.form.get("farewell_channel", ""),
       "farewell_title": request.form.get("farewell_title", ""),
@@ -296,7 +297,7 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 # 3. دالة توليد بطاقة الترحيب المتعددة اللغات والكبيرة (Welcome Card Generator)
 # ==========================================
-async def generate_welcome_card(member, bg_url=None, lang="ar"):
+async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
   try:
     width, height = 1536, 1024
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -403,8 +404,20 @@ async def generate_welcome_card(member, bg_url=None, lang="ar"):
     draw.text((sub_x + 2, 731), member_count_text, fill=(0, 0, 0, 220), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
     draw.text((sub_x, 731), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
 
+    # 6. دمج الإطار كطبقة فوقية إن وجد ومُحدد
+    if frame_key and frame_key in AVAILABLE_FRAMES:
+      frame_info = AVAILABLE_FRAMES[frame_key]
+      frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
+      if os.path.exists(frame_path):
+        try:
+          frame_img = Image.open(frame_path).convert("RGBA")
+          frame_img = frame_img.resize((width, height))
+          base = Image.alpha_composite(base, frame_img)
+        except Exception as fe:
+          print(f"خطأ في دمج إطار البطاقة: {fe}")
+
     final_buffer = BytesIO()
-    # التعديل هنا: الحفاظ على صيغة RGBA والحفظ بصيغة PNG حصراً لكي لا تظهر الخلفية الشفافة باللون الأسود
+    # الحفاظ على صيغة RGBA والحفظ بصيغة PNG حصراً لكي لا تظهر الخلفية باللون الأسود
     base.save(final_buffer, format="PNG")
     final_buffer.seek(0)
     return discord.File(final_buffer, filename="welcome_card.png")
@@ -528,9 +541,10 @@ async def on_member_join(member):
     if channel:
       bg_url = settings.get("welcome_img") or settings.get("farewell_img")
       lang = settings.get("language", "ar")
+      frame_key = settings.get("welcome_frame")
       
-      # تمرير اللغة لدالة إنشاء البطاقة
-      card_file = await generate_welcome_card(member, bg_url, lang=lang)
+      # تمرير اللغة والإطار لدالة إنشاء البطاقة
+      card_file = await generate_welcome_card(member, bg_url, lang=lang, frame_key=frame_key)
       if card_file:
         custom_msg = settings.get("welcome_msg", "")
         if custom_msg:
