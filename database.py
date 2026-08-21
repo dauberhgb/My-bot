@@ -39,7 +39,8 @@ def init_db():
             welcome_enabled INTEGER,
             welcome_channel TEXT,
             welcome_msg TEXT,
-            welcome_img TEXT
+            welcome_img TEXT,
+            welcome_frame TEXT
         )
     """)
 
@@ -51,7 +52,9 @@ def init_db():
     cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_channel TEXT DEFAULT ''")
     cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_msg TEXT DEFAULT ''")
     cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_img TEXT DEFAULT ''")
-
+  if "welcome_frame" not in columns:
+    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_frame TEXT DEFAULT ''")
+  
   # 2. جدول نظام المستويات (XP)
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_levels (
@@ -110,6 +113,7 @@ def get_settings(guild_id):
         "welcome_channel": row[27] if len(row) > 27 and row[27] else "",
         "welcome_msg": row[28] if len(row) > 28 and row[28] else "أهلاً بك يا {user} في السيرفر! 🎉",
         "welcome_img": row[29] if len(row) > 29 and row[29] else "",
+        "welcome_frame": row[30] if len(row) > 30 and row[30] else "",
     }
   return {
       "guild_id": str(guild_id),
@@ -142,6 +146,7 @@ def get_settings(guild_id):
       "welcome_channel": "",
       "welcome_msg": "أهلاً بك يا {user} في السيرفر! 🎉",
       "welcome_img": "",
+      "welcome_frame": "",
   }
 
 
@@ -153,7 +158,7 @@ def save_settings(guild_id, settings):
         INSERT OR REPLACE INTO guild_settings VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
-    """,
+    """, I'm
       (
           str(guild_id),
           json.dumps(settings.get("media_channels", [])),
@@ -185,6 +190,7 @@ def save_settings(guild_id, settings):
           str(settings.get("welcome_channel", "")),
           str(settings.get("welcome_msg", "")),
           str(settings.get("welcome_img", "")),
+          str(settings.get("welcome_frame", "")),
       ),
   )
   conn.commit()
