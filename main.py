@@ -717,8 +717,7 @@ async def on_message(message):
         violations[g_id][u_id] = 0
       return
 
-
-    auto_resp = settings.get("auto_responses", {})
+        auto_resp = settings.get("auto_responses", {})
     msg_content = message.content.lower()
     if msg_content in auto_resp:
         await message.channel.send(auto_resp[msg_content])
@@ -730,22 +729,20 @@ async def on_message(message):
         await network_cog.on_message(message)
 
     await bot.process_commands(message)
-      
+
+
 @bot.command(name="sync")
 async def sync_commands(ctx):
-  if ctx.author.id != OWNER_ID:
-    await ctx.send("عذراً! هذا الأمر مخصص لصاحب البوت فقط.")
-    return
+    if ctx.author.id != OWNER_ID:
+        await ctx.send("⚠️ عذراً! هذا الأمر مخصص لصاحب البوت فقط.")
+        return
 
-  msg = await ctx.send("جاري مزامنة أوامر السلاش عالمياً...")
-
-  try:
-    synced = await bot.tree.sync()
-    await msg.edit(
-        content=f"تمت مزامنة {len(synced)} أمر سلاش بنجاح على مستوى العالم!"
-    )
-  except Exception as e:
-    await msg.edit(content=f"حدث خطأ أثناء المزامنة: {e}")
+    msg = await ctx.send("...جاري مزامنة أوامر السلاش عالمياً")
+    try:
+        synced = await bot.tree.sync()
+        await msg.edit(content=f"تم مزامنة {len(synced)} أمر سلاش بنجاح!")
+    except Exception as e:
+        await msg.edit(content=f"❌ حدث خطأ أثناء المزامنة: {e}")
 
 
 @bot.tree.command(name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر")
@@ -753,16 +750,9 @@ async def sync_commands(ctx):
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
-    
+    target = member or interaction.user
+    lang = get_guild_lang(interaction.guild.id)
 
-nds.describe(member="العضو المراد عرض معلوماته (اختياري)")
-@app_commands.checks.has_permissions(manage_guild=True)
-@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
-async def userinfo(
-    interaction: discord.Interaction, member: discord.Member = None
-):
-  target = member or interaction.user
-  lang = get_guild_lang(interaction.guild.id)
 
   if lang == "en":
     embed = discord.Embed(title=f"User Info: {target.display_name}", color=discord.Color.blue())
