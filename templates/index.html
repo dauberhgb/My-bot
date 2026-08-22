@@ -625,7 +625,7 @@
                         <div class="form-group">
                             <label>{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
                             <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
-                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg', '') if settings else '' }}" placeholder="{% if current_lang == 'en' %}Welcome {user} to {server}! 🎉{% else %}مثال: أهلاً بك يا {user} في سيرفر {server}! 🎉{% endif %}">
+                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg', '') if settings else '' }}" placeholder="{% if lang == 'en' %}Welcome {user} to {server}! 🎉{% else %}مثال: أهلاً بك يا {user} في سيرفر {server}! 🎉{% endif %}">
                         </div>
 
                         <!-- الصف الثاني: رابط الصورة والإطار -->
