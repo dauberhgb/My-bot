@@ -304,7 +304,20 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
     width, height = 1536, 1024
     # إنشاء خلفية شفافة بالكامل
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    
+    # بداية كود تحميل الخلفية المخصصة
+    if bg_url and bg_url.startswith("http"):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(bg_url) as resp:
+                    if resp.status == 200:
+                        bg_data = await resp.read()
+                        custom_bg = Image.open(BytesIO(bg_data)).convert("RGBA")
+                        custom_bg = custom_bg.resize((width, height))
+                        base.paste(custom_bg, (0, 0))
+        except Exception as e:
+            print(f"❌ خطأ في تحميل الصورة: {e}")
+    # نهاية كود تحميل الخلفية المخصصة
+
     user_lang = str(lang).lower().strip()
     
     # 1. دمج الإطار الشفاف أولاً (ليكون في الخلفية)
