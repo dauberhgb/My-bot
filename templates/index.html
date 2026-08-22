@@ -625,7 +625,20 @@
                         <div class="form-group">
                             <label>{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
                             <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
-                            <input type="text" name="welcome_msg" value="{{ settings.get('welcome_msg') if settings and settings.get('welcome_msg') else ('Welcome {user} to {server}! 🎉' if current_lang == 'en' else 'أهلاً بك يا {user} في سيرفر {server}! 🎉') }}">
+                            <input type="text" id="welcome_msg_field" name="welcome_msg" value="{{ settings.get('welcome_msg', '') if settings else '' }}">
+                            <script>
+                                document.addEventListener("DOMContentLoaded", function() {
+                                    var input = document.getElementById('welcome_msg_field');
+                                    var isEnglishPage = document.body.innerText.includes("Welcome Settings");
+        
+                                    if (isEnglishPage && (input.value === "" || input.value.includes("أهلاً بك"))) {
+                                        input.value = "Welcome {user} to {server}! 🎉";
+                                    } 
+                                    else if (!isEnglishPage && (input.value === "" || input.value.includes("Welcome"))) {
+                                        input.value = "أهلاً بك يا {user} في سيرفر {server}! 🎉";
+                                    }
+                                });
+                            </script>
                         </div>
 
                         <!-- الصف الثاني: رابط الصورة والإطار -->
