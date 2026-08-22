@@ -1,120 +1,66 @@
+import os
 import json
-import sqlite3
+from pymongo import MongoClient
 
-DB_NAME = "bot_settings.db"
+# الاتصال بقاعدة بيانات MongoDB باستخدام متغير البيئة
+MONGO_URI = os.getenv("MONGO_URI")
+client = MongoClient(MONGO_URI)
+db = client.get_database("bot_database")
+
+# المجموعات (Collections) البديلة للجداول
+settings_collection = db["guild_settings"]
+levels_collection = db["user_levels"]
 
 
 def init_db():
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  # 1. جدول إعدادات السيرفر
-  cursor.execute("""
-        CREATE TABLE IF NOT EXISTS guild_settings (
-            guild_id TEXT PRIMARY KEY,
-            media_channels TEXT,
-            media_warning TEXT,
-            banned_words TEXT,
-            max_violations INTEGER,
-            punishment_type TEXT,
-            timeout_minutes INTEGER,
-            warning_title TEXT,
-            warning_msg_1 TEXT,
-            warning_msg_2 TEXT,
-            farewell_channel TEXT,
-            farewell_title TEXT,
-            farewell_desc TEXT,
-            farewell_img TEXT,
-            farewell_action TEXT,
-            auto_responses TEXT,
-            auto_role TEXT,
-            auto_nickname TEXT,
-            ticket_category TEXT,
-            ticket_support_role TEXT,
-            xp_enabled INTEGER,
-            xp_per_message INTEGER,
-            xp_role_5 TEXT,
-            xp_role_10 TEXT,
-            xp_role_20 TEXT,
-            language TEXT,
-            welcome_enabled INTEGER,
-            welcome_channel TEXT,
-            welcome_msg TEXT,
-            welcome_img TEXT,
-            welcome_frame TEXT
-        )
-    """)
-
-  # الترقية التلقائية لقاعدة البيانات عند وجود الجدول سابقاً
-  cursor.execute("PRAGMA table_info(guild_settings)")
-  columns = [col[1] for col in cursor.fetchall()]
-  if "welcome_enabled" not in columns:
-    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_enabled INTEGER DEFAULT 1")
-    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_channel TEXT DEFAULT ''")
-    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_msg TEXT DEFAULT ''")
-    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_img TEXT DEFAULT ''")
-  if "welcome_frame" not in columns:
-    cursor.execute("ALTER TABLE guild_settings ADD COLUMN welcome_frame TEXT DEFAULT ''")
-  
-  # 2. جدول نظام المستويات (XP)
-  cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_levels (
-            guild_id TEXT,
-            user_id TEXT,
-            xp INTEGER,
-            level INTEGER,
-            PRIMARY KEY (guild_id, user_id)
-        )
-    """)
-
-  conn.commit()
-  conn.close()
+  try:
+    # التحقق من الاتصال بقاعدة البيانات
+    client.admin.command('ping')
+    print("✅ تم الاتصال بقاعدة بيانات MongoDB بنجاح!")
+  except Exception as e:
+    print(f"❌ فشل الاتصال بقاعدة البيانات: {e}")
 
 
 def get_settings(guild_id):
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),)
-  )
-  row = cursor.fetchone()
-  conn.close()
+  guild_id_str = str(guild_id)
+  row = settings_collection.find_one({"guild_id": guild_id_str})
 
   if row:
+    row.pop("_id", None)
     return {
-        "guild_id": row[0],
-        "media_channels": json.loads(row[1]) if row[1] else [],
-        "media_warning": row[2] or "عذراً {user}، هذه القناة مخصصة للميديا فقط!",
-        "banned_words": json.loads(row[3]) if row[3] else [],
-        "max_violations": row[4] or 3,
-        "punishment_type": row[5] or "timeout",
-        "timeout_minutes": row[6] or 10,
-        "warning_title": row[7] or "تحذير مخالفة",
-        "warning_msg_1": row[8] or "تنبيه أول يا {user}، يرجى الالتزام بالقوانين.",
-        "warning_msg_2": (
-            row[9] or "تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!"
-        ),
-        "farewell_channel": row[10] or "",
-        "farewell_title": row[11] or "وداعاً!",
-        "farewell_desc": row[12] or "غادر العضو {user} السيرفر.",
-        "farewell_img": row[13] or "",
-        "farewell_action": row[14] or "none",
-        "auto_responses": json.loads(row[15]) if row[15] else {},
-        "auto_role": row[16] or "",
-        "auto_nickname": row[17] or "",
-        "ticket_category": row[18] or "",
-        "ticket_support_role": row[19] or "",
-        "xp_enabled": row[20] if row[20] is not None else 1,
-        "xp_per_message": row[21] or 15,
-        "xp_role_5": row[22] or "",
-        "xp_role_10": row[23] or "",
-        "xp_role_20": row[24] or "",
-        "language": row[25] if len(row) > 25 and row[25] else "ar",
-        "welcome_enabled": row[26] if len(row) > 26 and row[26] is not None else 1,
-        "welcome_channel": row[27] if len(row) > 27 and row[27] else "",
-        "welcome_msg": row[28] if len(row) > 28 and row[28] else "أهلاً بك يا {user} في السيرفر! 🎉",
-        "welcome_img": row[29] if len(row) > 29 and row[29] else "",
-        "welcome_frame": row[30] if len(row) > 30 and row[30] else "",
+        "guild_id": row.get("guild_id", guild_id_str),
+        "media_channels": row.get("media_channels", []),
+        "media_warning": row.get("media_warning") or "عذراً {user}، هذه القناة مخصصة للميديا فقط!",
+        "banned_words": row.get("banned_words", []),
+        "max_violations": row.get("max_violations") or 3,
+        "punishment_type": row.get("punishment_type") or "timeout",
+        "timeout_minutes": row.get("timeout_minutes") or 10,
+        "warning_title": row.get("warning_title") or "تحذير مخالفة",
+        "warning_msg_1": row.get("warning_msg_1") or "تنبيه أول يا {user}، يرجى الالتزام بالقوانين.",
+        "warning_msg_2": row.get("warning_msg_2") or "تنبيه ثاني يا {user}، المخالفة القادمة ستعرضك للعقوبة!",
+        "farewell_channel": row.get("farewell_channel") or "",
+        "farewell_title": row.get("farewell_title") or "وداعاً!",
+        "farewell_desc": row.get("farewell_desc") or "غادر العضو {user} السيرفر.",
+        "farewell_img": row.get("farewell_img") or "",
+        "farewell_action": row.get("farewell_action") or "none",
+        "auto_responses": row.get("auto_responses", {}),
+        "auto_role": row.get("auto_role") or "",
+        "auto_nickname": row.get("auto_nickname") or "",
+        "ticket_category": row.get("ticket_category") or "",
+        "ticket_support_role": row.get("ticket_support_role") or "",
+        "xp_enabled": row.get("xp_enabled") if row.get("xp_enabled") is not None else 1,
+        "xp_per_message": row.get("xp_per_message") or 15,
+        "xp_role_5": row.get("xp_role_5") or "",
+        "xp_role_10": row.get("xp_role_10") or "",
+        "xp_role_20": row.get("xp_role_20") or "",
+        "language": row.get("language") if row.get("language") else "ar",
+        "welcome_enabled": row.get("welcome_enabled") if row.get("welcome_enabled") is not None else 1,
+        "welcome_channel": row.get("welcome_channel") if row.get("welcome_channel") else "",
+        "welcome_msg": row.get("welcome_msg") if row.get("welcome_msg") else "أهلاً بك يا {user} في السيرفر! 🎉",
+        "welcome_img": row.get("welcome_img") if row.get("welcome_img") else "",
+        "welcome_frame": row.get("welcome_frame") if row.get("welcome_frame") else "",
     }
+    
   return {
       "guild_id": str(guild_id),
       "media_channels": [],
@@ -151,64 +97,56 @@ def get_settings(guild_id):
 
 
 def save_settings(guild_id, settings):
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  cursor.execute(
-      """
-        INSERT OR REPLACE INTO guild_settings VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        )
-    """,
-      (
-          str(guild_id),
-          json.dumps(settings.get("media_channels", [])),
-          settings.get("media_warning", ""),
-          json.dumps(settings.get("banned_words", [])),
-          settings.get("max_violations", 3),
-          settings.get("punishment_type", "timeout"),
-          settings.get("timeout_minutes", 10),
-          settings.get("warning_title", ""),
-          settings.get("warning_msg_1", ""),
-          settings.get("warning_msg_2", ""),
-          settings.get("farewell_channel", ""),
-          settings.get("farewell_title", ""),
-          settings.get("farewell_desc", ""),
-          settings.get("farewell_img", ""),
-          settings.get("farewell_action", "none"),
-          json.dumps(settings.get("auto_responses", {})),
-          settings.get("auto_role", ""),
-          settings.get("auto_nickname", ""),
-          settings.get("ticket_category", ""),
-          settings.get("ticket_support_role", ""),
-          int(settings.get("xp_enabled", 1)),
-          int(settings.get("xp_per_message", 15)),
-          str(settings.get("xp_role_5", "")),
-          str(settings.get("xp_role_10", "")),
-          str(settings.get("xp_role_20", "")),
-          str(settings.get("language", "ar")),
-          int(settings.get("welcome_enabled", 1)),
-          str(settings.get("welcome_channel", "")),
-          str(settings.get("welcome_msg", "")),
-          str(settings.get("welcome_img", "")),
-          str(settings.get("welcome_frame", "")),
-      ),
+  guild_id_str = str(guild_id)
+  data_to_save = {
+      "guild_id": guild_id_str,
+      "media_channels": settings.get("media_channels", []),
+      "media_warning": settings.get("media_warning", ""),
+      "banned_words": settings.get("banned_words", []),
+      "max_violations": settings.get("max_violations", 3),
+      "punishment_type": settings.get("punishment_type", "timeout"),
+      "timeout_minutes": settings.get("timeout_minutes", 10),
+      "warning_title": settings.get("warning_title", ""),
+      "warning_msg_1": settings.get("warning_msg_1", ""),
+      "warning_msg_2": settings.get("warning_msg_2", ""),
+      "farewell_channel": settings.get("farewell_channel", ""),
+      "farewell_title": settings.get("farewell_title", ""),
+      "farewell_desc": settings.get("farewell_desc", ""),
+      "farewell_img": settings.get("farewell_img", ""),
+      "farewell_action": settings.get("farewell_action", "none"),
+      "auto_responses": settings.get("auto_responses", {}),
+      "auto_role": settings.get("auto_role", ""),
+      "auto_nickname": settings.get("auto_nickname", ""),
+      "ticket_category": settings.get("ticket_category", ""),
+      "ticket_support_role": settings.get("ticket_support_role", ""),
+      "xp_enabled": int(settings.get("xp_enabled", 1)),
+      "xp_per_message": int(settings.get("xp_per_message", 15)),
+      "xp_role_5": str(settings.get("xp_role_5", "")),
+      "xp_role_10": str(settings.get("xp_role_10", "")),
+      "xp_role_20": str(settings.get("xp_role_20", "")),
+      "language": str(settings.get("language", "ar")),
+      "welcome_enabled": int(settings.get("welcome_enabled", 1)),
+      "welcome_channel": str(settings.get("welcome_channel", "")),
+      "welcome_msg": str(settings.get("welcome_msg", "")),
+      "welcome_img": str(settings.get("welcome_img", "")),
+      "welcome_frame": str(settings.get("welcome_frame", "")),
+  }
+  
+  settings_collection.update_one(
+      {"guild_id": guild_id_str},
+      {"$set": data_to_save},
+      upsert=True
   )
-  conn.commit()
-  conn.close()
 
 
 # دوال إدارة نظام المستويات والخبرة (XP)
 def add_user_xp(guild_id, user_id, xp_amount=15):
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT xp, level FROM user_levels WHERE guild_id = ? AND user_id = ?",
-      (str(guild_id), str(user_id)),
-  )
-  row = cursor.fetchone()
+  g_id, u_id = str(guild_id), str(user_id)
+  row = levels_collection.find_one({"guild_id": g_id, "user_id": u_id})
 
   if row:
-    xp, level = row
+    xp = row.get("xp", 0)
+    level = row.get("level", 1)
   else:
     xp, level = 0, 1
 
@@ -220,44 +158,27 @@ def add_user_xp(guild_id, user_id, xp_amount=15):
     level += 1
     leveled_up = True
 
-  cursor.execute(
-      """
-        INSERT OR REPLACE INTO user_levels (guild_id, user_id, xp, level)
-        VALUES (?, ?, ?, ?)
-    """,
-      (str(guild_id), str(user_id), xp, level),
+  levels_collection.update_one(
+      {"guild_id": g_id, "user_id": u_id},
+      {"$set": {"xp": xp, "level": level}},
+      upsert=True
   )
-
-  conn.commit()
-  conn.close()
   return level, leveled_up
 
 
 def get_user_level(guild_id, user_id):
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT xp, level FROM user_levels WHERE guild_id = ? AND user_id = ?",
-      (str(guild_id), str(user_id)),
-  )
-  row = cursor.fetchone()
-  conn.close()
+  row = levels_collection.find_one({"guild_id": str(guild_id), "user_id": str(user_id)})
 
   if row:
-    return row[0], row[1]
+    return row.get("xp", 0), row.get("level", 1)
   return 0, 1
 
 
 def get_top_users(guild_id, limit=10):
-  conn = sqlite3.connect(DB_NAME)
-  cursor = conn.cursor()
-  cursor.execute(
-      "SELECT user_id, xp, level FROM user_levels WHERE guild_id = ? ORDER BY"
-      " xp DESC LIMIT ?",
-      (str(guild_id), limit),
-  )
-  rows = cursor.fetchall()
-  conn.close()
+  cursor = levels_collection.find({"guild_id": str(guild_id)}).sort("xp", -1).limit(limit)
+  rows = []
+  for doc in cursor:
+    rows.append((doc.get("user_id"), doc.get("xp", 0), doc.get("level", 1)))
   return rows
 
 
