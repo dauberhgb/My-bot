@@ -723,6 +723,7 @@ async def on_message(message):
     await message.channel.send(auto_resp[msg_content])
     return
 
+  # السماح للأوامر والأحداث الخارجية (مثل نظام الشبكات cogs) بالعمل مع الرسالة
   await bot.process_commands(message)
 
 
