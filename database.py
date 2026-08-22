@@ -11,6 +11,8 @@ db = client.get_database("bot_database")
 settings_collection = db["guild_settings"]
 levels_collection = db["user_levels"]
 
+networks_collection = db["networks"]
+network_guilds_collection = db["network_guilds"]
 
 def init_db():
   try:
@@ -180,6 +182,36 @@ def get_top_users(guild_id, limit=10):
   for doc in cursor:
     rows.append((doc.get("user_id"), doc.get("xp", 0), doc.get("level", 1)))
   return rows
+
+# --- دوال نظام النسخ المتطابق والشبكات ---
+def create_network(network_id, network_name, owner_id):
+    networks_collection.insert_one({
+        "network_id": network_id,
+        "network_name": network_name,
+        "owner_id": str(owner_id)
+    })
+
+def get_network(network_id):
+    return networks_collection.find_one({"network_id": network_id})
+
+def join_network(guild_id, network_id, bound_channel_id):
+    network_guilds_collection.update_one(
+        {"guild_id": str(guild_id)},
+        {
+            "$set": {
+                "network_id": network_id,
+                "bound_channel_id": str(bound_channel_id),
+                "is_banned_sync_enabled": True
+            }
+        },
+        upsert=True
+    )
+
+def get_guild_network(guild_id):
+    return network_guilds_collection.find_one({"guild_id": str(guild_id)})
+
+def get_network_guilds(network_id):
+    return list(network_guilds_collection.find({"network_id": network_id}))
 
 
 init_db()
