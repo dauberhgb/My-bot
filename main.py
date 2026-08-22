@@ -529,12 +529,15 @@ async def on_member_join(member):
       # تمرير اللغة والإطار لدالة إنشاء البطاقة
       card_file = await generate_welcome_card(member, bg_url, lang=lang, frame_key=frame_key)
       if card_file:
-        custom_msg = settings.get("welcome_msg", "")
+        custom_msg = settings.get("welcome_msg", "").strip()
         if custom_msg:
-          welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
+            welcome_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
         else:
-          welcome_text = f"Welcome {member.mention} to **{member.guild.name}**! 🎉" if lang == "en" else f"أهلاً بك يا {member.mention} في سيرفر **{member.guild.name}**! 🎉"
-        
+            if lang == "en":
+                welcome_text = f"Welcome {member.mention} to {member.guild.name}! 🎉"
+            else:
+                welcome_text = f"أهلاً بك يا {member.mention} في سيرفر {member.guild.name}! 🎉"
+
         await channel.send(content=welcome_text, file=card_file)
 
 
