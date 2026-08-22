@@ -9,7 +9,7 @@ class NetworkCog(commands.Cog):
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def network(self, ctx):
-        await ctx.send("تنسيق الأوامر المتاحة:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`\n`!network leave`\n`!network delete <معرف_الشبكة>`")
+        await ctx.send("تنسيق الأوامر المتاحة:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`\n`!network leave`\n`!network del`")
 
     @network.command(name="create")
     @commands.has_permissions(administrator=True)
@@ -36,6 +36,7 @@ class NetworkCog(commands.Cog):
         # ربط السيرفر الحالي بالشبكة وتحديد الروم الحالي رومَ ربط
         db.join_network(ctx.guild.id, network_id, ctx.channel.id)
         await ctx.send(f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل.")
+
     @network.command(name="leave")
     @commands.has_permissions(administrator=True)
     async def network_leave(self, ctx):
@@ -47,9 +48,13 @@ class NetworkCog(commands.Cog):
         db.leave_network(ctx.guild.id)
         await ctx.send("✅ تم قطع اتصال السيرفر والغرفة بالشبكة بنجاح.")
 
-    @network.command(name="delete")
+    @network.command(name="del", aliases=["delete"])
     @commands.has_permissions(administrator=True)
-    async def network_delete(self, ctx, network_id: str):
+    async def network_delete(self, ctx, network_id: str = None):
+        # إذا لم يتم تحديد network_id يُجلب المعرف الخاص بنفس السيرفر تلقائياً
+        if not network_id:
+            network_id = f"net_{ctx.guild.id}"
+
         network = db.get_network(network_id)
         if not network:
             await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
