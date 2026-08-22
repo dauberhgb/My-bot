@@ -213,5 +213,11 @@ def get_guild_network(guild_id):
 def get_network_guilds(network_id):
     return list(network_guilds_collection.find({"network_id": network_id}))
 
+def delete_network(network_id):
+    # حذف الشبكة نفسها
+    networks_collection.delete_one({"network_id": network_id})
+    # حذف جميع السيرفرات المرتبطة بهذه الشبكة
+    network_guilds_collection.delete_many({"network_id": network_id})
+  
 
 init_db()
