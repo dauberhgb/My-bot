@@ -626,6 +626,7 @@
                             <label>{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
                             <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
                             <input type="text" name="welcome_msg" value="{% if settings and settings.get('welcome_msg') %}{{ settings.get('welcome_msg') }}{% else %}{% if current_lang == 'en' %}Welcome {user} to {server}! 🎉{% else %}أهلاً بك يا {user} في سيرفر {server}! 🎉{% endif %}{% endif %}">
+                            <small>Current Language detected: {{ current_lang }}</small>
                         </div>
 
                         <!-- الصف الثاني: رابط الصورة والإطار -->
