@@ -55,10 +55,6 @@ class NetworkCog(commands.Cog):
             await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
             return
 
-        if int(network.get("owner_id")) != int(ctx.author.id):
-            await ctx.send("⚠️ هذا الأمر مخصص لمالك الشبكة فقط!")
-            return
-
         db.delete_network(network_id)
         await ctx.send(f"🗑️ تم حذف الشبكة `{network_id}` وإغلاق جميع اتصالاتها بنجاح.")
 
