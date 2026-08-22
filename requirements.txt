@@ -5,3 +5,4 @@ aiohttp
 requests
 arabic-reshaper
 python-bidi
+pymongo[srv]
