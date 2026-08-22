@@ -36,6 +36,31 @@ class NetworkCog(commands.Cog):
         # ربط السيرفر الحالي بالشبكة وتحديد الروم الحالي رومَ ربط
         db.join_network(ctx.guild.id, network_id, ctx.channel.id)
         await ctx.send(f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل.")
+    @network.command(name="leave")
+    @commands.has_permissions(administrator=True)
+    async def network_leave(self, ctx):
+        guild_data = db.get_guild_network(ctx.guild.id)
+        if not guild_data:
+            await ctx.send("❌ هذا السيرفر غير مربوط بأي شبكة حالياً!")
+            return
+
+        db.leave_network(ctx.guild.id)
+        await ctx.send("✅ تم قطع اتصال السيرفر والغرفة بالشبكة بنجاح.")
+
+    @network.command(name="delete")
+    @commands.has_permissions(administrator=True)
+    async def network_delete(self, ctx, network_id: str):
+        network = db.get_network(network_id)
+        if not network:
+            await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
+            return
+
+        if network.get("owner_id") != ctx.author.id:
+            await ctx.send("⚠️ هذا الأمر مخصص لمالك الشبكة فقط!")
+            return
+
+        db.delete_network(network_id)
+        await ctx.send(f"🗑️ تم حذف الشبكة `{network_id}` وإغلاق جميع اتصالاتها بنجاح.")
 
     # --- حدث مزامنة الرسائل بين السيرفرات ---
     @commands.Cog.listener()
