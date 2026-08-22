@@ -219,5 +219,7 @@ def delete_network(network_id):
     # حذف جميع السيرفرات المرتبطة بهذه الشبكة
     network_guilds_collection.delete_many({"network_id": network_id})
   
-
+def leave_network(guild_id):
+    network_guilds_collection.delete_one({"guild_id": str(guild_id)})
+  
 init_db()
