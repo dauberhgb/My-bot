@@ -717,16 +717,20 @@ async def on_message(message):
         violations[g_id][u_id] = 0
       return
 
-  auto_resp = settings.get("auto_responses", {})
-  msg_content = message.content.lower()
-  if msg_content in auto_resp:
-    await message.channel.send(auto_resp[msg_content])
-    return
 
-  # السماح للأوامر والأحداث الخارجية (مثل نظام الشبكات cogs) بالعمل مع الرسالة
-  await bot.process_commands(message)
+    auto_resp = settings.get("auto_responses", {})
+    msg_content = message.content.lower()
+    if msg_content in auto_resp:
+        await message.channel.send(auto_resp[msg_content])
+        return
 
+    # إرسال الرسالة لنظام الشبكات في cogs وتفعيل الأوامر
+    network_cog = bot.get_cog("NetworkCog")
+    if network_cog:
+        await network_cog.on_message(message)
 
+    await bot.process_commands(message)
+      
 @bot.command(name="sync")
 async def sync_commands(ctx):
   if ctx.author.id != OWNER_ID:
@@ -744,10 +748,14 @@ async def sync_commands(ctx):
     await msg.edit(content=f"حدث خطأ أثناء المزامنة: {e}")
 
 
-@bot.tree.command(
-    name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر"
-)
+@bot.tree.command(name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر")
 @app_commands.describe(member="العضو المراد عرض معلوماته (اختياري)")
+@app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
+    
+
+nds.describe(member="العضو المراد عرض معلوماته (اختياري)")
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def userinfo(
