@@ -750,11 +750,10 @@ async def sync_commands(ctx):
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
-    target = member or interaction.user
-    lang = get_guild_lang(interaction.guild.id)
-
-
-  if lang == "en":
+  target = member or interaction.user
+  lang = get_guild_lang(interaction.guild.id)
+ 
+  if lang == "en":     
     embed = discord.Embed(title=f"User Info: {target.display_name}", color=discord.Color.blue())
     embed.set_thumbnail(url=target.display_avatar.url)
     embed.add_field(name="Name:", value=target.name, inline=True)
