@@ -9,7 +9,7 @@ class NetworkCog(commands.Cog):
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def network(self, ctx):
-        await ctx.send("استخدم الأوامر التالية:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`")
+        await ctx.send("تنسيق الأوامر المتاحة:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`\n`!network leave`\n`!network delete <معرف_الشبكة>`")
 
     @network.command(name="create")
     @commands.has_permissions(administrator=True)
