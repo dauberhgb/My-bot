@@ -717,7 +717,7 @@ async def on_message(message):
         violations[g_id][u_id] = 0
       return
 
-        auto_resp = settings.get("auto_responses", {})
+    auto_resp = settings.get("auto_responses", {})
     msg_content = message.content.lower()
     if msg_content in auto_resp:
         await message.channel.send(auto_resp[msg_content])
