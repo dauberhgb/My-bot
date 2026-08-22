@@ -55,7 +55,7 @@ class NetworkCog(commands.Cog):
             await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
             return
 
-        if network.get("owner_id") != ctx.author.id:
+        if int(network.get("owner_id")) != int(ctx.author.id):
             await ctx.send("⚠️ هذا الأمر مخصص لمالك الشبكة فقط!")
             return
 
