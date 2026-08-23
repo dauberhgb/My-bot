@@ -132,6 +132,12 @@ def save_settings(guild_id, settings):
       "welcome_msg": str(settings.get("welcome_msg", "")),
       "welcome_img": str(settings.get("welcome_img", "")),
       "welcome_frame": str(settings.get("welcome_frame", "")),
+      "text_1": str(settings.get("text_1", "WELCOME")),
+      "text_2": str(settings.get("text_2", "{user_name}")),
+      "text_3": str(settings.get("text_3", "MEMBER #{count}")),
+      "color_1": str(settings.get("color_1", "#FFFFFF")),
+      "color_2": str(settings.get("color_2", "#FFD700")),
+      "color_3": str(settings.get("color_3", "#FFFFFF")),
   }
   
   settings_collection.update_one(
