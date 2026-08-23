@@ -61,6 +61,12 @@ def get_settings(guild_id):
         "welcome_msg": row.get("welcome_msg") if row.get("welcome_msg") else "أهلاً بك يا {user} في السيرفر! 🎉",
         "welcome_img": row.get("welcome_img") if row.get("welcome_img") else "",
         "welcome_frame": row.get("welcome_frame") if row.get("welcome_frame") else "",
+        "text_1": row.get("text_1") or "WELCOME",
+        "text_2": row.get("text_2") or "{user_name}",
+        "text_3": row.get("text_3") or "MEMBER #{count}",
+        "color_1": row.get("color_1") or "#FFFFFF",
+        "color_2": row.get("color_2") or "#FFD700",
+        "color_3": row.get("color_3") or "#FFFFFF",
     }
     
   return {
