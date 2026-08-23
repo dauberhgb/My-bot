@@ -417,6 +417,23 @@
             margin-bottom: 16px;
         }
 
+        /* تنسيق مخصص لمجموعات الألوان */
+        .input-color-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-color-group input[type="color"] {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            cursor: pointer;
+            background: var(--bg-input);
+        }
+
         /* Glow Save Button */
         .submit-container {
             margin-top: 35px;
@@ -660,6 +677,69 @@
                                 </select>
                             </div>
                         </div>
+
+                        <hr style="border: none; border-top: 1px solid var(--border-glass); margin: 30px 0;">
+
+                        <!-- قسم تعديل النصوص المطبوعة على الإطار -->
+                        <div style="margin-bottom: 30px;">
+                            <h4 style="color: var(--text-white); margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-pen-to-square" style="color: var(--accent-purple);"></i>
+                                {% if current_lang == 'en' %}Edit Texts Printed on Frame{% else %}تعديل النصوص المطبوعة على الإطار{% endif %}
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}First Text (Top Header):{% else %}النص الأول (العنوان العلوي):{% endif %}</label>
+                                <input type="text" name="text_1" value="{{ settings.get('text_1', 'WELCOME') if settings else 'WELCOME' }}" placeholder="WELCOME">
+                            </div>
+
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Second Text (Member Name):{% else %}النص الثاني (اسم العضو):{% endif %}</label>
+                                <input type="text" name="text_2" value="{{ settings.get('text_2', '{user_name}') if settings else '{user_name}' }}" placeholder="{user_name}">
+                            </div>
+
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Third Text (Member Count/Order):{% else %}النص الثالث (رقم/ترتيب العضو):{% endif %}</label>
+                                <input type="text" name="text_3" value="{{ settings.get('text_3', 'MEMBER #{count}') if settings else 'MEMBER #{count}' }}" placeholder="MEMBER #{count}">
+                            </div>
+                        </div>
+
+                        <hr style="border: none; border-top: 1px solid var(--border-glass); margin: 30px 0;">
+
+                        <!-- قسم لون النصوص المطبوعة -->
+                        <div>
+                            <h4 style="color: var(--text-white); margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-palette" style="color: var(--accent-pink);"></i>
+                                {% if current_lang == 'en' %}Text Colors{% else %}لون النصوص المطبوعة{% endif %}
+                            </h4>
+                            <span class="sub-label">{% if current_lang == 'en' %}Choose a color or enter a custom hex color code.{else %}اختر اللون من المربع أو أكتب كود اللون المخصص (Hex Code) بيدك.{% endif %}</span>
+
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label>{% if current_lang == 'en' %}First Text Color:{% else %}لون النص الأول:{% endif %}</label>
+                                    <div class="input-color-group">
+                                        <input type="color" id="picker_1" value="{{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" onchange="document.getElementById('color_1').value = this.value">
+                                        <input type="text" id="color_1" name="color_1" value="{{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" oninput="document.getElementById('picker_1').value = this.value">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>{% if current_lang == 'en' %}Second Text Color:{% else %}لون النص الثاني:{% endif %}</label>
+                                    <div class="input-color-group">
+                                        <input type="color" id="picker_2" value="{{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" onchange="document.getElementById('color_2').value = this.value">
+                                        <input type="text" id="color_2" name="color_2" value="{{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" placeholder="#FFD700" oninput="document.getElementById('picker_2').value = this.value">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>{% if current_lang == 'en' %}Third Text Color:{% else %}لون النص الثالث:{% endif %}</label>
+                                <div class="input-color-group">
+                                    <input type="color" id="picker_3" value="{{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" onchange="document.getElementById('color_3').value = this.value">
+                                    <input type="text" id="color_3" name="color_3" value="{{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" oninput="document.getElementById('picker_3').value = this.value">
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
                 <!-- 1. Media Channels Tab -->
