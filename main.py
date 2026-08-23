@@ -321,8 +321,8 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
     c2 = settings.get("color_2", "#93C5FD")
     c3 = settings.get("color_3", "#D1D5DB")
 
-    t1_text = raw_t1
-    t2_text = raw_t2.replace("{user_name}", member.name)
+    t1_text = raw_t1.replace("{server}", member.guild.name)
+    t2_text = raw_t2.replace("{user_name}", member.display_name).replace("{user}", member.display_name)
     t3_text = raw_t3.replace("{count}", str(member.guild.member_count))
     
     # بداية كود تحميل الخلفية المخصصة
