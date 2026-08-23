@@ -689,7 +689,7 @@
                             
                             <div class="form-group">
                                 <label>{% if current_lang == 'en' %}First Text (Top Header):{% else %}النص الأول (العنوان العلوي):{% endif %}</label>
-                                <input type="text" name="text_1" value="{{ settings.get('text_1') if settings and settings.get('text_1') else ('Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر') }}" placeholder="{{ 'Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر' }}">
+                                <input type="text" name="text_1" value="{{ settings.get('text_1') if settings and settings.get('text_1') and settings.get('text_1') not in ['WELCOME', 'Welcome to the server', 'مرحبا بك في السيرفر'] else ('Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر') }}" placeholder="{{ 'Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر' }}">
                             </div>
 
                             <div class="form-group">
@@ -699,7 +699,7 @@
 
                             <div class="form-group">
                                 <label>{% if current_lang == 'en' %}Third Text (Member Count/Order):{% else %}النص الثالث (رقم/ترتيب العضو):{% endif %}</label>
-                                <input type="text" name="text_3" value="{{ settings.get('text_3') if settings and settings.get('text_3') else ('MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}') }}" placeholder="{{ 'MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}' }}">
+                                <input type="text" name="text_3" value="{{ settings.get('text_3') if settings and settings.get('text_3') and settings.get('text_3') not in ['MEMBER #{count}', 'رقم العضو #{count}'] else ('MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}') }}" placeholder="{{ 'MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}' }}">
                             </div>
                         </div>
 
