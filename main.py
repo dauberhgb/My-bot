@@ -276,6 +276,12 @@ def save(guild_id):
       "xp_role_5": request.form.get("xp_role_5", ""),
       "xp_role_10": request.form.get("xp_role_10", ""),
       "xp_role_20": request.form.get("xp_role_20", ""),
+      "text_1": request.form.get("text_1", "WELCOME"),
+      "text_2": request.form.get("text_2", "{user_name}"),
+      "text_3": request.form.get("text_3", "MEMBER #{count}"),
+      "color_1": request.form.get("color_1", "#FFFFFF"),
+      "color_2": request.form.get("color_2", "#FFD700"),
+      "color_3": request.form.get("color_3", "#FFFFFF"),
   }
 
   database.save_settings(guild_id, settings)
@@ -299,11 +305,26 @@ threading.Thread(target=run_web_server, daemon=True).start()
 # ==========================================
 # 3. دالة توليد بطاقة الترحيب الشفافة مع النصوص والإطار
 # ==========================================
-async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
+async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, guild_id=None):
   try:
     width, height = 1536, 1024
     # إنشاء خلفية شفافة بالكامل
     base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+      
+    settings = database.get_settings(guild_id) if guild_id else {}
+    
+    raw_t1 = settings.get("text_1", "WELCOME TO THE SERVER")
+    raw_t2 = settings.get("text_2", "{user_name}")
+    raw_t3 = settings.get("text_3", "MEMBER #{count}")
+    
+    c1 = settings.get("color_1", "#FFFFFF")
+    c2 = settings.get("color_2", "#93C5FD")
+    c3 = settings.get("color_3", "#D1D5DB")
+
+    t1_text = raw_t1
+    t2_text = raw_t2.replace("{user_name}", member.name)
+    t3_text = raw_t3.replace("{count}", str(member.guild.member_count))
+    
     # بداية كود تحميل الخلفية المخصصة
     if bg_url and bg_url.startswith("http"):
         try:
@@ -357,26 +378,24 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
       avatar_x = width - avatar_size - 50  # البروفايل على اليمين
-      title_x = width - 330
-      name_x = width - 330
-      sub_x = width - 330
-
-      raw_title = "أهلاً بك في السيرفر"
-      welcome_title = arabic_reshaper.reshape(raw_title)
-
-      raw_count = f"العضو رقم #{member.guild.member_count}"
-      member_count_text = arabic_reshaper.reshape(raw_count)
+      title_x = width - 120
+      name_x = width - 160
+      sub_x = width - 90
       
-      display_name = arabic_reshaper.reshape(member.name[:18])
+      welcome_title = arabic_reshaper.reshape(t1_text)
+      member_count_text = arabic_reshaper.reshape(t3_text)
+      display_name = arabic_reshaper.reshape(t2_text[:18])
+
     else:
       avatar_x = 96
       title_x = 775
       name_x = 915
       sub_x = 870
 
-      welcome_title = "WELCOME TO THE SERVER"
-      member_count_text = f"Member #{member.guild.member_count}"
-      display_name = member.name[:18]
+      welcome_title = t1_text
+      member_count_text = t3_text
+      display_name = t2_text[:18]
+        
 
     # إنشاء أداة الرسم للعمليات العلوية (البروفايل والنصوص)
     draw = ImageDraw.Draw(base)
@@ -402,14 +421,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None):
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص في النهاية (لتظهر فوق كل شيء بما فيها الإطار)
-    draw.text((title_x + 2, 529), welcome_title, fill=(0, 0, 0, 255), font=font_title, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((title_x, 529), welcome_title, fill=(147, 197, 252), font=font_title, anchor="ra" if user_lang == "ar" else "la")
-
-    draw.text((name_x + 2, 315), display_name, fill=(0, 0, 0, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((name_x, 315), display_name, fill=(255, 255, 255), font=font_name, anchor="ra" if user_lang == "ar" else "la")
-
-    draw.text((sub_x + 2, 731), member_count_text, fill=(0, 0, 0, 255), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
-    draw.text((sub_x, 731), member_count_text, fill=(209, 213, 219), font=font_sub, anchor="ra" if user_lang == "ar" else "la")
+    draw.text((title_x, 529), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((name_x, 315), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((sub_x, 731), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
 
     final_buffer = BytesIO()
     base.save(final_buffer, format="PNG")
@@ -540,7 +554,7 @@ async def on_member_join(member):
       frame_key = settings.get("welcome_frame")
       
       # تمرير اللغة والإطار لدالة إنشاء البطاقة
-      card_file = await generate_welcome_card(member, bg_url, lang=lang, frame_key=frame_key)
+      card_file = await generate_welcome_card(member, bg_url, lang=lang, frame_key=frame_key, guild_id=member.guild.id)
       if card_file:
         custom_msg = settings.get("welcome_msg", "").strip()
         if custom_msg:
