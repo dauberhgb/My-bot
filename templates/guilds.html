@@ -346,6 +346,29 @@
             {% endfor %}
         </div>
     </div>
+    <!-- قسم الإعلان والإرشادات الثابت -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-9 col-lg-8">
+            <div style="background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: 20px; padding: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            
+                <h3 style="color: var(--text-white); font-size: 1.3rem; margin-bottom: 10px; font-weight: 700;">
+                   {% if current_lang == 'en' %}💡 Quick Guide & Updates{% else %}💡 الشرح والإرشادات الهامة{% endif %}
+                </h3>
+
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 18px;">
+                   {% if current_lang == 'en' %}
+                       Learn how to use hidden commands like network opening directly from your server!
+                   {% else %}
+                           تعرف على كيفية استخدام الأوامر المخفية مثل فتح وإغلاق الشبكة مباشرة في سيرفرك!
+                   {% endif %}
+                </p>
+
+                <div style="width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-glass);">
+                    <img src="https://i.imgur.com/your-image.gif" alt="Tutorial" style="width: 100%; display: block;">
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
