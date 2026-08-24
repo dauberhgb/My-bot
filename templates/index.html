@@ -1105,7 +1105,7 @@
                 toast.classList.remove("show"); 
             }, 3000);
         }
-
+        
         function applyDynamicTranslations(lang) {
             const translations = {
                 "text_1": {
@@ -1121,7 +1121,9 @@
                         "عذراً {user} هذه القناة للميديا فقط!", 
                         "إهذه القناة مخصصة للميديا فقط {user} عذراً",
                         "إهذه القناة مخصصة للميديا فقط {user} عذراً!",
-                        "عذراً {user} هذه القناة مخصصة للميديا فقط!"
+                        "إهذه القناة مخصصة للميديا فقط (user) عذراً",
+                        "عذراً {user} هذه القناة مخصصة للميديا فقط!",
+                        "إهذه القناة مخصصة للميديا فقط"
                     ], 
                     en: "Sorry {user}, this channel is for media only!" 
                 },
@@ -1133,7 +1135,8 @@
                     ar: [
                         "تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.", 
                         "تنبيه أول يا {user} يرجى الالتزام بالقوانين ⚠️",
-                        "تنبيه أول يا {user} يرجى الالتزام بالقوانين"
+                        "تنبيه أول يا {user} يرجى الالتزام بالقوانين",
+                        "تنبيه أول يا (user) يرجى الالتزام بالقوانين"
                     ], 
                     en: "First warning {user}, please stick to the rules ⚠️" 
                 },
@@ -1141,7 +1144,8 @@
                     ar: [
                         "تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.", 
                         "تنبيه ثاني يا {user} ستتعرض للعقوبة !",
-                        "تنبيه ثاني يا {user} ستتعرض للعقوبة!"
+                        "تنبيه ثاني يا {user} ستتعرض للعقوبة!",
+                        "ستتعرض للعقوبة (user) تنبيه ثاني يا"
                     ], 
                     en: "Second warning {user}, you will face punishment!" 
                 },
@@ -1153,7 +1157,9 @@
                     ar: [
                         "غادر العضو {user} السيرفر.", 
                         "نتمنى له التوفيق {user} غادر العضو السيرفر.",
-                        "نتمنى له التوفيق {user} غادر العضو السيرفر"
+                        "نتمنى له التوفيق {user} غادر العضو السيرفر",
+                        "نتمنى له التوقيق {user} غادر العضو السيرفر",
+                        "نتمنى له التوقيق (user) غادر العضو السيرفر"
                     ], 
                     en: "Member {user} left the server." 
                 }
@@ -1166,16 +1172,15 @@
                     const val = input.value.trim();
                     
                     if (lang === 'en') {
-                        // إذا كانت اللغة إنجليزية والنص الحالي عربي، قم بالتبديل للإنجليزية
                         if (Array.isArray(t.ar)) {
-                            if (t.ar.some(arText => val.includes(arText) || val === arText) || val === "") {
+                            const isMatch = t.ar.some(arText => val.includes(arText) || val === arText || arText.includes(val));
+                            if (isMatch || val === "" || /[\u0600-\u06FF]/.test(val)) {
                                 input.value = t.en;
                             }
-                        } else if (val === t.ar || val === "") {
+                        } else if (val === t.ar || val === "" || /[\u0600-\u06FF]/.test(val)) {
                             input.value = t.en;
                         }
                     } else {
-                        // إذا كانت اللغة عربية والنص الحالي إنجليزي، قم بالتبديل للعربية
                         const defaultAr = Array.isArray(t.ar) ? t.ar[0] : t.ar;
                         if (val === t.en || val === "") {
                             input.value = defaultAr;
@@ -1186,7 +1191,13 @@
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            const currentLang = "{{ current_lang if current_lang else 'ar' }}";
+            let currentLang = "{{ current_lang if current_lang else 'ar' }}";
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('lang')) {
+                currentLang = urlParams.get('lang');
+            }
+
             applyDynamicTranslations(currentLang);
         });
     </script>  
