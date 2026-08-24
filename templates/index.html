@@ -815,7 +815,7 @@
                                 <label>{% if current_lang == 'en' %}Punishment Type:{% else %}نوع العقوبة:{% endif %}</label>
                                 <select name="punishment_type">
                                     <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout{% else %}تايم أوت (Timeout){% endif %}</option>
-                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}كتم كامل (Mute){% endif %}</option>
+                                    <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}Full Mute{% else %}كتم كامل (Mute){% endif %}</option>
                                     <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>{% if current_lang == 'en' %}Kick{% else %}طرد (Kick){% endif %}</option>
                                 </select>
                             </div>
@@ -1111,6 +1111,49 @@
                 toast.classList.remove("show"); 
             }, 3000);
         }
-    </script>
+
+        function applyDynamicTranslations(lang) {
+        const translations = {
+            "text_1": { ar: "مرحبا بك في السيرفر", en: "Welcome to the server" },
+            "text_3": { ar: "رقم العضو #{count}", en: "MEMBER #{count}" },
+            "media_warning": { 
+                ar: "عذراً {user} هذه القناة للميديا فقط!", 
+                en: "Sorry {user}, this channel is for media only!" 
+            },
+            "warning_title": { ar: "تحذير مخالفة القوانين", en: "Rules Violation Warning" },
+            "warning_msg_1": { 
+                ar: "تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.", 
+                en: "First warning for {user}, please follow the rules." 
+            },
+            "warning_msg_2": { 
+                ar: "تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.", 
+                en: "Final warning for {user}! Next violation will lead to punishment." 
+            },
+            "farewell_title": { ar: "وداعاً!", en: "Goodbye!" },
+            "farewell_desc": { 
+                ar: "غادر العضو {user} السيرفر.", 
+                en: "Member {user} left the server." 
+            }
+        };
+
+        Object.keys(translations).forEach(fieldName => {
+            const input = document.querySelector(`input[name="${fieldName}"]`);
+            if (input) {
+                const t = translations[fieldName];
+                if (lang === 'en' && (input.value === "" || input.value === t.ar)) {
+                    input.value = t.en;
+                } else if (lang !== 'en' && (input.value === "" || input.value === t.en)) {
+                    input.value = t.ar;
+                }
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const currentLang = "{{ current_lang if current_lang else 'ar' }}";
+        applyDynamicTranslations(currentLang);
+    });
+</script>
+
 </body>
 </html>
