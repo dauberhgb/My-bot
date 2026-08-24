@@ -1039,8 +1039,6 @@
     <div id="toast" class="toast">
         <i class="fa-solid fa-circle-check"></i>
         <span id="toast-text">{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}</span>
-    </div>
-
     <script>
         function switchTab(tabId, element) {
             document.querySelectorAll('.tab-panel').forEach(panel => {
@@ -1057,12 +1055,10 @@
             const form = document.getElementById('settingsForm');
             const formData = new FormData(form);
 
-            // الاعتماد الكلي ودون استثناء على لغة الواجهة الحالية (current_lang) من القالب
             const currentLang = "{{ current_lang if current_lang else 'ar' }}";
             const serverNameElement = document.getElementById('serverNameElement');
             const serverName = serverNameElement ? serverNameElement.innerText : '';
 
-            // فرض رسائل النجاح والخطأ حسب لغة الواجهة (current_lang) حصرياً فوراً
             let serverMsg = "";
             let errorMsg = "";
             if (currentLang === 'en') {
@@ -1081,7 +1077,6 @@
                 const contentType = response.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
                     const jsonData = await response.json();
-                    // تجاهل أي رد نصي ثابت من الخادم واستخدام رسالة الواجهة المعتمدة على current_lang
                     return { status: jsonData.status, message: serverMsg };
                 } else {
                     return { status: "success", message: serverMsg };
@@ -1096,7 +1091,6 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                // حتى عند حدوث خطأ في الاتصال، سيتم إظهار الرسالة باللغة الإنجليزية فوراً إذا كانت الواجهة إنجليزية
                 showToast(serverMsg);
             });
         }
@@ -1113,47 +1107,72 @@
         }
 
         function applyDynamicTranslations(lang) {
-        const translations = {
-            "text_1": { ar: "مرحبا بك في السيرفر", en: "Welcome to the server" },
-            "text_3": { ar: "رقم العضو #{count}", en: "MEMBER #{count}" },
-            "media_warning": { 
-                ar: "عذراً {user} هذه القناة للميديا فقط!", 
-                en: "Sorry {user}, this channel is for media only!" 
-            },
-            "warning_title": { ar: "تحذير مخالفة القوانين", en: "Rules Violation Warning" },
-            "warning_msg_1": { 
-                ar: "تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.", 
-                en: "First warning for {user}, please follow the rules." 
-            },
-            "warning_msg_2": { 
-                ar: "تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.", 
-                en: "Final warning for {user}! Next violation will lead to punishment." 
-            },
-            "farewell_title": { ar: "وداعاً!", en: "Goodbye!" },
-            "farewell_desc": { 
-                ar: "غادر العضو {user} السيرفر.", 
-                en: "Member {user} left the server." 
-            }
-        };
-
-        Object.keys(translations).forEach(fieldName => {
-            const input = document.querySelector(`input[name="${fieldName}"]`);
-            if (input) {
-                const t = translations[fieldName];
-                if (lang === 'en' && (input.value === "" || input.value === t.ar)) {
-                    input.value = t.en;
-                } else if (lang !== 'en' && (input.value === "" || input.value === t.en)) {
-                    input.value = t.ar;
+            const translations = {
+                "text_1": {
+                    ar: ["مرحبا بك في السيرفر", "WELCOME", "Welcome to the server"],
+                    en: "Welcome to the server"
+                },
+                "text_3": {
+                    ar: ["رقم العضو #{count}", "MEMBER #{count}"],
+                    en: "MEMBER #{count}"
+                },
+                "media_warning": { 
+                    ar: ["عذراً {user} هذه القناة للميديا فقط!", "إهذه القناة مخصصة للميديا فقط {user} عذراً"], 
+                    en: "Sorry {user}, this channel is for media only!" 
+                },
+                "warning_title": { 
+                    ar: ["تحذير مخالفة القوانين", "تحذير نظام الحماية ⚠️", "تحذير نظام الحماية"], 
+                    en: "Protection System Warning ⚠️" 
+                },
+                "warning_msg_1": { 
+                    ar: ["تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.", "تنبيه أول يا {user} يرجى الالتزام بالقوانين ⚠️"], 
+                    en: "First warning {user}, please stick to the rules ⚠️" 
+                },
+                "warning_msg_2": { 
+                    ar: ["تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.", "تنبيه ثاني يا {user} ستتعرض للعقوبة !"], 
+                    en: "Second warning {user}, you will face punishment!" 
+                },
+                "farewell_title": { 
+                    ar: ["وداعاً!", "Goodbye!"], 
+                    en: "Goodbye!" 
+                },
+                "farewell_desc": { 
+                    ar: ["غادر العضو {user} السيرفر.", "نتمنى له التوفيق {user} غادر العضو السيرفر.", "للإشارة لمن غادر (user) يمكنك استخدام٪}else)يمكنك استخدام (user) للإشارة لمن غادر"], 
+                    en: "Member {user} left the server." 
                 }
-            }
+            };
+
+            Object.keys(translations).forEach(fieldName => {
+                const input = document.querySelector(`input[name="${fieldName}"]`);
+                if (input) {
+                    const t = translations[fieldName];
+                    const val = input.value.trim();
+                    
+                    if (lang === 'en') {
+                        // إذا كانت اللغة إنجليزية والنص الحالي عربي، قم بالتبديل للإنجليزية
+                        if (Array.isArray(t.ar)) {
+                            if (t.ar.some(arText => val.includes(arText) || val === arText) || val === "") {
+                                input.value = t.en;
+                            }
+                        } else if (val === t.ar || val === "") {
+                            input.value = t.en;
+                        }
+                    } else {
+                        // إذا كانت اللغة عربية والنص الحالي إنجليزي، قم بالتبديل للعربية
+                        const defaultAr = Array.isArray(t.ar) ? t.ar[0] : t.ar;
+                        if (val === t.en || val === "") {
+                            input.value = defaultAr;
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const currentLang = "{{ current_lang if current_lang else 'ar' }}";
+            applyDynamicTranslations(currentLang);
         });
-    }
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const currentLang = "{{ current_lang if current_lang else 'ar' }}";
-        applyDynamicTranslations(currentLang);
-    });
-</script>
-
+    </script>  
+        
 </body>
 </html>
