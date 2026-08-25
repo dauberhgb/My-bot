@@ -24,6 +24,10 @@ class NetworkCog(commands.Cog):
             return
 
         db.create_network(network_id, network_name, ctx.author.id)
+        
+        # إضافة السيرفر المنشئ تلقائياً لجدول الانضمام ليعامل كبقية الأعضاء ويستقبل الرسائل
+        db.join_network(ctx.guild.id, network_id, ctx.channel.id)
+
         await ctx.send(f"✅ تم إنشاء الشبكة **{network_name}** بنجاح!\nمعرف الشبكة الخاص بك هو: `{network_id}`\nشارك هذا المعرف مع السيرفرات الأخرى للانضمام.")
 
     @network.command(name="join")
@@ -77,7 +81,7 @@ class NetworkCog(commands.Cog):
         if not guild_networks:
             return
 
-        # البحث عن القناة المرتبطة بالشبكة
+        # البحث عن القناة المرتبطة بالشبكة فقط
         active_network = None
         for g_data in guild_networks:
             if g_data and str(message.channel.id) == str(g_data.get("bound_channel_id")):
@@ -90,16 +94,16 @@ class NetworkCog(commands.Cog):
         network_id = active_network["network_id"]
         all_guilds = db.get_network_guilds(network_id)
 
-        # تجميع السيرفرات لمنع تكرار الإرسال لنفس السيرفر
-        sent_guilds = set()
+        # تجميع معرفات القنوات الموجه لها لمنع تكرار الإرسال بنفس القناة
+        sent_channels = set()
 
         # إرسال الرسالة إلى باقي السيرفرات في نفس الشبكة
         for g_data in all_guilds:
             target_guild_id = int(g_data["guild_id"])
             target_channel_id = int(g_data["bound_channel_id"])
 
-            # تجاهل السيرفر المرسل أو السيرفرات التي تم الإرسال لها مسبقاً
-            if target_guild_id == message.guild.id or target_guild_id in sent_guilds:
+            # منع الإرسال لنفس قناة الرسالة أو لقناة سبق الإرسال لها في نفس الدورة
+            if target_channel_id == message.channel.id or target_channel_id in sent_channels:
                 continue
 
             target_guild = self.bot.get_guild(target_guild_id)
@@ -124,7 +128,7 @@ class NetworkCog(commands.Cog):
                     avatar_url=message.author.avatar.url if message.author.avatar else None,
                     files=files
                 )
-                sent_guilds.add(target_guild_id)
+                sent_channels.add(target_channel_id)
             except Exception as e:
                 print(f"خطأ في مزامنة الرسالة للسيرفر {target_guild.name}: {e}")
 
