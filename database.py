@@ -195,7 +195,7 @@ def get_top_users(guild_id, limit=10):
     rows.append((doc.get("user_id"), doc.get("xp", 0), doc.get("level", 1)))
   return rows
 
-# --- دوال نظام النسخ المتطابق والشبكات ---
+# --- دوال نظام النسخ المتطابق والشبكات المحدثة ---
 def create_network(network_id, network_name, owner_id):
     networks_collection.insert_one({
         "network_id": network_id,
@@ -207,10 +207,12 @@ def get_network(network_id):
     return networks_collection.find_one({"network_id": network_id})
 
 def join_network(guild_id, network_id, bound_channel_id):
+    # استخدام تركيب (guild_id + network_id) للسماح للسيرفر بالانضمام لأكثر من شبكة
     network_guilds_collection.update_one(
-        {"guild_id": str(guild_id)},
+        {"guild_id": str(guild_id), "network_id": network_id},
         {
             "$set": {
+                "guild_id": str(guild_id),
                 "network_id": network_id,
                 "bound_channel_id": str(bound_channel_id),
                 "is_banned_sync_enabled": True
@@ -219,19 +221,19 @@ def join_network(guild_id, network_id, bound_channel_id):
         upsert=True
     )
 
-def get_guild_network(guild_id):
-    return network_guilds_collection.find_one({"guild_id": str(guild_id)})
+# تم تعديل هذه الدالة لاسترجاع قائمة بكل شبكات السيرفر
+def get_guild_networks(guild_id):
+    return list(network_guilds_collection.find({"guild_id": str(guild_id)}))
 
 def get_network_guilds(network_id):
     return list(network_guilds_collection.find({"network_id": network_id}))
 
 def delete_network(network_id):
-    # حذف الشبكة نفسها
     networks_collection.delete_one({"network_id": network_id})
-    # حذف جميع السيرفرات المرتبطة بهذه الشبكة
     network_guilds_collection.delete_many({"network_id": network_id})
   
-def leave_network(guild_id):
-    network_guilds_collection.delete_one({"guild_id": str(guild_id)})
+# تم تعديل هذه الدالة لحذف شبكة محددة للسيرفر بناءً على network_id
+def leave_network(guild_id, network_id):
+    network_guilds_collection.delete_one({"guild_id": str(guild_id), "network_id": network_id})
   
 init_db()
