@@ -203,21 +203,22 @@ def create_network(network_id, network_name, owner_id):
         "owner_id": str(owner_id)
     })
 
-def get_network(network_id):
-    return networks_collection.find_one({"network_id": network_id})
+def get_guild_networks(guild_id):
+    return list(db.network_guilds.find({"guild_id": str(guild_id)}))
 
 def join_network(guild_id, network_id, bound_channel_id):
-    # استخدام تركيب (guild_id + network_id) للسماح للسيرفر بالانضمام لأكثر من شبكة
-    network_guilds_collection.update_one(
-        {"guild_id": str(guild_id), "network_id": network_id},
-        {
-            "$set": {
-                "guild_id": str(guild_id),
-                "network_id": network_id,
-                "bound_channel_id": str(bound_channel_id),
-                "is_banned_sync_enabled": True
-            }
-        },
+    guild_id = str(guild_id)
+    bound_channel_id = str(bound_channel_id)
+    network_id = str(network_id)
+    
+    # هذه الجملة تضمن تحديث البيانات بدلاً من تكرار إضافتها
+    db.network_guilds.update_one(
+        {"guild_id": guild_id, "network_id": network_id},
+        {"$set": {
+            "guild_id": guild_id,
+            "network_id": network_id,
+            "bound_channel_id": bound_channel_id
+        }},
         upsert=True
     )
 
