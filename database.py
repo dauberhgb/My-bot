@@ -7,7 +7,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client.get_database("bot_database")
 
-# المجموعات (Collections) البديلة للجداول
+# المجموعات (Collections)
 settings_collection = db["guild_settings"]
 levels_collection = db["user_levels"]
 
@@ -197,22 +197,27 @@ def get_top_users(guild_id, limit=10):
 
 # --- دوال نظام النسخ المتطابق والشبكات المحدثة ---
 def create_network(network_id, network_name, owner_id):
-    networks_collection.insert_one({
-        "network_id": network_id,
-        "network_name": network_name,
-        "owner_id": str(owner_id)
-    })
+    network_id = str(network_id)
+    networks_collection.update_one(
+        {"network_id": network_id},
+        {"$set": {
+            "network_id": network_id,
+            "network_name": network_name,
+            "owner_id": str(owner_id)
+        }},
+        upsert=True
+    )
 
-def get_guild_networks(guild_id):
-    return list(db.network_guilds.find({"guild_id": str(guild_id)}))
+def get_network(network_id):
+    return networks_collection.find_one({"network_id": str(network_id)})
 
 def join_network(guild_id, network_id, bound_channel_id):
     guild_id = str(guild_id)
     bound_channel_id = str(bound_channel_id)
     network_id = str(network_id)
     
-    # هذه الجملة تضمن تحديث البيانات بدلاً من تكرار إضافتها
-    db.network_guilds.update_one(
+    # تحديث أو إضافة السجل بدلاً من تكراره
+    network_guilds_collection.update_one(
         {"guild_id": guild_id, "network_id": network_id},
         {"$set": {
             "guild_id": guild_id,
@@ -222,19 +227,18 @@ def join_network(guild_id, network_id, bound_channel_id):
         upsert=True
     )
 
-# تم تعديل هذه الدالة لاسترجاع قائمة بكل شبكات السيرفر
 def get_guild_networks(guild_id):
     return list(network_guilds_collection.find({"guild_id": str(guild_id)}))
 
 def get_network_guilds(network_id):
-    return list(network_guilds_collection.find({"network_id": network_id}))
+    return list(network_guilds_collection.find({"network_id": str(network_id)}))
 
 def delete_network(network_id):
+    network_id = str(network_id)
     networks_collection.delete_one({"network_id": network_id})
     network_guilds_collection.delete_many({"network_id": network_id})
   
-# تم تعديل هذه الدالة لحذف شبكة محددة للسيرفر بناءً على network_id
 def leave_network(guild_id, network_id):
-    network_guilds_collection.delete_one({"guild_id": str(guild_id), "network_id": network_id})
+    network_guilds_collection.delete_one({"guild_id": str(guild_id), "network_id": str(network_id)})
   
 init_db()
