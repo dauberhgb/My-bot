@@ -44,7 +44,7 @@ class NetworkCog(commands.Cog):
         # تحديد المعرف مغادرة الشبكة بما أن السيرفر قد يكون منضماً لأكثر من شبكة
         guild_data_list = db.get_guild_networks(ctx.guild.id) if hasattr(db, 'get_guild_networks') else [db.get_guild_network(ctx.guild.id)]
         
-        if not guild_data_list or not any(g):
+        if not guild_data_list or not any(guild_data_list):
             await ctx.send("❌ هذا السيرفر غير مربوط بأي شبكة حالياً!")
             return
 
@@ -90,13 +90,17 @@ class NetworkCog(commands.Cog):
         network_id = active_network["network_id"]
         all_guilds = db.get_network_guilds(network_id)
 
+        # تجميع السيرفرات لمنع تكرار الإرسال لنفس السيرفر
+        sent_guilds = set()
+
         # إرسال الرسالة إلى باقي السيرفرات في نفس الشبكة
         for g_data in all_guilds:
             target_guild_id = int(g_data["guild_id"])
             target_channel_id = int(g_data["bound_channel_id"])
 
-            if target_guild_id == message.guild.id:
-                continue  # لا ترسل الرسالة لنفس السيرفر المرسل
+            # تجاهل السيرفر المرسل أو السيرفرات التي تم الإرسال لها مسبقاً
+            if target_guild_id == message.guild.id or target_guild_id in sent_guilds:
+                continue
 
             target_guild = self.bot.get_guild(target_guild_id)
             if not target_guild:
@@ -120,6 +124,7 @@ class NetworkCog(commands.Cog):
                     avatar_url=message.author.avatar.url if message.author.avatar else None,
                     files=files
                 )
+                sent_guilds.add(target_guild_id)
             except Exception as e:
                 print(f"خطأ في مزامنة الرسالة للسيرفر {target_guild.name}: {e}")
 
