@@ -9,7 +9,7 @@ class NetworkCog(commands.Cog):
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def network(self, ctx):
-        await ctx.send("تنسيق الأوامر المتاحة:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`\n`!network leave`\n`!network del`")
+        await ctx.send("تنسيق الأوامر المتاحة:\n`!network create <اسم_الشبكة>`\n`!network join <معرف_الشبكة>`\n`!network leave <معرف_الشبكة>`\n`!network del`")
 
     @network.command(name="create")
     @commands.has_permissions(administrator=True)
@@ -18,8 +18,9 @@ class NetworkCog(commands.Cog):
         network_id = f"net_{ctx.guild.id}"
         existing = db.get_network(network_id)
         
+        # حصر الإنشاء: السيرفر لا يمكنه إنشاء أكثر من شبكة واحدة
         if existing:
-            await ctx.send(f"⚠️ لديك شبكة مسبقاً بهذا المعرف: `{network_id}`")
+            await ctx.send(f"⚠️ هذا السيرفر قام بإنشاء شبكة مسبقاً بهذا المعرف: `{network_id}`. لا يمكنك إنشاء أكثر من شبكة واحدة.")
             return
 
         db.create_network(network_id, network_name, ctx.author.id)
@@ -33,20 +34,22 @@ class NetworkCog(commands.Cog):
             await ctx.send("❌ عذراً، لم يتم العثور على شبكة بهذا المعرف!")
             return
 
-        # ربط السيرفر الحالي بالشبكة وتحديد الروم الحالي رومَ ربط
+        # الانضمام متاح لأكثر من شبكة (يربط السيرفر والقناة الحالية بالشبكة المحددة)
         db.join_network(ctx.guild.id, network_id, ctx.channel.id)
-        await ctx.send(f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل.")
+        await ctx.send(f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل الخاصة بهذه الشبكة.")
 
     @network.command(name="leave")
     @commands.has_permissions(administrator=True)
-    async def network_leave(self, ctx):
-        guild_data = db.get_guild_network(ctx.guild.id)
-        if not guild_data:
+    async def network_leave(self, ctx, network_id: str):
+        # تحديد المعرف مغادرة الشبكة بما أن السيرفر قد يكون منضماً لأكثر من شبكة
+        guild_data_list = db.get_guild_networks(ctx.guild.id) if hasattr(db, 'get_guild_networks') else [db.get_guild_network(ctx.guild.id)]
+        
+        if not guild_data_list or not any(g):
             await ctx.send("❌ هذا السيرفر غير مربوط بأي شبكة حالياً!")
             return
 
-        db.leave_network(ctx.guild.id)
-        await ctx.send("✅ تم قطع اتصال السيرفر والغرفة بالشبكة بنجاح.")
+        db.leave_network(ctx.guild.id, network_id)
+        await ctx.send(f"✅ تم قطع اتصال السيرفر بالشبكة `{network_id}` بنجاح.")
 
     @network.command(name="del", aliases=["delete"])
     @commands.has_permissions(administrator=True)
@@ -69,15 +72,22 @@ class NetworkCog(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        # التحقق مما إذا كان السيرفر منضم لشبكة والروم هو روم الربط
-        guild_data = db.get_guild_network(message.guild.id)
-        if not guild_data:
+        # جلب جميع ارتباطات السيرفر الحالي بالشبكات (لدعم تعدد الانضمام)
+        guild_networks = db.get_guild_networks(message.guild.id) if hasattr(db, 'get_guild_networks') else [db.get_guild_network(message.guild.id)]
+        if not guild_networks:
             return
 
-        if str(message.channel.id) != guild_data.get("bound_channel_id"):
+        # البحث عن القناة المرتبطة بالشبكة
+        active_network = None
+        for g_data in guild_networks:
+            if g_data and str(message.channel.id) == str(g_data.get("bound_channel_id")):
+                active_network = g_data
+                break
+
+        if not active_network:
             return
 
-        network_id = guild_data["network_id"]
+        network_id = active_network["network_id"]
         all_guilds = db.get_network_guilds(network_id)
 
         # إرسال الرسالة إلى باقي السيرفرات في نفس الشبكة
@@ -116,24 +126,28 @@ class NetworkCog(commands.Cog):
     # --- حدث تعميم الحظر (Global Ban-Sync) ---
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
-        guild_data = db.get_guild_network(guild.id)
-        if not guild_data or not guild_data.get("is_banned_sync_enabled"):
+        guild_networks = db.get_guild_networks(guild.id) if hasattr(db, 'get_guild_networks') else [db.get_guild_network(guild.id)]
+        if not guild_networks:
             return
 
-        network_id = guild_data["network_id"]
-        all_guilds = db.get_network_guilds(network_id)
-
-        for g_data in all_guilds:
-            target_guild_id = int(g_data["guild_id"])
-            if target_guild_id == guild.id:
+        for guild_data in guild_networks:
+            if not guild_data or not guild_data.get("is_banned_sync_enabled"):
                 continue
 
-            target_guild = self.bot.get_guild(target_guild_id)
-            if target_guild:
-                try:
-                    await target_guild.ban(user, reason=f"حظر تعميمي أمني من شبكة السيرفرات (عبر سيرفر {guild.name})")
-                except Exception as e:
-                    print(f"فشل حظر المستخدم في السيرفر {target_guild.name}: {e}")
+            network_id = guild_data["network_id"]
+            all_guilds = db.get_network_guilds(network_id)
+
+            for g_data in all_guilds:
+                target_guild_id = int(g_data["guild_id"])
+                if target_guild_id == guild.id:
+                    continue
+
+                target_guild = self.bot.get_guild(target_guild_id)
+                if target_guild:
+                    try:
+                        await target_guild.ban(user, reason=f"حظر تعميمي أمني من شبكة السيرفرات (عبر سيرفر {guild.name})")
+                    except Exception as e:
+                        print(f"فشل حظر المستخدم في السيرفر {target_guild.name}: {e}")
 
 async def setup(bot):
     await bot.add_cog(NetworkCog(bot))
