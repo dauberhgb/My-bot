@@ -68,7 +68,7 @@ class NetworkCog(commands.Cog):
     # --- حدث مزامنة الرسائل بين السيرفرات ---
     @commands.Cog.listener()
     async def on_message(self, message):
-        # منع التكرار: تجاهل رسائل البوتات وكذلك الرسائل القادمة من الويب هوك نفسه
+        # منع التكرار: تجاهل البوتات والـ Webhooks
         if message.author.bot or message.webhook_id or not message.guild:
             return
 
@@ -76,7 +76,7 @@ class NetworkCog(commands.Cog):
         if not guild_networks:
             return
 
-        # تحديد الشبكة المنتمية للروم الحالي
+        # تحديد الشبكة المنتمية للروم الحالي مع تحويل القيمة إلى string للمقارنة الصحيحة
         active_network = None
         for g_data in guild_networks:
             if g_data and str(message.channel.id) == str(g_data.get("bound_channel_id")):
@@ -89,15 +89,18 @@ class NetworkCog(commands.Cog):
         network_id = active_network["network_id"]
         all_guilds = db.get_network_guilds(network_id)
 
-        # قائمة لتسجيل السيرفرات التي تم الإرسال لها لضمان عدم التكرار
-        sent_guilds = set()
+        # تجميع الرومات الموجه لها لمنع تكرار الإرسال لأي روم
+        sent_channels = set()
 
         for g_data in all_guilds:
+            if not g_data:
+                continue
+
             target_guild_id = int(g_data["guild_id"])
             target_channel_id = int(g_data["bound_channel_id"])
 
-            # عدم إرسال الرسالة إلى السيرفر المرسل نفسه
-            if target_guild_id == message.guild.id or target_guild_id in sent_guilds:
+            # منع الإرسال لنفس الروم التي خرجت منها الرسالة أو روم تم الإرسال لها مسبقاً
+            if target_channel_id == message.channel.id or target_channel_id in sent_channels:
                 continue
 
             target_guild = self.bot.get_guild(target_guild_id)
@@ -120,7 +123,7 @@ class NetworkCog(commands.Cog):
                     avatar_url=message.author.avatar.url if message.author.avatar else None,
                     files=files
                 )
-                sent_guilds.add(target_guild_id)
+                sent_channels.add(target_channel_id)
             except Exception as e:
                 print(f"خطأ في مزامنة الرسالة للسيرفر {target_guild.name}: {e}")
 
@@ -139,6 +142,8 @@ class NetworkCog(commands.Cog):
             all_guilds = db.get_network_guilds(network_id)
 
             for g_data in all_guilds:
+                if not g_data:
+                    continue
                 target_guild_id = int(g_data["guild_id"])
                 if target_guild_id == guild.id:
                     continue
