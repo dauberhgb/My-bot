@@ -1160,6 +1160,17 @@ async def on_app_command_error(
     else:
       await interaction.followup.send(msg, ephemeral=True)
 
+async def setup_hook():
+    if os.path.exists("./cogs"):
+        for filename in os.listdir("./cogs"):
+            if filename.endswith(".py"):
+                try:
+                    await bot.load_extension(f"cogs.{filename[:-3]}")
+                    print(f"📦 تم تحميل النظام: {filename[:-3]}")
+                except Exception as e:
+                    print(f"❌ خطأ في تحميل {filename[:-3]}: {e}")
+
+bot.setup_hook = setup_hook
 
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
