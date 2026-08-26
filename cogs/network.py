@@ -59,7 +59,7 @@ class NetworkCog(commands.Cog):
         db.delete_network(network_id)
         await ctx.send(f"🗑️ تم حذف الشبكة `{network_id}` وإغلاق جميع اتصالاتها بنجاح.")
 
-    # --- حدث مزامنة الرسائل بين السيرفرات ---
+         # --- حدث مزامنة الرسائل بين السيرفرات ---
     @commands.Cog.listener()
     async def on_message(self, message):
         # 1. منع التكرار القاطع: تجاهل البوت، الـ Webhooks، أو أي أجهزة إرسال تلقائية
@@ -92,12 +92,19 @@ class NetworkCog(commands.Cog):
         # جلب جميع السيرفرات المنضمة لهذه الشبكة
         all_network_guilds = db.get_network_guilds(active_network_id)
 
+        # قائمة لتتبع القنوات التي تم الإرسال لها لمنع التكرار نهائياً
+        sent_channels = set()
+
         for g_data in all_network_guilds:
             target_guild_id = str(g_data.get("guild_id"))
             target_channel_id = str(g_data.get("bound_channel_id"))
 
-            # تجاهل السيرفر/القناة التي خرجت منها الرسالة نفسها
-            if target_channel_id == current_channel_id:
+            # تجاهل السيرفر الذي خرجت منه الرسالة
+            if target_guild_id == current_guild_id:
+                continue
+
+            # تجاهل القناة إذا تم الإرسال لها مسبقاً في نفس الدورة
+            if target_channel_id in sent_channels:
                 continue
 
             target_guild = self.bot.get_guild(int(target_guild_id))
@@ -109,6 +116,9 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
+                # تسجيل القناة كقناة تم الإرسال إليها
+                sent_channels.add(target_channel_id)
+
                 # إنشاء أو جلب الـ Webhook الخاص بالبوت
                 webhooks = await target_channel.webhooks()
                 webhook = discord.utils.get(webhooks, name="Fabric Sync")
