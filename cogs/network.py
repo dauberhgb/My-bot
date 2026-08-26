@@ -146,6 +146,44 @@ class NetworkCog(commands.Cog):
                 )
             except Exception as e:
                 print(f"خطأ في نقل الرسالة إلى {target_guild.name}: {e}")
+                
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild, user):
+        current_guild_id = str(guild.id)
+        
+        guild_networks = db.get_guild_networks(current_guild_id)
+        if not guild_networks:
+            return
 
+        banned_guilds = set()
+
+        for net in guild_networks:
+            network_id = net.get("network_id")
+            if not network_id:
+                continue
+
+            network_guilds = db.get_network_guilds(network_id)
+            for g_data in network_guilds:
+                target_guild_id = str(g_data.get("guild_id"))
+                
+                if target_guild_id == current_guild_id or target_guild_id in banned_guilds:
+                    continue
+
+                target_guild = self.bot.get_guild(int(target_guild_id))
+                if not target_guild:
+                    continue
+
+                try:
+                    await target_guild.ban(
+                        user, 
+                        reason=f"مزامنة حظر تلقائية: تم حظره من سيرفر {guild.name}"
+                    )
+                    banned_guilds.add(target_guild_id)
+                    print(f"تم حظر {user.name} تلقائياً من سيرفر {target_guild.name}")
+                except discord.Forbidden:
+                    print(f"فشل حظر {user.name} في {target_guild.name}: البوت لا يملك صلاحية Ban Members")
+                except Exception as e:
+                    print(f"خطأ أثناء حظر {user.name} في {target_guild.name}: {e}")
+                    
 async def setup(bot):
     await bot.add_cog(NetworkCog(bot))
