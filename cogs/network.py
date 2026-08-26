@@ -1,3 +1,4 @@
+import time
 import discord
 from discord.ext import commands
 import database as db
@@ -5,7 +6,8 @@ import database as db
 class NetworkCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
+        self.processed_messages = {} 
+        
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def network(self, ctx):
