@@ -62,24 +62,42 @@ class NetworkCog(commands.Cog):
          # --- حدث مزامنة الرسائل بين السيرفرات ---
     @commands.Cog.listener()
     async def on_message(self, message):
-        # 1. منع التكرار القاطع: تجاهل البوت، الـ Webhooks، أو أي أجهزة إرسال تلقائية
         if message.author.bot or message.webhook_id is not None or not message.guild:
             return
 
-        # 2. تجاهل الأوامر لتجنب نقل أزرار أو أوامر !network بين السيرفرين
         prefix = self.bot.command_prefix
         if isinstance(prefix, str) and message.content.startswith(prefix):
             return
 
+        # --- بداية نظام الحظر الزمني لمنع التكرار ---
+        current_time = time.time()
+        # تنظيف الخبيئة القديمة (حذف الرسائل المسجلة لأكثر من 5 ثوانٍ)
+        self.processed_messages = {
+            k: v
+            for k, v in self.processed_messages.items()
+            if current_time - v < 5
+        }
+
+        # بصمة فريدة للرسالة اعتبيراً عن (المؤلف + النص + الروم)
+        msg_signature = (
+            f"{message.author.id}_{message.content}_{message.channel.id}"
+        )
+
+        # إذا كانت الرسالة تُنفّذ خلال أقل من ثانيتين من نفس الشخص والقناة، يتم حظرها فوراً
+        if msg_signature in self.processed_messages:
+            return
+
+        # تسجيل وقت معالجة الرسالة
+        self.processed_messages[msg_signature] = current_time
+        # --- نهاية نظام الحظر الزمني ---
+
         current_guild_id = str(message.guild.id)
         current_channel_id = str(message.channel.id)
 
-        # جلب الشبكات المربوطة بالسيرفر الحالي
         guild_networks = db.get_guild_networks(current_guild_id)
         if not guild_networks:
             return
 
-        # البحث عن الشبكة المطابقة لروم إرسال الرسالة
         active_network_id = None
         for g_data in guild_networks:
             if str(g_data.get("bound_channel_id")) == current_channel_id:
@@ -89,22 +107,14 @@ class NetworkCog(commands.Cog):
         if not active_network_id:
             return
 
-        # جلب جميع السيرفرات المنضمة لهذه الشبكة
         all_network_guilds = db.get_network_guilds(active_network_id)
-
-        # قائمة لتتبع القنوات التي تم الإرسال لها لمنع التكرار نهائياً
         sent_channels = set()
 
         for g_data in all_network_guilds:
             target_guild_id = str(g_data.get("guild_id"))
             target_channel_id = str(g_data.get("bound_channel_id"))
 
-            # تجاهل السيرفر الذي خرجت منه الرسالة
-            if target_guild_id == current_guild_id:
-                continue
-
-            # تجاهل القناة إذا تم الإرسال لها مسبقاً في نفس الدورة
-            if target_channel_id in sent_channels:
+            if target_guild_id == current_guild_id or target_channel_id in sent_channels:
                 continue
 
             target_guild = self.bot.get_guild(int(target_guild_id))
@@ -116,17 +126,14 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
-                # تسجيل القناة كقناة تم الإرسال إليها
                 sent_channels.add(target_channel_id)
 
-                # إنشاء أو جلب الـ Webhook الخاص بالبوت
                 webhooks = await target_channel.webhooks()
                 webhook = discord.utils.get(webhooks, name="Fabric Sync")
                 if not webhook:
                     webhook = await target_channel.create_webhook(name="Fabric Sync")
 
                 files = [await attachment.to_file() for attachment in message.attachments]
-
                 avatar_url = message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
 
                 await webhook.send(
