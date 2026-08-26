@@ -441,17 +441,6 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
 async def on_ready():
   print(f"تم تشغيل البوت بنجاح باسم: {bot.user}")
 
-  if os.path.exists("./cogs"):
-    for filename in os.listdir("./cogs"):
-      if filename.endswith(".py"):
-        try:
-          await bot.load_extension(f"cogs.{filename[:-3]}")
-          print(f"📦 تم تحميل النظام المضاف: {filename[:-3]}")
-        except Exception as e:
-          print(f"❌ فشل تحميل النظام {filename[:-3]}: {e}")
-  else:
-    print("⚠️ مجلد cogs غير موجود، سيتم إنشاؤه لإضافة الأنظمة الجديدة لاحقاً.")
-
 
 @bot.tree.command(
     name="language", description="تغيير لغة ردود وبوتات السيرفر"
