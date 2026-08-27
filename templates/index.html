@@ -176,12 +176,13 @@
             backdrop-filter: blur(10px);
         }
 
-        .btn-back:hover {
+        .btn-back:hover, .btn-back:focus-visible {
             background: var(--accent-gradient);
             color: #fff;
             border-color: transparent;
             box-shadow: 0 0 25px var(--accent-glow);
             transform: translateY(-2px);
+            outline: 2px solid var(--accent-purple);
         }
 
         /* Container Layout */
@@ -238,6 +239,8 @@
             background: rgba(255, 255, 255, 0.015);
             position: relative;
             overflow: hidden;
+            width: 100%;
+            text-align: inherit;
         }
 
         .sidebar-link i {
@@ -247,14 +250,15 @@
             transition: all 0.3s ease;
         }
 
-        .sidebar-link:hover {
+        .sidebar-link:hover, .sidebar-link:focus-visible {
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-white);
             border-color: rgba(255, 255, 255, 0.1);
             transform: {% if current_lang == 'en' %}translateX(4px){% else %}translateX(-4px){% endif %};
+            outline: none;
         }
 
-        .sidebar-link:hover i {
+        .sidebar-link:hover i, .sidebar-link:focus-visible i {
             transform: scale(1.2);
             color: var(--accent-purple);
         }
@@ -424,7 +428,7 @@
             gap: 12px;
         }
 
-        .input-color-group input[type="color"] {
+        .color-preview-btn {
             width: 50px;
             height: 50px;
             padding: 0;
@@ -432,6 +436,150 @@
             border-radius: 12px;
             cursor: pointer;
             background: var(--bg-input);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .color-preview-btn:hover, .color-preview-btn:focus-visible {
+            transform: scale(1.05);
+            border-color: var(--accent-purple);
+            outline: none;
+        }
+
+        /* Modal منتقي الألوان المطابق للصورة */
+        .color-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .color-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .color-modal-card {
+            background: #181920;
+            border: 1px solid var(--border-glass);
+            border-radius: 28px;
+            width: 380px;
+            padding: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .color-modal-overlay.active .color-modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            color: #ffffff;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 auto;
+        }
+
+        .btn-modal-select {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-modal-select:hover, .btn-modal-select:focus-visible {
+            background: var(--accent-gradient);
+            outline: none;
+        }
+
+        .hex-display-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hex-input-val {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            width: 100%;
+            outline: none;
+        }
+
+        /* لوحة الألوان المربّعة */
+        .color-picker-sat-val {
+            width: 100%;
+            height: 240px;
+            border-radius: 16px;
+            position: relative;
+            cursor: crosshair;
+            user-select: none;
+            background-color: rgb(0, 255, 128);
+            background-image: linear-gradient(to right, #fff, rgba(255,255,255,0)), linear-gradient(to top, #000, rgba(0,0,0,0));
+        }
+
+        .picker-cursor {
+            width: 22px;
+            height: 22px;
+            border: 2.5px solid #000;
+            box-shadow: 0 0 0 2px #fff;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* شريط الدرجات Hue Slider */
+        .color-picker-hue {
+            width: 100%;
+            height: 24px;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            background: linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+        }
+
+        .hue-slider-thumb {
+            width: 16px;
+            height: 30px;
+            background: transparent;
+            border: 3px solid #ffffff;
+            border-radius: 8px;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 6px rgba(0,0,0,0.5);
+            pointer-events: none;
         }
 
         /* Glow Save Button */
@@ -475,9 +623,10 @@
             left: 100%;
         }
 
-        .btn-save:hover {
+        .btn-save:hover, .btn-save:focus-visible {
             transform: translateY(-4px) scale(1.02);
             box-shadow: 0 15px 40px rgba(168, 85, 247, 0.6);
+            outline: 2px solid var(--accent-purple);
         }
 
         .btn-save:active {
@@ -539,77 +688,93 @@
 <body>
 
     <!-- عناصر الإضاءة الخلفية الحية -->
-    <div class="ambient-bg">
+    <div class="ambient-bg" aria-hidden="true">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="orb orb-3"></div>
     </div>
 
     <!-- Header Bar -->
-    <header>
+    <header role="banner">
         <div class="server-info">
             {% if icon_url %}
-                <img src="{{ icon_url }}" class="server-icon" alt="Icon">
+                <img src="{{ icon_url }}" class="server-icon" alt="{% if current_lang == 'en' %}Server Icon{% else %}أيقونة السيرفر{% endif %}">
             {% else %}
-                <div class="server-icon-placeholder">{{ guild.name[0] }}</div>
+                <div class="server-icon-placeholder" aria-hidden="true">{{ guild.name[0] }}</div>
             {% endif %}
             <span class="server-name" id="serverNameElement">{{ guild.name }}</span>
         </div>
-        <a href="/guilds?{% if current_lang %}lang={{ current_lang }}{% endif %}{% if request.args.get('user_id') %}{% if current_lang %}&{% endif %}user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back">
-            <i class="fa-solid fa-arrow-{{ 'left' if current_lang == 'en' else 'right' }}"></i> {% if current_lang == 'en' %}Servers List{% else %}قائمة السيرفرات{% endif %}
+        <a href="/guilds?{% if current_lang %}lang={{ current_lang }}{% endif %}{% if request.args.get('user_id') %}{% if current_lang %}&{% endif %}user_id={{ request.args.get('user_id') }}{% endif %}" class="btn-back" aria-label="{% if current_lang == 'en' %}Back to Servers List{% else %}العودة لقائمة السيرفرات{% endif %}">
+            <i class="fa-solid fa-arrow-{{ 'left' if current_lang == 'en' else 'right' }}" aria-hidden="true"></i> {% if current_lang == 'en' %}Servers List{% else %}قائمة السيرفرات{% endif %}
         </a>
     </header>
 
     <div class="dashboard-container">
         
         <!-- Left Menu Navigation -->
-        <nav class="sidebar">
-            <ul class="sidebar-menu">
-                <li class="sidebar-link active" onclick="switchTab('section-welcome', this)">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>{% if current_lang == 'en' %}Welcome System{% else %}نظام الترحيب{% endif %}</span>
+        <nav class="sidebar" aria-label="{% if current_lang == 'en' %}Main Navigation{% else %}القائمة الرئيسية{% endif %}">
+            <ul class="sidebar-menu" role="tablist">
+                <li role="presentation">
+                    <button class="sidebar-link active" id="tab-welcome" role="tab" aria-selected="true" aria-controls="section-welcome" onclick="switchTab('section-welcome', this)">
+                        <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Welcome System{% else %}نظام الترحيب{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-media', this)">
-                    <i class="fa-solid fa-photo-film"></i>
-                    <span>{% if current_lang == 'en' %}Media Channels{% else %}قنوات الميديا{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-media" role="tab" aria-selected="false" aria-controls="section-media" onclick="switchTab('section-media', this)">
+                        <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Media Channels{% else %}قنوات الميديا{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-banned', this)">
-                    <i class="fa-solid fa-ban"></i>
-                    <span>{% if current_lang == 'en' %}Banned Words{% else %}الكلمات المحظورة{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-banned" role="tab" aria-selected="false" aria-controls="section-banned" onclick="switchTab('section-banned', this)">
+                        <i class="fa-solid fa-ban" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Banned Words{% else %}الكلمات المحظورة{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-responses', this)">
-                    <i class="fa-solid fa-reply"></i>
-                    <span>{% if current_lang == 'en' %}Auto Responses{% else %}الردود التلقائية{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-responses" role="tab" aria-selected="false" aria-controls="section-responses" onclick="switchTab('section-responses', this)">
+                        <i class="fa-solid fa-reply" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Auto Responses{% else %}الردود التلقائية{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-roles', this)">
-                    <i class="fa-solid fa-user-tag"></i>
-                    <span>{% if current_lang == 'en' %}Roles & Nicknames{% else %}الرول واللقب{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-roles" role="tab" aria-selected="false" aria-controls="section-roles" onclick="switchTab('section-roles', this)">
+                        <i class="fa-solid fa-user-tag" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Roles & Nicknames{% else %}الرول واللقب{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-farewell', this)">
-                    <i class="fa-solid fa-door-open"></i>
-                    <span>{% if current_lang == 'en' %}Farewell Settings{% else %}إعدادات الوداع{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-farewell" role="tab" aria-selected="false" aria-controls="section-farewell" onclick="switchTab('section-farewell', this)">
+                        <i class="fa-solid fa-door-open" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Farewell Settings{% else %}إعدادات الوداع{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-tickets', this)">
-                    <i class="fa-solid fa-ticket"></i>
-                    <span>{% if current_lang == 'en' %}Ticket System{% else %}نظام التذاكر{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-tickets" role="tab" aria-selected="false" aria-controls="section-tickets" onclick="switchTab('section-tickets', this)">
+                        <i class="fa-solid fa-ticket" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}Ticket System{% else %}نظام التذاكر{% endif %}</span>
+                    </button>
                 </li>
-                <li class="sidebar-link" onclick="switchTab('section-xp', this)">
-                    <i class="fa-solid fa-ranking-star"></i>
-                    <span>{% if current_lang == 'en' %}XP & Levels{% else %}نظام المستويات{% endif %}</span>
+                <li role="presentation">
+                    <button class="sidebar-link" id="tab-xp" role="tab" aria-selected="false" aria-controls="section-xp" onclick="switchTab('section-xp', this)">
+                        <i class="fa-solid fa-ranking-star" aria-hidden="true"></i>
+                        <span>{% if current_lang == 'en' %}XP & Levels{% else %}نظام المستويات{% endif %}</span>
+                    </button>
                 </li>
             </ul>
         </nav>
 
         <!-- Main Form Body -->
-        <main class="main-content">
+        <main class="main-content" role="main">
             <form id="settingsForm" action="/save/{{ guild.id }}{% if request.args.get('user_id') %}?user_id={{ request.args.get('user_id') }}{% endif %}" method="POST">
                 <input type="hidden" name="language" value="{{ current_lang }}">
                 
                 <!-- 0. Welcome System Tab -->
-                <div id="section-welcome" class="tab-panel active">
+                <div id="section-welcome" class="tab-panel active" role="tabpanel" aria-labelledby="tab-welcome">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-user-plus"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Welcome Settings{% else %}إعدادات نظام الترحيب{% endif %}</h3>
@@ -618,16 +783,16 @@
                         <!-- الصف الأول: الحالة والقناة -->
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
-                                <select name="welcome_enabled">
+                                <label for="welcome_enabled">{% if current_lang == 'en' %}Welcome System Status:{% else %}حالة نظام الترحيب:{% endif %}</label>
+                                <select id="welcome_enabled" name="welcome_enabled">
                                     <option value="1" {% if settings and (settings.get('welcome_enabled') == True or settings.get('welcome_enabled') == '1' or settings.get('welcome_enabled') == 1) %}selected{% endif %}>{{ 'Enabled' if current_lang == 'en' else 'مفعل' }}</option>
                                     <option value="0" {% if not settings or settings.get('welcome_enabled') == False or settings.get('welcome_enabled') == '0' or settings.get('welcome_enabled') == 0 %}selected{% endif %}>{{ 'Disabled' if current_lang == 'en' else 'معطل' }}</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Welcome Channel:{% else %}قناة الترحيب:{% endif %}</label>
-                                <select name="welcome_channel">
+                                <label for="welcome_channel">{% if current_lang == 'en' %}Welcome Channel:{% else %}قناة الترحيب:{% endif %}</label>
+                                <select id="welcome_channel" name="welcome_channel">
                                     <option value="">{% if current_lang == 'en' %}-- Select Channel --{% else %}-- اختر القناة --{% endif %}</option>
                                     {% for ch in channels %}
                                         <option value="{{ ch.id }}" {% if settings and settings.get('welcome_channel') == ch.id %}selected{% endif %}>
@@ -640,9 +805,9 @@
 
                         <!-- الصف الجديد: نص رسالة الترحيب مع المثال التلقائي حسب لغة السيرفر -->
                         <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
-                            <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
-                            <input type="text" id="welcome_msg_field" name="welcome_msg" value="{{ settings.get('welcome_msg', '') if settings else '' }}">
+                            <label for="welcome_msg_field">{% if current_lang == 'en' %}Welcome Message Text:{% else %}نص رسالة الترحيب:{% endif %}</label>
+                            <span id="welcome_msg_sub" class="sub-label">{% if current_lang == 'en' %}Use {user} for member mention and {server} for server name.{else %}استخدم {user} للإشارة للعضو و {server} لاسم السيرفر.{% endif %}</span>
+                            <input type="text" id="welcome_msg_field" name="welcome_msg" aria-describedby="welcome_msg_sub" value="{{ settings.get('welcome_msg', '') if settings else '' }}">
                             <script>
                                 document.addEventListener("DOMContentLoaded", function() {
                                     var input = document.getElementById('welcome_msg_field');
@@ -661,13 +826,13 @@
                         <!-- الصف الثاني: رابط الصورة والإطار -->
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Welcome Image URL:{% else %}رابط صورة الترحيب:{% endif %}</label>
-                                <input type="text" name="welcome_img" placeholder="https://example.com/image.png" value="{{ settings.get('welcome_img', '') if settings else '' }}">
+                                <label for="welcome_img">{% if current_lang == 'en' %}Welcome Image URL:{% else %}رابط صورة الترحيب:{% endif %}</label>
+                                <input type="text" id="welcome_img" name="welcome_img" placeholder="https://example.com/image.png" value="{{ settings.get('welcome_img', '') if settings else '' }}">
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Welcome Card Frame:{% else %}إطار بطاقة الترحيب:{% endif %}</label>
-                                <select name="welcome_frame">
+                                <label for="welcome_frame">{% if current_lang == 'en' %}Welcome Card Frame:{% else %}إطار بطاقة الترحيب:{% endif %}</label>
+                                <select id="welcome_frame" name="welcome_frame">
                                     <option value="" {% if not settings or not settings.get('welcome_frame') %}selected{% endif %}>{{ '-- Select Frame --' if current_lang == 'en' else '-- اختر إطار --' }}</option>
                                     <option value="admin_gold" {% if settings and settings.get('welcome_frame') == 'admin_gold' %}selected{% endif %}>{{ 'Admin Gold Frame' if current_lang == 'en' else 'إطار الإدارة الذهبي (Admin Gold)' }}</option>
                                     <option value="cyberpunk" {% if settings and settings.get('welcome_frame') == 'cyberpunk' %}selected{% endif %}>{{ 'Cyberpunk Frame' if current_lang == 'en' else 'إطار السايبر بانك (Cyberpunk)' }}</option>
@@ -683,23 +848,23 @@
                         <!-- قسم تعديل النصوص المطبوعة على الإطار -->
                         <div style="margin-bottom: 30px;">
                             <h4 style="color: var(--text-white); margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--accent-purple);"></i>
+                                <i class="fa-solid fa-pen-to-square" style="color: var(--accent-purple);" aria-hidden="true"></i>
                                 {% if current_lang == 'en' %}Edit Texts Printed on Frame{% else %}تعديل النصوص المطبوعة على الإطار{% endif %}
                             </h4>
                             
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}First Text (Top Header):{% else %}النص الأول (العنوان العلوي):{% endif %}</label>
-                                <input type="text" name="text_1" value="{{ settings.get('text_1') if settings and settings.get('text_1') and settings.get('text_1') not in ['WELCOME', 'Welcome to the server', 'مرحبا بك في السيرفر'] else ('Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر') }}" placeholder="{{ 'Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر' }}">
+                                <label for="text_1">{% if current_lang == 'en' %}First Text (Top Header):{% else %}النص الأول (العنوان العلوي):{% endif %}</label>
+                                <input type="text" id="text_1" name="text_1" value="{{ settings.get('text_1') if settings and settings.get('text_1') and settings.get('text_1') not in ['WELCOME', 'Welcome to the server', 'مرحبا بك في السيرفر'] else ('Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر') }}" placeholder="{{ 'Welcome to the server' if current_lang == 'en' else 'مرحبا بك في السيرفر' }}">
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Second Text (Member Name):{% else %}النص الثاني (اسم العضو):{% endif %}</label>
-                                <input type="text" name="text_2" value="{{ settings.get('text_2') if settings and settings.get('text_2') else '{user_name}' }}" placeholder="{user_name}">
+                                <label for="text_2">{% if current_lang == 'en' %}Second Text (Member Name):{% else %}النص الثاني (اسم العضو):{% endif %}</label>
+                                <input type="text" id="text_2" name="text_2" value="{{ settings.get('text_2') if settings and settings.get('text_2') else '{user_name}' }}" placeholder="{user_name}">
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Third Text (Member Count/Order):{% else %}النص الثالث (رقم/ترتيب العضو):{% endif %}</label>
-                                <input type="text" name="text_3" value="{{ settings.get('text_3') if settings and settings.get('text_3') and settings.get('text_3') not in ['MEMBER #{count}', 'رقم العضو #{count}'] else ('MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}') }}" placeholder="{{ 'MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}' }}">
+                                <label for="text_3">{% if current_lang == 'en' %}Third Text (Member Count/Order):{% else %}النص الثالث (رقم/ترتيب العضو):{% endif %}</label>
+                                <input type="text" id="text_3" name="text_3" value="{{ settings.get('text_3') if settings and settings.get('text_3') and settings.get('text_3') not in ['MEMBER #{count}', 'رقم العضو #{count}'] else ('MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}') }}" placeholder="{{ 'MEMBER #{count}' if current_lang == 'en' else 'رقم العضو #{count}' }}">
                             </div>
                         </div>
 
@@ -708,34 +873,34 @@
                         <!-- قسم لون النصوص المطبوعة -->
                         <div>
                             <h4 style="color: var(--text-white); margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
-                                <i class="fa-solid fa-palette" style="color: var(--accent-pink);"></i>
+                                <i class="fa-solid fa-palette" style="color: var(--accent-pink);" aria-hidden="true"></i>
                                 {% if current_lang == 'en' %}Text Colors{% else %}لون النصوص المطبوعة{% endif %}
                             </h4>
-                            <span class="sub-label">{% if current_lang == 'en' %}Choose a color or enter a custom hex color code.{else %}اختر اللون من المربع أو أكتب كود اللون المخصص (Hex Code) بيدك.{% endif %}</span>
+                            <span id="text_colors_sub" class="sub-label">{% if current_lang == 'en' %}Choose a color or enter a custom hex color code.{else %}اختر اللون من المربع أو أكتب كود اللون المخصص (Hex Code) بيدك.{% endif %}</span>
 
                             <div class="grid-2">
                                 <div class="form-group">
-                                    <label>{% if current_lang == 'en' %}First Text Color:{% else %}لون النص الأول:{% endif %}</label>
+                                    <label for="color_1">{% if current_lang == 'en' %}First Text Color:{% else %}لون النص الأول:{% endif %}</label>
                                     <div class="input-color-group">
-                                        <input type="color" id="picker_1" value="{{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" onchange="document.getElementById('color_1').value = this.value">
-                                        <input type="text" id="color_1" name="color_1" value="{{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" oninput="document.getElementById('picker_1').value = this.value">
+                                        <button type="button" id="btn_picker_1" class="color-preview-btn" style="background-color: {{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" onclick="openCustomPicker('color_1')" aria-label="{% if current_lang == 'en' %}Pick color for first text{% else %}اختر لون النص الأول{% endif %}"></button>
+                                        <input type="text" id="color_1" name="color_1" value="{{ settings.get('color_1', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" aria-describedby="text_colors_sub" oninput="updateBtnPreview('color_1', this.value)">
                                     </div>
                                 </div>
 
                                 <div class="form-group">
-                                    <label>{% if current_lang == 'en' %}Second Text Color:{% else %}لون النص الثاني:{% endif %}</label>
+                                    <label for="color_2">{% if current_lang == 'en' %}Second Text Color:{% else %}لون النص الثاني:{% endif %}</label>
                                     <div class="input-color-group">
-                                        <input type="color" id="picker_2" value="{{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" onchange="document.getElementById('color_2').value = this.value">
-                                        <input type="text" id="color_2" name="color_2" value="{{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" placeholder="#FFD700" oninput="document.getElementById('picker_2').value = this.value">
+                                        <button type="button" id="btn_picker_2" class="color-preview-btn" style="background-color: {{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" onclick="openCustomPicker('color_2')" aria-label="{% if current_lang == 'en' %}Pick color for second text{% else %}اختر لون النص الثاني{% endif %}"></button>
+                                        <input type="text" id="color_2" name="color_2" value="{{ settings.get('color_2', '#FFD700') if settings else '#FFD700' }}" placeholder="#FFD700" aria-describedby="text_colors_sub" oninput="updateBtnPreview('color_2', this.value)">
                                     </div>
                                 </div>
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Third Text Color:{% else %}لون النص الثالث:{% endif %}</label>
+                                <label for="color_3">{% if current_lang == 'en' %}Third Text Color:{% else %}لون النص الثالث:{% endif %}</label>
                                 <div class="input-color-group">
-                                    <input type="color" id="picker_3" value="{{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" onchange="document.getElementById('color_3').value = this.value">
-                                    <input type="text" id="color_3" name="color_3" value="{{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" oninput="document.getElementById('picker_3').value = this.value">
+                                    <button type="button" id="btn_picker_3" class="color-preview-btn" style="background-color: {{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" onclick="openCustomPicker('color_3')" aria-label="{% if current_lang == 'en' %}Pick color for third text{% else %}اختر لون النص الثالث{% endif %}"></button>
+                                    <input type="text" id="color_3" name="color_3" value="{{ settings.get('color_3', '#FFFFFF') if settings else '#FFFFFF' }}" placeholder="#FFFFFF" aria-describedby="text_colors_sub" oninput="updateBtnPreview('color_3', this.value)">
                                 </div>
                             </div>
                         </div>
@@ -743,18 +908,18 @@
                     </div>
                 </div>
                 <!-- 1. Media Channels Tab -->
-                <div id="section-media" class="tab-panel">
+                <div id="section-media" class="tab-panel" role="tabpanel" aria-labelledby="tab-media">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-photo-film"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Media Channels Settings{% else %}إعدادات قنوات الميديا{% endif %}</h3>
                         </div>
                         
                         <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Select Media Channels (Hold Ctrl for multiple):{% else %}اختر قنوات الميديا (اضغط Ctrl لمضاعفة الاختيار):{% endif %}</label>
-                            <select name="media_channels" multiple>
+                            <label for="media_channels">{% if current_lang == 'en' %}Select Media Channels (Hold Ctrl for multiple):{% else %}اختر قنوات الميديا (اضغط Ctrl لمضاعفة الاختيار):{% endif %}</label>
+                            <select id="media_channels" name="media_channels" multiple>
                                 {% for ch in channels %}
                                     <option value="{{ ch.id }}" {% if settings and ch.id in settings.get('media_channels', []) %}selected{% endif %}>
                                         # {{ ch.name }}
@@ -764,56 +929,56 @@
                         </div>
 
                         <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Custom Media Warning Message:{% else %}رسالة التحذير المخصصة للميديا:{% endif %}</label>
-                            <span class="sub-label">{% if current_lang == 'en' %}Note: You can use {user} tag to mention the member.{else %}ملاحظة: يمكنك استخدام التاج {user} للإشارة للعضو.{% endif %}</span>
-                            <input type="text" name="media_warning" value="{{ settings.get('media_warning', 'عذراً {user} هذه القناة للميديا فقط!') if settings else 'عذراً {user} هذه القناة للميديا فقط!' }}">
+                            <label for="media_warning">{% if current_lang == 'en' %}Custom Media Warning Message:{% else %}رسالة التحذير المخصصة للميديا:{% endif %}</label>
+                            <span id="media_warning_sub" class="sub-label">{% if current_lang == 'en' %}Note: You can use {user} tag to mention the member.{else %}ملاحظة: يمكنك استخدام التاج {user} للإشارة للعضو.{% endif %}</span>
+                            <input type="text" id="media_warning" name="media_warning" aria-describedby="media_warning_sub" value="{{ settings.get('media_warning', 'عذراً {user} هذه القناة للميديا فقط!') if settings else 'عذراً {user} هذه القناة للميديا فقط!' }}">
                         </div>
                     </div>
                 </div>
 
                 <!-- 2. Banned Words Tab -->
-                <div id="section-banned" class="tab-panel">
+                <div id="section-banned" class="tab-panel" role="tabpanel" aria-labelledby="tab-banned">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-ban"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Banned Words & Punishments System{% else %}نظام حظر الكلمات والعقوبات{% endif %}</h3>
                         </div>
 
                         <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Banned Words (Separate with comma ,):{% else %}الكلمات المحظورة (افصل بينها بفصلة ,):{% endif %}</label>
-                            <input type="text" name="banned_words" value="{{ settings.get('banned_words', [])|join(', ') if settings else '' }}" placeholder="word1, word2, word3">
+                            <label for="banned_words">{% if current_lang == 'en' %}Banned Words (Separate with comma ,):{% else %}الكلمات المحظورة (افصل بينها بفصلة ,):{% endif %}</label>
+                            <input type="text" id="banned_words" name="banned_words" value="{{ settings.get('banned_words', [])|join(', ') if settings else '' }}" placeholder="word1, word2, word3">
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Warning Message Title:{% else %}عنوان رسالة التحذير:{% endif %}</label>
-                                <input type="text" name="warning_title" value="{{ settings.get('warning_title', 'تحذير مخالفة القوانين') if settings else 'تحذير مخالفة القوانين' }}">
+                                <label for="warning_title">{% if current_lang == 'en' %}Warning Message Title:{% else %}عنوان رسالة التحذير:{% endif %}</label>
+                                <input type="text" id="warning_title" name="warning_title" value="{{ settings.get('warning_title', 'تحذير مخالفة القوانين') if settings else 'تحذير مخالفة القوانين' }}">
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Max Violations Before Punishment:{% else %}الحد الأقصى للمخالفات قبل العقوبة:{% endif %}</label>
-                                <input type="number" name="max_violations" value="{{ settings.get('max_violations', 3) if settings else 3 }}" min="1">
-                            </div>
-                        </div>
-
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label>{% if current_lang == 'en' %}First Warning Message:{% else %}رسالة التحذير الأول:{% endif %}</label>
-                                <input type="text" name="warning_msg_1" value="{{ settings.get('warning_msg_1', 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.') if settings else 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.' }}">
-                            </div>
-
-                            <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Second Warning Message:{% else %}رسالة التحذير الثاني:{% endif %}</label>
-                                <input type="text" name="warning_msg_2" value="{{ settings.get('warning_msg_2', 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.') if settings else 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.' }}">
+                                <label for="max_violations">{% if current_lang == 'en' %}Max Violations Before Punishment:{% else %}الحد الأقصى للمخالفات قبل العقوبة:{% endif %}</label>
+                                <input type="number" id="max_violations" name="max_violations" value="{{ settings.get('max_violations', 3) if settings else 3 }}" min="1">
                             </div>
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Punishment Type:{% else %}نوع العقوبة:{% endif %}</label>
-                                <select name="punishment_type">
+                                <label for="warning_msg_1">{% if current_lang == 'en' %}First Warning Message:{% else %}رسالة التحذير الأول:{% endif %}</label>
+                                <input type="text" id="warning_msg_1" name="warning_msg_1" value="{{ settings.get('warning_msg_1', 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.') if settings else 'تنبيه أول لـ {user}، يرجى الالتزام بالقوانين.' }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="warning_msg_2">{% if current_lang == 'en' %}Second Warning Message:{% else %}رسالة التحذير الثاني:{% endif %}</label>
+                                <input type="text" id="warning_msg_2" name="warning_msg_2" value="{{ settings.get('warning_msg_2', 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.') if settings else 'تنبيه أخير لـ {user}! المخالفة القادمة ستؤدي لعقوبة.' }}">
+                            </div>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="punishment_type">{% if current_lang == 'en' %}Punishment Type:{% else %}نوع العقوبة:{% endif %}</label>
+                                <select id="punishment_type" name="punishment_type">
                                     <option value="timeout" {% if settings and settings.get('punishment_type') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout{% else %}تايم أوت (Timeout){% endif %}</option>
                                     <option value="mute" {% if settings and settings.get('punishment_type') == 'mute' %}selected{% endif %}>{% if current_lang == 'en' %}Full Mute{% else %}كتم كامل (Mute){% endif %}</option>
                                     <option value="kick" {% if settings and settings.get('punishment_type') == 'kick' %}selected{% endif %}>{% if current_lang == 'en' %}Kick{% else %}طرد (Kick){% endif %}</option>
@@ -821,18 +986,18 @@
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Timeout Duration (minutes):{% else %}مدة التايم أوت (بالدقائق):{% endif %}</label>
-                                <input type="number" name="timeout_minutes" value="{{ settings.get('timeout_minutes', 10) if settings else 10 }}" min="1">
+                                <label for="timeout_minutes">{% if current_lang == 'en' %}Timeout Duration (minutes):{% else %}مدة التايم أوت (بالدقائق):{% endif %}</label>
+                                <input type="number" id="timeout_minutes" name="timeout_minutes" value="{{ settings.get('timeout_minutes', 10) if settings else 10 }}" min="1">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 3. Auto Responses Tab -->
-                <div id="section-responses" class="tab-panel">
+                <div id="section-responses" class="tab-panel" role="tabpanel" aria-labelledby="tab-responses">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-reply"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Auto Responses{% else %}الردود التلقائية{% endif %}</h3>
@@ -845,18 +1010,18 @@
                             {% set curr_key = keys[i-1] if keys|length >= i else '' %}
                             {% set curr_val = responses[curr_key] if curr_key else '' %}
                             <div class="response-row">
-                                <input type="text" name="word{{ i }}" value="{{ curr_key }}" placeholder="{% if current_lang == 'en' %}Keyword {{ i }}{% else %}الكلمة المفتاحية {{ i }}{% endif %}">
-                                <input type="text" name="resp{{ i }}" value="{{ curr_val }}" placeholder="{% if current_lang == 'en' %}Auto Response {{ i }}{% else %}الرد التلقائي المقابل {{ i }}{% endif %}">
+                                <input type="text" name="word{{ i }}" value="{{ curr_key }}" aria-label="{% if current_lang == 'en' %}Keyword {{ i }}{% else %}الكلمة المفتاحية {{ i }}{% endif %}" placeholder="{% if current_lang == 'en' %}Keyword {{ i }}{% else %}الكلمة المفتاحية {{ i }}{% endif %}">
+                                <input type="text" name="resp{{ i }}" value="{{ curr_val }}" aria-label="{% if current_lang == 'en' %}Auto Response {{ i }}{% else %}الرد التلقائي المقابل {{ i }}{% endif %}" placeholder="{% if current_lang == 'en' %}Auto Response {{ i }}{% else %}الرد التلقائي المقابل {{ i }}{% endif %}">
                             </div>
                         {% endfor %}
                     </div>
                 </div>
 
                 <!-- 4. Roles & Nicknames Tab -->
-                <div id="section-roles" class="tab-panel">
+                <div id="section-roles" class="tab-panel" role="tabpanel" aria-labelledby="tab-roles">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-user-tag"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Auto Roles & Nicknames{% else %}الرول واللقب التلقائي{% endif %}</h3>
@@ -864,8 +1029,8 @@
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Auto Role for New Members:{% else %}الرول التلقائي للأعضاء الجدد:{% endif %}</label>
-                                <select name="auto_role">
+                                <label for="auto_role">{% if current_lang == 'en' %}Auto Role for New Members:{% else %}الرول التلقائي للأعضاء الجدد:{% endif %}</label>
+                                <select id="auto_role" name="auto_role">
                                     <option value="">{% if current_lang == 'en' %}-- No Role --{% else %}-- بدون رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.name }}" {% if settings and settings.get('auto_role') == r.name %}selected{% endif %}>
@@ -876,19 +1041,19 @@
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Auto-Nickname:{% else %}اللقب التلقائي (Auto-Nickname):{% endif %}</label>
-                                <span class="sub-label">{% if current_lang == 'en' %}Use {user} for member name or write a prefix.{else %}استخدم {user} لاسم العضو أو اكتب كلمة لتكون بادئة.{% endif %}</span>
-                                <input type="text" name="auto_nickname" value="{{ settings.get('auto_nickname', '') if settings else '' }}" placeholder="{% if current_lang == 'en' %}Example: Member | {user}{else %}مثال: Member | {user}{% endif %}">
+                                <label for="auto_nickname">{% if current_lang == 'en' %}Auto-Nickname:{% else %}اللقب التلقائي (Auto-Nickname):{% endif %}</label>
+                                <span id="auto_nickname_sub" class="sub-label">{% if current_lang == 'en' %}Use {user} for member name or write a prefix.{else %}استخدم {user} لاسم العضو أو اكتب كلمة لتكون بادئة.{% endif %}</span>
+                                <input type="text" id="auto_nickname" name="auto_nickname" aria-describedby="auto_nickname_sub" value="{{ settings.get('auto_nickname', '') if settings else '' }}" placeholder="{% if current_lang == 'en' %}Example: Member | {user}{else %}مثال: Member | {user}{% endif %}">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 5. Farewell Tab -->
-                <div id="section-farewell" class="tab-panel">
+                <div id="section-farewell" class="tab-panel" role="tabpanel" aria-labelledby="tab-farewell">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-door-open"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Farewell Settings{% else %}إعدادات رسالة الوداع{% endif %}</h3>
@@ -896,8 +1061,8 @@
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Farewell Channel:{% else %}قناة الوداع:{% endif %}</label>
-                                <select name="farewell_channel">
+                                <label for="farewell_channel">{% if current_lang == 'en' %}Farewell Channel:{% else %}قناة الوداع:{% endif %}</label>
+                                <select id="farewell_channel" name="farewell_channel">
                                     <option value="">{% if current_lang == 'en' %}-- Disable Farewell Messages --{% else %}-- إيقاف رسائل الوداع --{% endif %}</option>
                                     {% for ch in channels %}
                                         <option value="{{ ch.id }}" {% if settings and settings.get('farewell_channel') == ch.id %}selected{% endif %}>
@@ -908,26 +1073,26 @@
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Farewell Embed Title:{% else %}عنوان إمبد الوداع:{% endif %}</label>
-                                <input type="text" name="farewell_title" value="{{ settings.get('farewell_title', 'وداعاً!') if settings else 'وداعاً!' }}">
+                                <label for="farewell_title">{% if current_lang == 'en' %}Farewell Embed Title:{% else %}عنوان إمبد الوداع:{% endif %}</label>
+                                <input type="text" id="farewell_title" name="farewell_title" value="{{ settings.get('farewell_title', 'وداعاً!') if settings else 'وداعاً!' }}">
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>{% if current_lang == 'en' %}Farewell Message Description:{% else %}وصف رسالة الوداع:{% endif %}</label>
-                            <span class="sub-label">{% if current_lang == 'en' %}You can use {user} to mention who left.{else %}يمكنك استخدام {user} للإشارة لمن غادر.{% endif %}</span>
-                            <input type="text" name="farewell_desc" value="{{ settings.get('farewell_desc', 'غادر العضو {user} السيرفر.') if settings else 'غادر العضو {user} السيرفر.' }}">
+                            <label for="farewell_desc">{% if current_lang == 'en' %}Farewell Message Description:{% else %}وصف رسالة الوداع:{% endif %}</label>
+                            <span id="farewell_desc_sub" class="sub-label">{% if current_lang == 'en' %}You can use {user} to mention who left.{else %}يمكنك استخدام {user} للإشارة لمن غادر.{% endif %}</span>
+                            <input type="text" id="farewell_desc" name="farewell_desc" aria-describedby="farewell_desc_sub" value="{{ settings.get('farewell_desc', 'غادر العضو {user} السيرفر.') if settings else 'غادر العضو {user} السيرفر.' }}">
                         </div>
 
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Farewell Image URL:{% else %}رابط صورة الوداع (URL):{% endif %}</label>
-                                <input type="text" name="farewell_img" value="{{ settings.get('farewell_img', '') if settings else '' }}" placeholder="https://example.com/image.png">
+                                <label for="farewell_img">{% if current_lang == 'en' %}Farewell Image URL:{% else %}رابط صورة الوداع (URL):{% endif %}</label>
+                                <input type="text" id="farewell_img" name="farewell_img" value="{{ settings.get('farewell_img', '') if settings else '' }}" placeholder="https://example.com/image.png">
                             </div>
 
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Farewell Interactive Button Action:{% else %}إجراء الزر التفاعلي مع المغادرة:{% endif %}</label>
-                                <select name="farewell_action">
+                                <label for="farewell_action">{% if current_lang == 'en' %}Farewell Interactive Button Action:{% else %}إجراء الزر التفاعلي مع المغادرة:{% endif %}</label>
+                                <select id="farewell_action" name="farewell_action">
                                     <option value="none" {% if settings and settings.get('farewell_action') == 'none' %}selected{% endif %}>{% if current_lang == 'en' %}No Action (Normal Button){% else %}بدون إجراء (زر عادي){% endif %}</option>
                                     <option value="ban" {% if settings and settings.get('farewell_action') == 'ban' %}selected{% endif %}>{% if current_lang == 'en' %}Ban Button{% else %}زر الحظر (Ban){% endif %}</option>
                                     <option value="timeout" {% if settings and settings.get('farewell_action') == 'timeout' %}selected{% endif %}>{% if current_lang == 'en' %}Timeout Button{% else %}زر التايم أوت (Timeout){% endif %}</option>
@@ -938,18 +1103,18 @@
                 </div>
 
                 <!-- 6. Ticket System Tab -->
-                <div id="section-tickets" class="tab-panel">
+                <div id="section-tickets" class="tab-panel" role="tabpanel" aria-labelledby="tab-tickets">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-ticket"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}Ticket System Settings{% else %}إعدادات نظام التذاكر{% endif %}</h3>
                         </div>
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Ticket Category:{% else %}قسم التذاكر (Category):{% endif %}</label>
-                                <select name="ticket_category">
+                                <label for="ticket_category">{% if current_lang == 'en' %}Ticket Category:{% else %}قسم التذاكر (Category):{% endif %}</label>
+                                <select id="ticket_category" name="ticket_category">
                                     <option value="">{% if current_lang == 'en' %}-- Select Category --{% else %}-- اختر القسم --{% endif %}</option>
                                     {% for cat in categories %}
                                         <option value="{{ cat.id }}" {% if settings and settings.get('ticket_category') == cat.id %}selected{% endif %}>{{ cat.name }}</option>
@@ -957,8 +1122,8 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Support Role:{% else %}رول الدعم الفني:{% endif %}</label>
-                                <select name="ticket_support_role">
+                                <label for="ticket_support_role">{% if current_lang == 'en' %}Support Role:{% else %}رول الدعم الفني:{% endif %}</label>
+                                <select id="ticket_support_role" name="ticket_support_role">
                                     <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر الرول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('ticket_support_role') == r.id %}selected{% endif %}>{{ r.name }}</option>
@@ -970,32 +1135,32 @@
                 </div>
 
                 <!-- 7. XP System Tab -->
-                <div id="section-xp" class="tab-panel">
+                <div id="section-xp" class="tab-panel" role="tabpanel" aria-labelledby="tab-xp">
                     <div class="form-section">
                         <div class="section-header">
-                            <div class="section-header-icon">
+                            <div class="section-header-icon" aria-hidden="true">
                                 <i class="fa-solid fa-ranking-star"></i>
                             </div>
                             <h3>{% if current_lang == 'en' %}XP & Levels System{% else %}نظام المستويات (XP){% endif %}</h3>
                         </div>
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}XP System Status:{% else %}حالة نظام المستويات:{% endif %}</label>
-                                <select name="xp_enabled">
+                                <label for="xp_enabled">{% if current_lang == 'en' %}XP System Status:{% else %}حالة نظام المستويات:{% endif %}</label>
+                                <select id="xp_enabled" name="xp_enabled">
                                     <option value="1" {% if settings and settings.get('xp_enabled') == 1 %}selected{% endif %}>{% if current_lang == 'en' %}Enabled{% else %}مفعل{% endif %}</option>
                                     <option value="0" {% if settings and settings.get('xp_enabled') == 0 %}selected{% endif %}>{% if current_lang == 'en' %}Disabled{% else %}معطل{% endif %}</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}XP Amount Per Message:{% else %}كمية XP لكل رسالة:{% endif %}</label>
-                                <input type="number" name="xp_per_message" value="{{ settings.get('xp_per_message', 15) if settings else 15 }}">
+                                <label for="xp_per_message">{% if current_lang == 'en' %}XP Amount Per Message:{% else %}كمية XP لكل رسالة:{% endif %}</label>
+                                <input type="number" id="xp_per_message" name="xp_per_message" value="{{ settings.get('xp_per_message', 15) if settings else 15 }}">
                             </div>
                         </div>
 
                         <div class="grid-3" style="margin-top: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Level 5 Role:{% else %}رول المستوى 5:{% endif %}</label>
-                                <select name="xp_role_5">
+                                <label for="xp_role_5">{% if current_lang == 'en' %}Level 5 Role:{% else %}رول المستوى 5:{% endif %}</label>
+                                <select id="xp_role_5" name="xp_role_5">
                                     <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_5') == r.id %}selected{% endif %}>{{ r.name }}</option>
@@ -1003,8 +1168,8 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Level 10 Role:{% else %}رول المستوى 10:{% endif %}</label>
-                                <select name="xp_role_10">
+                                <label for="xp_role_10">{% if current_lang == 'en' %}Level 10 Role:{% else %}رول المستوى 10:{% endif %}</label>
+                                <select id="xp_role_10" name="xp_role_10">
                                     <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_10') == r.id %}selected{% endif %}>{{ r.name }}</option>
@@ -1012,8 +1177,8 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>{% if current_lang == 'en' %}Level 20 Role:{% else %}رول المستوى 20:{% endif %}</label>
-                                <select name="xp_role_20">
+                                <label for="xp_role_20">{% if current_lang == 'en' %}Level 20 Role:{% else %}رول المستوى 20:{% endif %}</label>
+                                <select id="xp_role_20" name="xp_role_20">
                                     <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر رول --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings and settings.get('xp_role_20') == r.id %}selected{% endif %}>{{ r.name }}</option>
@@ -1026,8 +1191,8 @@
 
                 <!-- Save Action Container -->
                 <div class="submit-container">
-                    <button type="button" onclick="saveSettings()" class="btn-save">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> {% if current_lang == 'en' %}Save Settings{% else %}حفظ الإعدادات{% endif %}
+                    <button type="button" onclick="saveSettings()" class="btn-save" aria-label="{% if current_lang == 'en' %}Save Settings{% else %}حفظ الإعدادات{% endif %}">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> {% if current_lang == 'en' %}Save Settings{% else %}حفظ الإعدادات{% endif %}
                     </button>
                 </div>
 
@@ -1035,10 +1200,34 @@
         </main>
     </div>
 
+    <!-- Custom Color Picker Modal (Matched Design) -->
+    <div id="colorModal" class="color-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="color-modal-card">
+            <div class="modal-header">
+                <span id="modalTitle" class="modal-title">{% if current_lang == 'en' %}Pick a Color{% else %}اختر لوناً{% endif %}</span>
+                <button type="button" class="btn-modal-select" onclick="confirmColorSelection()">{% if current_lang == 'en' %}Select{% else %}اختيار{% endif %}</button>
+            </div>
+            
+            <div class="hex-display-box">
+                <input type="text" id="modalHexInput" class="hex-input-val" value="#3caf6d" oninput="handleHexInput(this.value)">
+            </div>
+
+            <div id="satValPicker" class="color-picker-sat-val">
+                <div id="pickerCursor" class="picker-cursor"></div>
+            </div>
+
+            <div id="huePicker" class="color-picker-hue">
+                <div id="hueThumb" class="hue-slider-thumb"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
-    <div id="toast" class="toast">
-        <i class="fa-solid fa-circle-check"></i>
+    <div id="toast" class="toast" role="status" aria-live="polite">
+        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
         <span id="toast-text">{% if current_lang == 'en' %}Settings saved successfully ✨{% else %}تم حفظ التعديلات بنجاح ✨{% endif %}</span>
+    </div>
+
     <script>
         function switchTab(tabId, element) {
             document.querySelectorAll('.tab-panel').forEach(panel => {
@@ -1046,9 +1235,11 @@
             });
             document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.classList.remove('active');
+                link.setAttribute('aria-selected', 'false');
             });
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
+            element.setAttribute('aria-selected', 'true');
         }
 
         function saveSettings() {
@@ -1105,6 +1296,150 @@
                 toast.classList.remove("show"); 
             }, 3000);
         }
+
+        /* --- Color Picker Modal Controller Logic --- */
+        let activeTargetInputId = null;
+        let currentH = 145;
+        let currentS = 0.65;
+        let currentV = 0.68;
+
+        function updateBtnPreview(inputId, val) {
+            const btn = document.getElementById('btn_picker_' + inputId.replace('color_', ''));
+            if (btn && /^#[0-9A-F]{6}$/i.test(val)) {
+                btn.style.backgroundColor = val;
+            }
+        }
+
+        function openCustomPicker(inputId) {
+            activeTargetInputId = inputId;
+            const inputVal = document.getElementById(inputId).value || '#FFFFFF';
+            setPickerFromHex(inputVal);
+            document.getElementById('colorModal').classList.add('active');
+        }
+
+        function confirmColorSelection() {
+            if (activeTargetInputId) {
+                const hexVal = document.getElementById('modalHexInput').value;
+                const targetInput = document.getElementById(activeTargetInputId);
+                targetInput.value = hexVal;
+                updateBtnPreview(activeTargetInputId, hexVal);
+            }
+            document.getElementById('colorModal').classList.remove('active');
+        }
+
+        document.getElementById('colorModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+
+        function hsvToRgb(h, s, v) {
+            let f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+            return [Math.round(f(5) * 255), Math.round(f(3) * 255), Math.round(f(1) * 255)];
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+        function hexToHsv(hex) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+            if (hex.length !== 6) return [0, 1, 1];
+            let r = parseInt(hex.substring(0, 2), 16) / 255;
+            let g = parseInt(hex.substring(2, 4), 16) / 255;
+            let b = parseInt(hex.substring(4, 6), 16) / 255;
+
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            let d = max - min;
+            s = max === 0 ? 0 : d / max;
+
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s, v];
+        }
+
+        function renderPickerUI() {
+            const [r, g, b] = hsvToRgb(currentH, 1, 1);
+            const satValBox = document.getElementById('satValPicker');
+            satValBox.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+            const cursor = document.getElementById('pickerCursor');
+            cursor.style.left = (currentS * 100) + '%';
+            cursor.style.top = ((1 - currentV) * 100) + '%';
+
+            const hueThumb = document.getElementById('hueThumb');
+            hueThumb.style.left = ((currentH / 360) * 100) + '%';
+
+            const [finalR, finalG, finalB] = hsvToRgb(currentH, currentS, currentV);
+            const hex = rgbToHex(finalR, finalG, finalB);
+            document.getElementById('modalHexInput').value = hex;
+        }
+
+        function setPickerFromHex(hex) {
+            const [h, s, v] = hexToHsv(hex);
+            currentH = h;
+            currentS = s;
+            currentV = v;
+            renderPickerUI();
+        }
+
+        function handleHexInput(val) {
+            if (/^#[0-9A-F]{6}$/i.test(val)) {
+                setPickerFromHex(val);
+            }
+        }
+
+        /* Drag & Click Events for Color Picker */
+        const satValBox = document.getElementById('satValPicker');
+        let isDraggingSat = false;
+
+        function updateSatVal(e) {
+            const rect = satValBox.getBoundingClientRect();
+            let x = Math.max(0, Math.min(rect.width, (e.clientX || e.touches[0].clientX) - rect.left));
+            let y = Math.max(0, Math.min(rect.height, (e.clientY || e.touches[0].clientY) - rect.top));
+            currentS = x / rect.width;
+            currentV = 1 - (y / rect.height);
+            renderPickerUI();
+        }
+
+        satValBox.addEventListener('mousedown', (e) => { isDraggingSat = true; updateSatVal(e); });
+        satValBox.addEventListener('touchstart', (e) => { isDraggingSat = true; updateSatVal(e); });
+
+        const hueBox = document.getElementById('huePicker');
+        let isDraggingHue = false;
+
+        function updateHue(e) {
+            const rect = hueBox.getBoundingClientRect();
+            let x = Math.max(0, Math.min(rect.width, (e.clientX || e.touches[0].clientX) - rect.left));
+            currentH = (x / rect.width) * 360;
+            renderPickerUI();
+        }
+
+        hueBox.addEventListener('mousedown', (e) => { isDraggingHue = true; updateHue(e); });
+        hueBox.addEventListener('touchstart', (e) => { isDraggingHue = true; updateHue(e); });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingSat) updateSatVal(e);
+            if (isDraggingHue) updateHue(e);
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (isDraggingSat) updateSatVal(e);
+            if (isDraggingHue) updateHue(e);
+        });
+
+        window.addEventListener('mouseup', () => { isDraggingSat = false; isDraggingHue = false; });
+        window.addEventListener('touchend', () => { isDraggingSat = false; isDraggingHue = false; });
         
         function applyDynamicTranslations(lang) {
             const translations = {
