@@ -897,6 +897,131 @@ async def botinfo(interaction: discord.Interaction):
 
   await interaction.response.send_message(embed=embed, view=view)
 
+# ==========================================
+# ضع دالة /help الجديدة هنا مباشرةً
+# ==========================================
+@bot.tree.command(name="help", description="عرض دليل الإرشادات والتعليمات لاستخدام البوت والأوامر والشبكات")
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
+async def help_command(interaction: discord.Interaction):
+  lang = get_guild_lang(interaction.guild.id)
+
+  if lang == "en":
+    embed = discord.Embed(
+        title="📖 Bot Setup & Usage Guide",
+        description=(
+            "Welcome to the bot manual! Here is everything you need to know"
+            " about slash commands and server networking."
+        ),
+        color=discord.Color.blue(),
+    )
+
+    embed.add_field(
+        name="🛠️ Dashboard & Main Commands",
+        value=(
+            "`/setup` — Get link to the Web Control Panel (Manage Server"
+            " required).\n`/language` — Change bot response language (Arabic /"
+            " English).\n`/ticket-setup` — Send support ticket creation"
+            " panel.\n`/clear [amount]` — Purge 1-100 messages from current"
+            " channel.\n`/userinfo` & `/serverinfo` — Show details about member"
+            " or server.\n`/ping` & `/botinfo` — Bot connection speed and"
+            " support info."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="📊 Leveling & Leaderboard",
+        value=(
+            "`/level [member]` — View your current XP and level"
+            " rank.\n`/leaderboard` — Display top 10 most active members."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="🌐 Cross-Server Network Commands (Prefix: `!network`)",
+        value=(
+            "*(Admin Only)* Connect channels and sync messages/bans across"
+            " servers:\n`!network create <name>` — Create a new network & bind"
+            " current channel.\n`!network join <net_id>` — Join an existing"
+            " network using its ID.\n`!network leave <net_id>` — Disconnect"
+            " your server from a network.\n`!network del [net_id]` — Permanently"
+            " delete a network you created."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="💡 Quick Tips",
+        value=(
+            "• All Slash commands require **Manage Server** permission.\n•"
+            " Network commands require **Administrator** permission.\n• When"
+            " a user is banned in a network server, **Auto Global Ban** will"
+            " sync the ban to all connected servers."
+        ),
+        inline=False,
+    )
+
+  else:
+    embed = discord.Embed(
+        title="📖 دليل الاستخدام والتعليمات الشامل",
+        description=(
+            "مرحباً بك في دليل البوت! تجد أدناه شرحاً مفصلاً لكيفية استخدام أوامر"
+            " السلاش ونظام الشبكات بين السيرفرات."
+        ),
+        color=discord.Color.blue(),
+    )
+
+    embed.add_field(
+        name="🛠️ لوحة التحكم والأوامر العامة (Slash Commands)",
+        value=(
+            "`/setup` — الحصول على رابط لوحة التحكم الخاصة بسيرفراتك.\n`/language`"
+            " — تغيير لغة ردود وبوت السيرفر (عربي / إنجليزي).\n`/ticket-setup` —"
+            " إرسال لوحة إنشاء التذاكر والدعم الفني.\n`/clear [العدد]` — مسح من"
+            " 1 إلى 100 رسالة من القناة الحالية.\n`/userinfo` & `/serverinfo` —"
+            " عرض معلومات تفصيلية عن العضو أو السيرفر.\n`/ping` & `/botinfo` —"
+            " عرض سرعة الاستجابة ومعلومات الدعم."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="📊 نظام المستويات والخبرة (XP)",
+        value=(
+            "`/level [العضو]` — عرض مستواك الحالي ونقاط الخبرة"
+            " XP.\n`/leaderboard` — عرض قائمة أفضل 10 أعضاء تفاعلاً في السيرفر."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="🌐 أوامر شبكة التواصل بين السيرفرات (البريفكس: `!network`)",
+        value=(
+            "*(للمشرفين فقط)* لربط القنوات ومزامنة الرسائل والحظر"
+            " التلقائي:\n`!network create <اسم_الشبكة>` — إنشاء شبكة جديدة"
+            " وربط القناة الحالية بها.\n`!network join <معرف_الشبكة>` — الانضمام"
+            " لشبكة موجودة عبر الـ ID الخاص بها.\n`!network leave"
+            " <معرف_الشبكة>` — مغادرة السيرفر للشبكة وإلغاء الربط.\n`!network del"
+            " [معرف_الشبكة]` — حذف الشبكة بالكامل وإغلاق جميع اتصالاتها."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="💡 ملاحظات وإرشادات مهمة",
+        value=(
+            "• جميع أوامر السلاش تتطلب صلاحية **إدارة السيرفر (Manage"
+            " Server)**.\n• أوامر الشبكة تتطلب صلاحية **مسؤول"
+            " (Administrator)**.\n• نظام الحظر الشامل: عند حظر عضو في سيرفر"
+            " مرتبط بشبكة، سيتم حظره تلقائياً من بقية السيرفرات المرتبطة."
+        ),
+        inline=False,
+    )
+
+  if interaction.guild and interaction.guild.icon:
+    embed.set_thumbnail(url=interaction.guild.icon.url)
+
+  await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class CloseTicketView(discord.ui.View):
 
