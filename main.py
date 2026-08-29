@@ -904,6 +904,8 @@ async def botinfo(interaction: discord.Interaction):
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def help_command(interaction: discord.Interaction):
   lang = get_guild_lang(interaction.guild.id)
+  
+  view = discord.ui.View()
 
   if lang == "en":
     embed = discord.Embed(
@@ -966,7 +968,7 @@ async def help_command(interaction: discord.Interaction):
     view.add_item(
         discord.ui.Button(
             label="For more information",
-            url="https://discord.gg/PZcZYu8AEa",  # <--- استبدل هذا برابط سيرفرك
+            url="https://discord.gg/PZcZYu8AEa",
             style=discord.ButtonStyle.link,
         )
     )
@@ -1031,7 +1033,7 @@ async def help_command(interaction: discord.Interaction):
     view.add_item(
         discord.ui.Button(
             label="للمزيد من المعلومات",
-            url="https://discord.gg/PZcZYu8AEa",  # <--- استبدل هذا برابط سيرفرك
+            url="https://discord.gg/PZcZYu8AEa",
             style=discord.ButtonStyle.link,
         )
     )
