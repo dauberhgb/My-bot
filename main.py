@@ -961,7 +961,16 @@ async def help_command(interaction: discord.Interaction):
         ),
         inline=False,
     )
-
+  
+    # زر المساعدة باللغة الإنجليزية
+    view.add_item(
+        discord.ui.Button(
+            label="For more information",
+            url="https://discord.gg/PZcZYu8AEa",  # <--- استبدل هذا برابط سيرفرك
+            style=discord.ButtonStyle.link,
+        )
+    )
+  
   else:
     embed = discord.Embed(
         title="📖 دليل الاستخدام والتعليمات الشامل",
@@ -1017,11 +1026,20 @@ async def help_command(interaction: discord.Interaction):
         ),
         inline=False,
     )
+    
+    # زر المساعدة باللغة العربية
+    view.add_item(
+        discord.ui.Button(
+            label="للمزيد من المعلومات",
+            url="https://discord.gg/PZcZYu8AEa",  # <--- استبدل هذا برابط سيرفرك
+            style=discord.ButtonStyle.link,
+        )
+    )
 
   if interaction.guild and interaction.guild.icon:
     embed.set_thumbnail(url=interaction.guild.icon.url)
 
-  await interaction.response.send_message(embed=embed, ephemeral=True)
+  await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 class CloseTicketView(discord.ui.View):
 
