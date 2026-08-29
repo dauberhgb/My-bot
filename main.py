@@ -955,7 +955,7 @@ async def help_command(interaction: discord.Interaction):
         name="💡 Quick Tips",
         value=(
             "• All Slash commands require **Manage Server** permission.\n•"
-            " Network commands require **Administrator** permission.\n• When"
+            " Network commands require **Server owner** permission.\n• When"
             " a user is banned in a network server, **Auto Global Ban** will"
             " sync the ban to all connected servers."
         ),
@@ -1012,7 +1012,7 @@ async def help_command(interaction: discord.Interaction):
         value=(
             "• جميع أوامر السلاش تتطلب صلاحية **إدارة السيرفر (Manage"
             " Server)**.\n• أوامر الشبكة تتطلب صلاحية **مسؤول"
-            " (Administrator)**.\n• نظام الحظر الشامل: عند حظر عضو في سيرفر"
+            " (مالك السارفر)**.\n• نظام الحظر الشامل: عند حظر عضو في سيرفر"
             " مرتبط بشبكة، سيتم حظره تلقائياً من بقية السيرفرات المرتبطة."
         ),
         inline=False,
