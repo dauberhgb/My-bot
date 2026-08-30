@@ -400,10 +400,10 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
 
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
-      avatar_x = width - avatar_size - 50  # البروفايل على اليمين
-      title_x = width - 120
-      name_x = width - 160
-      sub_x = width - 90
+      avatar_x = width - avatar_size - 120  # البروفايل على اليمين
+      title_x = width - 50
+      name_x = width - 50
+      sub_x = width - 20
       
       welcome_title = arabic_reshaper.reshape(t1_text)
       member_count_text = arabic_reshaper.reshape(t3_text)
