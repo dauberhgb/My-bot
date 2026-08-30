@@ -65,8 +65,8 @@ class Welcome(commands.Cog):
 
         # 3. تحديد الإحداثيات والنصوص حسب اللغة
         if is_ar:
-            avatar_x, avatar_y = 1010, 320
-            name_x, title_x, sub_x = 880, 880, 880
+            avatar_x, avatar_y = 960, 320
+            name_x, title_x, sub_x = 600, 500, 360
             t1_processed = get_display(arabic_reshaper.reshape(t1_text))
             t2_processed = get_display(arabic_reshaper.reshape(t2_text[:18]))
             t3_processed = get_display(arabic_reshaper.reshape(t3_text))
