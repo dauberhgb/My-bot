@@ -1,3 +1,9 @@
+{% if not is_admin %}
+<script>
+    alert("عذراً! لا تملك صلاحية الوصول إلى لوحة تحكم هذا السيرفر.");
+    window.location.href = "/guilds";
+</script>
+{% else %}
 <!DOCTYPE html>
 <html lang="{{ current_lang if current_lang else 'ar' }}" dir="{{ 'ltr' if current_lang == 'en' else 'rtl' }}">
 <head>
@@ -1539,3 +1545,4 @@
         
 </body>
 </html>
+{% endif %}
