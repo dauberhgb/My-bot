@@ -404,6 +404,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
       title_x = width - 775
       name_x = width - 915
       sub_x = width - 870
+      title_y = 529
+      name_y = 315
+      sub_y = 731
       
       welcome_title = arabic_reshaper.reshape(t1_text)
       member_count_text = arabic_reshaper.reshape(t3_text)
@@ -414,6 +417,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
       title_x = 775
       name_x = 915
       sub_x = 870
+      title_y = 550
+      name_y = 330
+      sub_y = 750
 
       welcome_title = t1_text
       member_count_text = t3_text
@@ -444,9 +450,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص في النهاية (لتظهر فوق كل شيء بما فيها الإطار)
-    draw.text((title_x, 550), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
-    draw.text((name_x, 330), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
-    draw.text((sub_x, 750), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((title_x, title_y), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((name_x, name_y), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((sub_x, sub_y), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
 
     final_buffer = BytesIO()
     base.save(final_buffer, format="PNG")
