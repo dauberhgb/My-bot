@@ -162,7 +162,7 @@ class Welcome(commands.Cog):
         return discord.File(buffer, filename="welcome_card.png")
 
     @commands.Cog.listener()
-    async def on_member_join(self, member):
+    #async def on_member_join(self, member):
         """إرسال البطاقة عند انضمام عضو جديد"""
         settings = db.get_settings(member.guild.id) or {}
         if not settings.get("welcome_enabled", True):
