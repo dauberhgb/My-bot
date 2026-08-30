@@ -18,7 +18,16 @@ def init_db():
   try:
     # التحقق من الاتصال بقاعدة البيانات
     client.admin.command('ping')
-    print("✅ تم الاتصال بقاعدة بيانات MongoDB بنجاح!")
+    
+    # إضافة الـ Indexes لتسريع الاستعلامات والبحث
+    settings_collection.create_index("guild_id", unique=True)
+    levels_collection.create_index([("guild_id", 1), ("user_id", 1)], unique=True)
+    levels_collection.create_index([("guild_id", 1), ("xp", -1)])
+    networks_collection.create_index("network_id", unique=True)
+    network_guilds_collection.create_index([("guild_id", 1), ("network_id", 1)])
+    network_guilds_collection.create_index("network_id")
+    
+    print("✅ تم الاتصال بقاعدة بيانات MongoDB وإنشاء الـ Indexes بنجاح!")
   except Exception as e:
     print(f"❌ فشل الاتصال بقاعدة البيانات: {e}")
 
