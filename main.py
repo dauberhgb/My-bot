@@ -444,9 +444,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
           base.paste(avatar, (avatar_x, avatar_y), mask)
 
     # 5. رسم النصوص في النهاية (لتظهر فوق كل شيء بما فيها الإطار)
-    draw.text((title_x, 529), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
-    draw.text((name_x, 315), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
-    draw.text((sub_x, 731), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((title_x, 550), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((name_x, 330), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((sub_x, 750), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
 
     final_buffer = BytesIO()
     base.save(final_buffer, format="PNG")
