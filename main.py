@@ -389,9 +389,9 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
               f.write(font_data)
 
     try:
-      font_title = ImageFont.truetype(font_path, 38)
-      font_name = ImageFont.truetype(font_path, 48)
-      font_sub = ImageFont.truetype(font_path, 28)
+      font_title = ImageFont.truetype(font_path, 41)
+      font_name = ImageFont.truetype(font_path, 55)
+      font_sub = ImageFont.truetype(font_path, 30)
     except Exception:
       font_title = font_name = font_sub = ImageFont.load_default()
 
