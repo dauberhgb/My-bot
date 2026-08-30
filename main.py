@@ -107,7 +107,7 @@ def admin_required(f):
 
     if user_id and user_id.isdigit():
       member = guild.get_member(int(user_id))
-      if not member or not member.guild_permissions.manage_guild:
+      if not member or not (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
         if request.path.startswith("/save/"):
           return (
               jsonify({
