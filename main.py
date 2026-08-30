@@ -83,7 +83,7 @@ def get_guild_lang(guild_id):
   return settings.get("language", "ar")
 
 
-# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف
+# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف والمالك
 def admin_required(f):
   @wraps(f)
   def decorated_function(guild_id, *args, **kwargs):
@@ -106,8 +106,18 @@ def admin_required(f):
     )
 
     if user_id and user_id.isdigit():
-      member = guild.get_member(int(user_id))
-      if not member or not (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+      u_id = int(user_id)
+      # محاولة جلب العضو من الذاكرة أو من الديسكورد مباشرة
+      member = guild.get_member(u_id)
+      
+      # التحقق الشامل: المالك صاحب البوت أو مالك السيرفر أو أدمن السيرفر
+      is_authorized = False
+      if u_id == OWNER_ID or u_id == guild.owner_id:
+        is_authorized = True
+      elif member:
+        is_authorized = member.guild_permissions.administrator or member.guild_permissions.manage_guild
+
+      if not is_authorized:
         if request.path.startswith("/save/"):
           return (
               jsonify({
@@ -182,6 +192,17 @@ def dashboard(guild_id):
   icon_url = guild.icon.url if guild.icon else None
   current_lang = settings.get("language", "ar")
 
+  # جلب معرف المستخدم لمعرفة هل هو أدمن أم لا
+  user_id = request.args.get("user_id")
+  is_admin = False
+  if user_id and user_id.isdigit():
+    u_id = int(user_id)
+    member = guild.get_member(u_id)
+    if u_id == OWNER_ID or u_id == guild.owner_id:
+      is_admin = True
+    elif member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+      is_admin = True
+
   return render_template(
       "index.html",
       guild=guild,
@@ -191,6 +212,7 @@ def dashboard(guild_id):
       settings=settings,
       icon_url=icon_url,
       current_lang=current_lang,
+      is_admin=is_admin,  # <-- إرسال المتغير للـ HTML لمنع ظهور التنبيه الخاطئ
       **{'_': lambda text: text}
   )
 
