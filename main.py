@@ -401,8 +401,8 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
     # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
     if user_lang == "ar":
       avatar_x = width - avatar_size - 96  # البروفايل على اليمين
-      title_x = width - 768
-      name_x = width - 940
+      title_x = width - 780
+      name_x = width - 870
       sub_x = width - 870
       title_y = 529
       name_y = 315
