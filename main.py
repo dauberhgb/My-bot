@@ -405,7 +405,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
       name_x = width - 870
       sub_x = width - 870
       title_y = 529
-      name_y = 315
+      name_y = 330
       sub_y = 731
       
       welcome_title = arabic_reshaper.reshape(t1_text)
@@ -415,7 +415,7 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
     else:
       avatar_x = 96
       title_x = 775
-      name_x = 890
+      name_x = 870
       sub_x = 870
       title_y = 550
       name_y = 330
