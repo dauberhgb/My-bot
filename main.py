@@ -294,7 +294,7 @@ def save(guild_id):
       "auto_nickname": request.form.get("auto_nickname", ""),
       "ticket_status": "enabled" if request.form.get("ticket_status") == "1" else "disabled",
       "ticket_category": request.form.get("ticket_category", ""),
-      "support_role": request.form.get("support_role", ""),
+      "ticket_support_role": request.form.get("ticket_support_role", ""),
       "ticket_archive_channel": request.form.get("ticket_archive_channel", ""),
       "xp_enabled": int(request.form.get("xp_enabled", 1)),
       "xp_per_message": int(request.form.get("xp_per_message", 15)),
