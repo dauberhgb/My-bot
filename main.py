@@ -1189,9 +1189,6 @@ async def on_app_command_error(
 
 async def setup_hook():
     
-    bot.add_view(TicketButtonView())
-    bot.add_view(CloseTicketView())
-    
     if os.path.exists("./cogs"):
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
