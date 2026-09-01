@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 import io
 import database
+import time
+
+ticket_cooldowns = {}
 
 # 1. قائمة اختيار أقسام التذاكر
 class TicketSelect(discord.ui.Select):
@@ -37,7 +40,15 @@ class TicketSelect(discord.ui.Select):
             return
             
         lang = settings.get("language", "ar")
+
         
+        current_time = time.time()
+        if interaction.user.id in ticket_cooldowns and current_time - ticket_cooldowns[interaction.user.id] < 5:
+            msg = "Please wait a few seconds." if lang == "en" else "يرجى الانتظار بضع ثوانٍ قبل محاولة فتح تذكرة أخرى."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
+        ticket_cooldowns[interaction.user.id] = current_time
+
         dept_value = self.values[0]
         dept_names = {
             "support": ("الدعم الفني", "Support"),
