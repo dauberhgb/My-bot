@@ -468,6 +468,19 @@ async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, 
 # ==========================================
 # 4. أحداث وأوامر البوت (Discord Events & Commands)
 # ==========================================
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        remaining = round(error.retry_after, 1)
+        msg = f"⏳ يرجى الانتظار {remaining} ثانية قبل استخدام هذا الأمر مرة أخرى."
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
+    else:
+        # لطباعة الأخطاء الأخرى في الكونسول لمعالجتها
+        print(f"⚠️ خطأ في أمر السلاش: {error}")
+        
 @bot.event
 async def on_ready():
   print(f"تم تشغيل البوت بنجاح باسم: {bot.user}")
@@ -482,6 +495,7 @@ async def on_ready():
     app_commands.Choice(name="English (الإنجليزية)", value="en")
 ])
 @app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def language_command(interaction: discord.Interaction, lang: app_commands.Choice[str]):
   guild_id = interaction.guild.id
   settings = database.get_settings(guild_id)
@@ -499,7 +513,7 @@ async def language_command(interaction: discord.Interaction, lang: app_commands.
     description="الانتقال إلى صفحة سيرفراتك في لوحة التحكم",
 )
 @app_commands.checks.has_permissions(manage_guild=True)
-@app_commands.checks.cooldown(1, 5.0)
+@app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def setup(interaction: discord.Interaction):
   user_id = str(interaction.user.id)
   lang = get_guild_lang(interaction.guild.id)
