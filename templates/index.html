@@ -1108,37 +1108,80 @@
                     </div>
                 </div>
 
-                <!-- 6. Ticket System Tab -->
-                <div id="section-tickets" class="tab-panel" role="tabpanel" aria-labelledby="tab-tickets">
-                    <div class="form-section">
-                        <div class="section-header">
-                            <div class="section-header-icon" aria-hidden="true">
-                                <i class="fa-solid fa-ticket"></i>
-                            </div>
-                            <h3>{% if current_lang == 'en' %}Ticket System Settings{% else %}إعدادات نظام التذاكر{% endif %}</h3>
-                        </div>
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label for="ticket_category">{% if current_lang == 'en' %}Ticket Category:{% else %}قسم التذاكر (Category):{% endif %}</label>
-                                <select id="ticket_category" name="ticket_category">
-                                    <option value="">{% if current_lang == 'en' %}-- Select Category --{% else %}-- اختر القسم --{% endif %}</option>
-                                    {% for cat in categories %}
-                                        <option value="{{ cat.id }}" {% if settings and settings.get('ticket_category') == cat.id %}selected{% endif %}>{{ cat.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="ticket_support_role">{% if current_lang == 'en' %}Support Role:{% else %}رول الدعم الفني:{% endif %}</label>
-                                <select id="ticket_support_role" name="ticket_support_role">
-                                    <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر الرول --{% endif %}</option>
-                                    {% for r in roles %}
-                                        <option value="{{ r.id }}" {% if settings and settings.get('ticket_support_role') == r.id %}selected{% endif %}>{{ r.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
+                                <!-- Ticket System Tab -->
+                <div class="tab-content" id="tickets-tab">
+                    <div class="section-header">
+                        <h3>
+                            {% if current_lang == 'ar' %}إعدادات نظام التذاكر{% else %}Ticket System Settings{% endif %}
+                        </h3>
                     </div>
+
+                    <form method="POST" action="/update_settings/{{ guild_id }}">
+                        <input type="hidden" name="category" value="tickets">
+
+                        <!-- Ticket System Status (Enable/Disable) -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                {% if current_lang == 'ar' %}حالة نظام التذاكر{% else %}Ticket System Status{% endif %}
+                            </label>
+                            <select name="ticket_status" class="form-select">
+                                <option value="enabled" {% if settings.get('ticket_status') == 'enabled' %}selected{% endif %}>
+                                    {% if current_lang == 'ar' %}مفعل{% else %}Enabled{% endif %}
+                                </option>
+                                <option value="disabled" {% if settings.get('ticket_status') == 'disabled' %}selected{% endif %}>
+                                    {% if current_lang == 'ar' %}معطل{% else %}Disabled{% endif %}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Ticket Category (Where channels are created) -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                {% if current_lang == 'ar' %}فئة التذاكر (Category){% else %}Ticket Category{% endif %}
+                            </label>
+                            <select name="ticket_category" class="form-select">
+                                {% for c in categories %}
+                                <option value="{{ c.id }}" {% if settings.get('ticket_category') == c.id %}selected{% endif %}>
+                                    {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Support Role -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                {% if current_lang == 'ar' %}رتبة الدعم الفني{% else %}Support Role{% endif %}
+                            </label>
+                            <select name="support_role" class="form-select">
+                                {% for r in roles %}
+                                <option value="{{ r.id }}" {% if settings.get('support_role') == r.id %}selected{% endif %}>
+                                    {{ r.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Archive Channel -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                {% if current_lang == 'ar' %}قناة الأرشيف (Log Channel){% else %}Archive Log Channel{% endif %}
+                            </label>
+                            <select name="ticket_archive_channel" class="form-select">
+                                {% for ch in channels %}
+                                <option value="{{ ch.id }}" {% if settings.get('ticket_archive_channel') == ch.id %}selected{% endif %}>
+                                    # {{ ch.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            {% if current_lang == 'ar' %}حفظ التغييرات{% else %}Save Changes{% endif %}
+                        </button>
+                    </form>
                 </div>
+
 
                 <!-- 7. XP System Tab -->
                 <div id="section-xp" class="tab-panel" role="tabpanel" aria-labelledby="tab-xp">
