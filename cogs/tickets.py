@@ -201,6 +201,7 @@ class AdvancedTicketCog(commands.Cog):
         self.bot = bot
 
     @commands.hybrid_command(name="ticket-setup", description="إرسال لوحة التذاكر والأقسام المتطورة")
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
     @commands.has_permissions(manage_guild=True)
     async def ticket_setup(self, ctx):
         settings = database.get_settings(ctx.guild.id)
