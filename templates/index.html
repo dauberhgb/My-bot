@@ -1146,7 +1146,7 @@
                             <!-- Support Role -->
                             <div class="form-group">
                                 <label for="support_role">{% if current_lang == 'en' %}Support Role:{% else %}رتبة الدعم الفني:{% endif %}</label>
-                                <select id="support_role" name="support_role">
+                                <select id="support_role" name="ticket_support_role">
                                     <option value="">{% if current_lang == 'en' %}-- Select Role --{% else %}-- اختر الرتبة --{% endif %}</option>
                                     {% for r in roles %}
                                         <option value="{{ r.id }}" {% if settings.get('ticket_support_role')|string == r.id|string %}selected{% endif %}>
