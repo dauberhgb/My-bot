@@ -30,6 +30,12 @@ class TicketSelect(discord.ui.Select):
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         settings = database.get_settings(guild.id)
+
+        if settings.get("ticket_status", "enabled") == "disabled":
+            msg = "Ticket system is currently disabled." if settings.get("language") == "en" else "نظام التذاكر معطل حالياً في هذا السيرفر."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
+            
         lang = settings.get("language", "ar")
         
         dept_value = self.values[0]
