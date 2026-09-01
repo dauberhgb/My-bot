@@ -227,4 +227,8 @@ class AdvancedTicketCog(commands.Cog):
         await ctx.send(embed=embed, view=TicketSetupView(lang=lang))
 
 async def setup(bot):
+    # تسجيل الـ Views المستمرة هنا لتجنب مشاكل الـ Rate Limit والحظر من ديسكورد
+    bot.add_view(TicketSetupView())
+    bot.add_view(TicketControlView())
+    
     await bot.add_cog(AdvancedTicketCog(bot))
