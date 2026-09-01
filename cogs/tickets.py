@@ -190,8 +190,7 @@ class AdvancedTicketCog(commands.Cog):
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
         await ctx.send(embed=embed, view=TicketSetupView(lang=lang))
-        if ctx.interaction:
-            await ctx.interaction.response.send_message(sent_msg, ephemeral=True)
+        
 
 async def setup(bot):
     await bot.add_cog(AdvancedTicketCog(bot))
