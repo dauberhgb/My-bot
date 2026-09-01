@@ -212,7 +212,7 @@ def dashboard(guild_id):
       settings=settings,
       icon_url=icon_url,
       current_lang=current_lang,
-      is_admin=is_admin,  # <-- إرسال المتغير للـ HTML لمنع ظهور التنبيه الخاطئ
+      is_admin=is_admin,
       **{'_': lambda text: text}
   )
 
