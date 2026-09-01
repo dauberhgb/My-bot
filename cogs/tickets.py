@@ -44,13 +44,14 @@ class TicketSelect(discord.ui.Select):
 
         cat_id = settings.get("ticket_category")
         support_role_id = settings.get("ticket_support_role")
-        category = guild.get_channel(int(cat_id)) if cat_id and cat_id.isdigit() else None
-        support_role = guild.get_role(int(support_role_id)) if support_role_id and support_role_id.isdigit() else None
+        
+        category = guild.get_channel(int(cat_id)) if cat_id and str(cat_id).isdigit() else None
+        support_role = guild.get_role(int(support_role_id)) if support_role_id and str(support_role_id).isdigit() else None
 
         # التحقق من وجود تذكرة مفتوحة سابقة للمستخدم
-        existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{interaction.user.name.lower()}")
+        existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{dept_value}-{interaction.user.name.lower()}")
         if existing_channel:
-            msg = f"You already have an open ticket here: {existing_channel.mention}" if lang == "en" else f"لديك تذكرة مفتوحة بالفعل هنا: {existing_channel.mention}"
+            msg = f"You already have an open ticket here: {existing_channel.mention}" if lang == "en" else f"لديك تذكرة مفتوحة بالفعل في هذا القسم: {existing_channel.mention}"
             await interaction.followup.send(msg, ephemeral=True)
             return
 
@@ -79,11 +80,11 @@ class TicketSelect(discord.ui.Select):
                     color=0x6366f1
                 )
 
-            await ticket_chan.send(content=interaction.user.mention, embed=embed, view=TicketControlView(lang=lang))
+            await ticket_chan.send(content=f"{interaction.user.mention} {support_role.mention if support_role else ''}", embed=embed, view=TicketControlView(lang=lang))
             success_msg = f"Ticket created successfully: {ticket_chan.mention}" if lang == "en" else f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}"
             await interaction.followup.send(success_msg, ephemeral=True)
         except Exception as e:
-            err_msg = "An error occurred while creating the ticket." if lang == "en" else "حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت."
+            err_msg = "An error occurred while creating the ticket." if lang == "en" else "حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت (Manage Channels)."
             await interaction.followup.send(err_msg, ephemeral=True)
 
 # 2. واجهة إرسال لوحة التذاكر الرئيسية
@@ -92,7 +93,7 @@ class TicketSetupView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketSelect(lang=lang))
 
-# 3. نافذة تقييم الخدمة قبل الإغلاق
+# 3. نافذة تقييم الخدمة قبل الإغلاق وحفظ الأرشيف
 class RatingModal(discord.ui.Modal):
     def __init__(self, lang="ar"):
         self.lang = lang
@@ -115,11 +116,15 @@ class RatingModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         lang = self.lang
+        guild = interaction.guild
         await interaction.response.defer(ephemeral=True)
+        
+        settings = database.get_settings(guild.id)
+        archive_channel_id = settings.get("ticket_archive_channel")
         
         # إنشاء ملف نصي للأرشيف (Transcript)
         messages = [f"--- TICKET TRANSCRIPT: {interaction.channel.name} ---"]
-        async for msg in interaction.channel.history(limit=100, oldest_first=True):
+        async for msg in interaction.channel.history(limit=150, oldest_first=True):
             messages.append(f"[{msg.created_at.strftime('%Y-%m-%d %H:%M')}] {msg.author}: {msg.content}")
         
         transcript_content = "\n".join(messages)
@@ -128,12 +133,27 @@ class RatingModal(discord.ui.Modal):
             filename=f"transcript-{interaction.channel.name}.txt"
         )
 
-        # إرسال رسالة الإغلاق والأرشيف
-        thank_msg = "Thank you for your rating! Saving transcript and closing channel..." if lang == "en" else "شكراً لك على تقييمك! جاري حفظ الأرشيف وإغلاق القناة..."
+        # إرسال الأرشيف لقناة اللوغات المحددة في لوحة التحكم إن وجدت
+        if archive_channel_id and str(archive_channel_id).isdigit():
+            archive_chan = guild.get_channel(int(archive_channel_id))
+            if archive_chan:
+                rating_val = self.stars.value
+                feedback_val = self.feedback.value or ("No feedback provided" if lang == "en" else "لا توجد ملاحظات")
+                
+                log_embed = discord.Embed(
+                    title="📁 Closed Ticket Transcript & Rating",
+                    description=f"**Channel:** `{interaction.channel.name}`\n**Rating:** `⭐ {rating_val}/5`\n**Feedback:** `{feedback_val}`",
+                    color=discord.Color.orange()
+                )
+                try:
+                    await archive_chan.send(embed=log_embed, file=transcript_file)
+                except Exception as e:
+                    print(f"❌ تعذر إرسال الأرشيف لقناة اللوغات: {e}")
+
+        thank_msg = "Thank you for your rating! Closing channel..." if lang == "en" else "شكراً لك على تقييمك! جاري إغلاق القناة..."
         await interaction.followup.send(thank_msg, ephemeral=True)
         
         try:
-            # محاولة إرسال الأرشيف لقناة اللوغات أو إشعار المالك إذا أردت
             await interaction.channel.delete()
         except:
             pass
@@ -152,7 +172,7 @@ class TicketControlView(discord.ui.View):
         button.style = discord.ButtonStyle.secondary
         
         await interaction.message.edit(view=self)
-        msg = f"ticket claimed by {interaction.user.mention}." if lang == "en" else f"تم استلام التذكرة بواسطة المشرف {interaction.user.mention}."
+        msg = f"Ticket claimed by {interaction.user.mention}." if lang == "en" else f"تم استلام التذكرة بواسطة المشرف {interaction.user.mention}."
         await interaction.response.send_message(msg)
 
     @discord.ui.button(label="Close Ticket 🔒", style=discord.ButtonStyle.danger, custom_id="close_ticket_advanced")
@@ -176,7 +196,6 @@ class AdvancedTicketCog(commands.Cog):
                 color=0xa855f7
             )
             embed.set_footer(text="Server Support Management System")
-            sent_msg = "Ticket panel sent successfully!"
         else:
             embed = discord.Embed(
                 title="🎫 نظام التذاكر والدعم الفني المتقدم",
@@ -184,13 +203,11 @@ class AdvancedTicketCog(commands.Cog):
                 color=0xa855f7
             )
             embed.set_footer(text="نظام إدارة الدعم الفني للسيرفر")
-            sent_msg = "تم إرسال لوحة التذاكر بنجاح!"
 
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
         await ctx.send(embed=embed, view=TicketSetupView(lang=lang))
-        
 
 async def setup(bot):
     await bot.add_cog(AdvancedTicketCog(bot))
