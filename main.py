@@ -769,14 +769,13 @@ async def sync_commands(ctx):
         await ctx.send("⚠️ عذراً! هذا الأمر مخصص لصاحب البوت فقط.")
         return
 
-    msg = await ctx.send("⏳ جاري تنظيف الأوامر القديمة وإعادة المزامنة...")
+    msg = await ctx.send("⏳ جاري مسح الأوامر القديمة وإعادة مزامنة أوامر الكود...")
     try:
-        # 1. مسح الأوامر القديمة المسجلة محلياً في السيرفر
+        # 1. مسح أوامر السيرفر المحلية السابقة إن وجدت
         bot.tree.clear_commands(guild=ctx.guild)
         await bot.tree.sync(guild=ctx.guild)
 
-        # 2. مسح الأوامر العامة المسجلة سابقاً وإعادة مزامنة الشجرة الحالية
-        bot.tree.clear_commands(guild=None)
+        # 2. مزامنة الأوامر العامة الحالية مباشرة بدون تفريغ الشجرة كودياً
         synced = await bot.tree.sync()
 
         await msg.edit(content=f"✅ تم تنظيف ديسكورد ومزامنة **{len(synced)}** أمر سلاش بنجاح!")
