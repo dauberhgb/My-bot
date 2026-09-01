@@ -1163,49 +1163,6 @@ class TicketButtonView(discord.ui.View):
             description=f"Welcome {interaction.user.mention}, please describe your issue and support staff will reply soon.",
             color=0x6366f1,
         )
-      else:
-        embed = discord.Embed(
-            title="🎫 تذكرة دعم فني جديدة",
-            description=f"مرحباً {interaction.user.mention}، يرجى كتابة مشكلتك وسيتم الرد عليك قريباً من قبل فريق الدعم.",
-            color=0x6366f1,
-        )
-
-      await ticket_chan.send(
-          content=interaction.user.mention,
-          embed=embed,
-          view=CloseTicketView(lang=lang),
-      )
-      success_msg = f"Ticket created successfully: {ticket_chan.mention}" if lang == "en" else f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}"
-      await interaction.followup.send(success_msg, ephemeral=True)
-    except Exception as e:
-      err_msg = "An error occurred while creating the ticket, please check bot permissions." if lang == "en" else "حدث خطأ أثناء إنشاء التذكرة، يرجى التحقق من صلاحيات البوت."
-      await interaction.followup.send(err_msg, ephemeral=True)
-
-
-@bot.tree.command(
-    name="ticket-setup", description="إرسال لوحة إنشاء التذاكر في القناة الحالية"
-)
-@app_commands.checks.has_permissions(manage_guild=True)
-async def ticket_setup(interaction: discord.Interaction):
-  lang = get_guild_lang(interaction.guild.id)
-  if lang == "en":
-    embed = discord.Embed(
-        title="🎫 Ticket & Support System",
-        description="Click the button below to open a new ticket and contact staff.",
-        color=0xa855f7,
-    )
-    sent_msg = "Ticket panel sent successfully!"
-  else:
-    embed = discord.Embed(
-        title="🎫 نظام التذاكر والدعم الفني",
-        description="اضغط على الزر بالأسفل لفتح تذكرة جديدة والتواصل مع الإدارة.",
-        color=0xa855f7,
-    )
-    sent_msg = "تم إرسال لوحة التذاكر بنجاح!"
-
-  await interaction.channel.send(embed=embed, view=TicketButtonView(lang=lang))
-  await interaction.response.send_message(sent_msg, ephemeral=True)
-
 
 @bot.tree.command(name="level", description="عرض مستواك الحالي ونقاط الخبرة XP")
 @app_commands.describe(member="العضو المراد عرض مستواه (اختياري)")
