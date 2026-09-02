@@ -203,9 +203,11 @@ class AdvancedTicketCog(commands.Cog):
 
     @app_commands.command(name="ticket-setup", description="إرسال لوحة التذاكر والأقسام المتطورة")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
-    @commands.has_permissions(manage_guild=True)
-    async def ticket_setup(self, ctx):
-        settings = database.get_settings(ctx.guild.id)
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def ticket_setup(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        
+        settings = database.get_settings(interaction.guild.id)
         lang = settings.get("language", "ar")
 
         if lang == "en":
@@ -223,10 +225,10 @@ class AdvancedTicketCog(commands.Cog):
             )
             embed.set_footer(text="نظام إدارة الدعم الفني للسيرفر")
 
-        if ctx.guild.icon:
-            embed.set_thumbnail(url=ctx.guild.icon.url)
+        if interaction.guild.icon:
+            embed.set_thumbnail(url=interaction.guild.icon.url)
 
-        await ctx.send(embed=embed, view=TicketSetupView(lang=lang))
+        await interaction.followup.send(embed=embed, view=TicketSetupView(lang=lang))
 
 async def setup(bot):
     # تسجيل الـ Views المستمرة هنا لتجنب مشاكل الـ Rate Limit والحظر من ديسكورد
