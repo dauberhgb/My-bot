@@ -98,7 +98,8 @@ class TicketSelect(discord.ui.Select):
                     color=0x6366f1
                 )
 
-            await ticket_chan.send(content=f"{interaction.user.mention} {support_role.mention if support_role else ''}", embed=embed, view=TicketControlView(lang=lang))
+            support_mention = support_role.mention if support_role else ""
+            await ticket_chan.send(content=f"{interaction.user.mention} {support_mention}".strip(), embed=embed, view=TicketControlView(lang=lang))
             success_msg = f"Ticket created successfully: {ticket_chan.mention}" if lang == "en" else f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}"
             await interaction.followup.send(success_msg, ephemeral=True)
         except Exception as e:
