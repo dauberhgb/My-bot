@@ -228,8 +228,10 @@ class AdvancedTicketCog(commands.Cog):
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
 
+        # إذا تم استخدام أمر السلاش، نقوم بإرسال رسالة عامة في القناة ثم إخفاء رسالة الـ interaction السرية
         if ctx.interaction:
-            await ctx.interaction.response.send_message(embed=embed, view=TicketSetupView(lang=lang), ephemeral=True)
+            await ctx.interaction.response.send_message("✅ Done", ephemeral=True)
+            await ctx.channel.send(embed=embed, view=TicketSetupView(lang=lang))
         else:
             await ctx.send(embed=embed, view=TicketSetupView(lang=lang))
 
