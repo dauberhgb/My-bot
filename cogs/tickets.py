@@ -67,7 +67,7 @@ class TicketSelect(discord.ui.Select):
         support_role = guild.get_role(int(support_role_id)) if support_role_id and str(support_role_id).isdigit() else None
 
         # التحقق من وجود تذكرة مفتوحة سابقة للمستخدم
-        existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{dept_value}-{interaction.user.name.lower()}")
+        existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{dept_value}-{interaction.user.id}")
         if existing_channel:
             msg = f"You already have an open ticket here: {existing_channel.mention}" if lang == "en" else f"لديك تذكرة مفتوحة بالفعل في هذا القسم: {existing_channel.mention}"
             await interaction.followup.send(msg, ephemeral=True)
@@ -81,7 +81,7 @@ class TicketSelect(discord.ui.Select):
         if support_role:
             overwrites[support_role] = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
 
-        channel_name = f"ticket-{dept_value}-{interaction.user.name}"
+        channel_name = f"ticket-{dept_value}-{interaction.user.id}"
         try:
             ticket_chan = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
 
@@ -103,7 +103,8 @@ class TicketSelect(discord.ui.Select):
             success_msg = f"Ticket created successfully: {ticket_chan.mention}" if lang == "en" else f"تم إنشاء تذكرتك بنجاح: {ticket_chan.mention}"
             await interaction.followup.send(success_msg, ephemeral=True)
         except Exception as e:
-            err_msg = "An error occurred while creating the ticket." if lang == "en" else "حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت (Manage Channels)."
+            print(f"❌ Error creating ticket channel: {e}")
+            err_msg = "An error occurred while creating the ticket." if lang == "en" else f"حدث خطأ أثناء إنشاء التذكرة: {e}"
             await interaction.followup.send(err_msg, ephemeral=True)
 
 # 2. واجهة إرسال لوحة التذاكر الرئيسية
