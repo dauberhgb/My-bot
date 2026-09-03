@@ -4,9 +4,10 @@ from discord.ext import commands
 import datetime
 import io
 
-# تخزين مؤقت لبيانات المناوبات النشطة حالياً (يمكن ربطه بقاعدة البيانات لاحقاً)
+# تخزين مؤقت لبيانات المناوبات النشطة حالياً وقنوات اللوجات لكل سيرفر
 # format: {user_id: {"start_time": timestamp, "voice_channel": name, "tickets_closed": 0, "actions_count": 0}}
 active_shifts = {}
+shift_channels = {}  # {guild_id: channel_id}
 
 class ShiftControlView(discord.ui.View):
     def __init__(self, lang="ar"):
@@ -59,7 +60,7 @@ class ShiftControlView(discord.ui.View):
         start_time = shift_data["start_time"]
         start_voice = shift_data["voice_channel"]
         
-        # جلب الروم الصوتي الحالي وقت التتسليم إن وجد
+        # جلب الروم الصوتي الحالي وقت التسليم إن وجد
         end_voice_name = "غير متواجد في روم صوتي"
         if interaction.user.voice and interaction.user.voice.channel:
             end_voice_name = interaction.user.voice.channel.name
@@ -85,12 +86,16 @@ class ShiftControlView(discord.ui.View):
         
         embed.set_footer(text="نظام إدارة الدوام الإداري للسيرفر")
 
-        # إرسال التقرير للشات العام أو قناة مخصصة للإدارة إن أردت، أو الرد على المشرف مباشرة
+        # إرسال التقرير للمشرف مباشرة
         await interaction.response.send_message("✅ تم إنهاء مناوبتك وتسليم التقرير بنجاح إليك:", embed=embed, ephemeral=True)
         
-        # يمكنك إرسال نسخة من التقرير لقناة لوغات الإدارة إذا كانت موجودة في سيرفرك
-        # log_channel = interaction.guild.get_channel(CHANNEL_ID)
-        # if log_channel: await log_channel.send(embed=embed)
+        # إرسال نسخة من التقرير لقناة اللوجات المحددة إن وجدت
+        if interaction.guild:
+            channel_id = shift_channels.get(interaction.guild.id)
+            if channel_id:
+                log_channel = interaction.guild.get_channel(channel_id)
+                if log_channel:
+                    await log_channel.send(embed=embed)
 
 class StaffShiftCog(commands.Cog):
     def __init__(self, bot):
@@ -107,6 +112,13 @@ class StaffShiftCog(commands.Cog):
         embed.set_footer(text="نظام مراقبة الدوام الإداري")
         
         await ctx.send(embed=embed, view=ShiftControlView())
+
+    @app_commands.command(name="shift-log-channel", description="تحديد القناة المخصصة لإرسال تقارير المناوبات الإدارية إليها")
+    @app_commands.has_permissions(administrator=True)
+    @app_commands.describe(channel="اختر القناة المخصصة للتقارير")
+    async def shift_log_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        shift_channels[interaction.guild.id] = channel.id
+        await interaction.response.send_message(f"✅ تم بنجاح تعيين {channel.mention} كقناة رسمية لتقارير وتسجيلات المناوبات الإدارية.", ephemeral=True)
 
 async def setup(bot):
     # تسجيل الـ View بشكل مستمر لكي تعمل الأزرار حتى بعد إعادة تشغيل البوت
