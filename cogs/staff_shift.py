@@ -40,20 +40,23 @@ class ShiftControlView(discord.ui.View):
         voice_channel = interaction.user.voice.channel
         voice_channel_name = voice_channel.name
         voice_channel_id = voice_channel.id
+        now = datetime.datetime.now()
 
         active_shifts[user_id] = {
-            "start_time": datetime.datetime.now(),
+            "start_time": now,
             "voice_channel": voice_channel_name,
             "voice_channel_id": voice_channel_id,
-            "left_voice": False,  # مؤشر لتتبع ما إذا غادر الغرفة
+            "violations_count": 0,           # عدد مرات مغادرة الروم
+            "out_of_voice_seconds": 0,       # إجمالي الثواني خارج الروم أو بدون اتصال
+            "last_left_timestamp": None,     # لتسجيل وقت الخروج المؤقت
             "tickets_closed": 0,
             "actions_count": 0
         }
         
         if self.lang == "en":
-            msg = f"Shift started successfully at {datetime.datetime.now().strftime('%H:%M')} 🟢 (Voice Channel: **{voice_channel_name}**). Good luck!"
+            msg = f"Shift started successfully at {now.strftime('%H:%M')} 🟢 (Voice Channel: **{voice_channel_name}**). Good luck!"
         else:
-            msg = f"تم بدء مناوبتك بنجاح في {datetime.datetime.now().strftime('%H:%M')} 🟢 (الروم الصوتي: **{voice_channel_name}**). بالتوفيق في عملك!"
+            msg = f"تم بدء مناوبتك بنجاح في {now.strftime('%H:%M')} 🟢 (الروم الصوتي: **{voice_channel_name}**). بالتوفيق في عملك!"
             
         await interaction.response.send_message(msg, ephemeral=True)
 
@@ -68,27 +71,37 @@ class ShiftControlView(discord.ui.View):
         shift_data = active_shifts.pop(user_id)
         start_time = shift_data["start_time"]
         start_voice = shift_data["voice_channel"]
-        start_voice_id = shift_data["voice_channel_id"]
         
-        # جلب الروم الصوتي الحالي وقت التسليم والتحقق من الثغرات (مغادرة الروم أو تغييره)
-        end_voice_name = "غير متواجد في روم صوتي"
-        left_status = "❌ غادر الروم الصوتي أو قام بتغييره أثناء المناوبة" if self.lang == "en" else "❌ غادر الروم الصوتي أو قام بتغييره أثناء المناوبة"
-        
+        # إذا كان المشرف خارج الروم لحظة الضغط، نقوم بحساب آخر فترة خروج حتى لحظة التسليم
+        if shift_data["last_left_timestamp"] is not None:
+            extra_out = (datetime.datetime.now() - shift_data["last_left_timestamp"]).total_seconds()
+            shift_data["out_of_voice_seconds"] += extra_out
+
+        # جلب الروم الصوتي الحالي وقت التسليم
+        end_voice_name = "غير متواجد في روم صوتي" if self.lang == "ar" else "Not in a voice channel"
         if interaction.user.voice and interaction.user.voice.channel:
-            current_voice = interaction.user.voice.channel
-            end_voice_name = current_voice.name
-            if current_voice.id == start_voice_id:
-                left_status = "✅ التزم بالروم الصوتي طوال فترة المناوبة" if self.lang == "en" else "✅ التزم بالروم الصوتي طوال فترة المناوبة"
-            else:
-                left_status = "⚠️ قام بتغيير الروم الصوتي أثناء المناوبة" if self.lang == "en" else "⚠️ قام بتغيير الروم الصوتي أثناء المناوبة"
-        else:
-            left_status = "❌ قام بمغادرة الروم الصوتي تماماً أثناء المناوبة" if self.lang == "en" else "❌ قام بمغادرة الروم الصوتي تماماً أثناء المناوبة"
+            end_voice_name = interaction.user.voice.channel.name
 
         end_time = datetime.datetime.now()
         duration = end_time - start_time
+        total_seconds = int(duration.total_seconds())
         
-        hours, remainder = divmod(int(duration.total_seconds()), 3600)
+        hours, remainder = divmod(total_seconds, 3600)
         minutes, _ = divmod(remainder, 60)
+
+        out_secs = int(shift_data["out_of_voice_seconds"])
+        out_hours, out_rem = divmod(out_secs, 3600)
+        out_mins, _ = divmod(out_rem, 60)
+
+        violations = shift_data["violations_count"]
+
+        if violations == 0 and out_secs < 5:
+            left_status = "✅ التزم بالروم الصوتي طوال فترة المناوبة" if self.lang == "ar" else "✅ Stayed in the voice channel throughout the shift"
+        else:
+            if self.lang == "en":
+                left_status = f"⚠️ Left/changed voice channel {violations} times (Total away: {out_hours}h {out_mins}m)"
+            else:
+                left_status = f"⚠️ غادر/غير الروم الصوتي {violations} مرة (إجمالي الغياب: {out_hours} ساعة و {out_mins} دقيقة)"
 
         embed = discord.Embed(
             title="📊 تقرير تسليم مناوبة إدارية" if self.lang == "ar" else "📊 Administrative Shift Handover Report",
@@ -131,6 +144,33 @@ class ShiftControlView(discord.ui.View):
 class StaffShiftCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        user_id = member.id
+        if user_id not in active_shifts:
+            return
+
+        shift_data = active_shifts[user_id]
+        target_channel_id = shift_data["voice_channel_id"]
+        now = datetime.datetime.now()
+
+        # حالة خروج المشرف تماماً من الروم أو تغييره لروم آخر
+        left_target = (before.channel and before.channel.id == target_channel_id) and \
+                      (not after.channel or after.channel.id != target_channel_id)
+
+        # حالة عودة المشرف للروم الأساسي المخصص للمناوبة
+        returned_target = (not before.channel or before.channel.id != target_channel_id) and \
+                          (after.channel and after.channel.id == target_channel_id)
+
+        if left_target:
+            shift_data["violations_count"] += 1
+            shift_data["last_left_timestamp"] = now
+
+        elif returned_target and shift_data["last_left_timestamp"] is not None:
+            away_duration = (now - shift_data["last_left_timestamp"]).total_seconds()
+            shift_data["out_of_voice_seconds"] += away_duration
+            shift_data["last_left_timestamp"] = None
 
     @app_commands.command(name="shift-panel", description="إرسال لوحة تسجيل وتسليم المناوبات الإدارية / Send shift control panel")
     @app_commands.checks.has_permissions(manage_guild=True)
