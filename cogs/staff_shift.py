@@ -5,7 +5,6 @@ import datetime
 import io
 
 # تخزين مؤقت لبيانات المناوبات النشطة حالياً وقنوات اللوجات لكل سيرفر
-# format: {user_id: {"start_time": timestamp, "voice_channel": name, "tickets_closed": 0, "actions_count": 0}}
 active_shifts = {}
 shift_channels = {}  # {guild_id: channel_id}
 
@@ -18,7 +17,6 @@ class ShiftControlView(discord.ui.View):
     async def start_shift(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
 
-      
         import time
         if not hasattr(self, "cooldowns"):
             self.cooldowns = {}
@@ -26,7 +24,6 @@ class ShiftControlView(discord.ui.View):
             await interaction.response.send_message("⚠️ يرجى الانتظار قليلاً قبل الضغط مرة أخرى.", ephemeral=True)
             return
         self.cooldowns[user_id] = time.time()
-        # ---------------------------------------------
       
         if user_id in active_shifts:
             msg = "You are already on duty!" if self.lang == "en" else "أنت مسجل في مناوبة فعالة بالفعل ولا تحتاج لبدئها مرة أخرى."
@@ -101,9 +98,9 @@ class StaffShiftCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.hybrid_command(name="shift-panel", description="إرسال لوحة تسجيل وتسليم المناوبات الإدارية")
-    @commands.has_permissions(manage_guild=True)
-    async def shift_panel(self, ctx: commands.Context):
+    @app_commands.command(name="shift-panel", description="إرسال لوحة تسجيل وتسليم المناوبات الإدارية")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def shift_panel(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="📋 لوحة دوام وتسليم المناوبات الإدارية",
             description="اضغط على الأزرار في الأسفل لتسجيل بداية مناوبتك أو إنهاء وتسليم تقرير عملك للطاقم بكل سهولة.",
@@ -111,16 +108,15 @@ class StaffShiftCog(commands.Cog):
         )
         embed.set_footer(text="نظام مراقبة الدوام الإداري")
         
-        await ctx.send(embed=embed, view=ShiftControlView())
+        await interaction.response.send_message(embed=embed, view=ShiftControlView())
 
     @app_commands.command(name="shift-log-channel", description="تحديد القناة المخصصة لإرسال تقارير المناوبات الإدارية إليها")
-    @app_commands.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.describe(channel="اختر القناة المخصصة للتقارير")
     async def shift_log_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         shift_channels[interaction.guild.id] = channel.id
         await interaction.response.send_message(f"✅ تم بنجاح تعيين {channel.mention} كقناة رسمية لتقارير وتسجيلات المناوبات الإدارية.", ephemeral=True)
 
 async def setup(bot):
-    # تسجيل الـ View بشكل مستمر لكي تعمل الأزرار حتى بعد إعادة تشغيل البوت
     bot.add_view(ShiftControlView())
     await bot.add_cog(StaffShiftCog(bot))
