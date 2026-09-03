@@ -63,7 +63,14 @@ class TicketSelect(discord.ui.Select):
         cat_id = settings.get("ticket_category")
         support_role_id = settings.get("ticket_support_role")
         
+        # البحث عن الكاتيجوري المحدد، وإذا لم يوجد أو لم يتم اختياره، نقوم بإنشائه تلقائياً لتجنب أي أخطاء
         category = guild.get_channel(int(cat_id)) if cat_id and str(cat_id).isdigit() else None
+        if not category:
+            try:
+                category = await guild.create_category("Tickets")
+            except Exception as e:
+                print(f"❌ تعذر إنشاء قسم التذاكر الافتراضي: {e}")
+
         support_role = guild.get_role(int(support_role_id)) if support_role_id and str(support_role_id).isdigit() else None
 
         # التحقق من وجود تذكرة مفتوحة سابقة للمستخدم
