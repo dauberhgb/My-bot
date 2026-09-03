@@ -5,7 +5,7 @@ import datetime
 import io
 
 # تخزين مؤقت لبيانات المناوبات النشطة حالياً (يمكن ربطه بقاعدة البيانات لاحقاً)
-# format: {user_id: {"start_time": timestamp, "tickets_closed": 0, "actions_count": 0}}
+# format: {user_id: {"start_time": timestamp, "voice_channel": name, "tickets_closed": 0, "actions_count": 0}}
 active_shifts = {}
 
 class ShiftControlView(discord.ui.View):
@@ -32,13 +32,19 @@ class ShiftControlView(discord.ui.View):
             await interaction.response.send_message(msg, ephemeral=True)
             return
 
+        # جلب الروم الصوتي للمشرف إن وجد
+        voice_channel_name = "غير متواجد في روم صوتي"
+        if interaction.user.voice and interaction.user.voice.channel:
+            voice_channel_name = interaction.user.voice.channel.name
+
         active_shifts[user_id] = {
             "start_time": datetime.datetime.now(),
+            "voice_channel": voice_channel_name,
             "tickets_closed": 0,
             "actions_count": 0
         }
         
-        msg = f"تم بدء مناوبتك بنجاح في {datetime.datetime.now().strftime('%H:%M')} 🟢. بالتوفيق في عملك!"
+        msg = f"تم بدء مناوبتك بنجاح في {datetime.datetime.now().strftime('%H:%M')} 🟢 (الروم الصوتي: **{voice_channel_name}**). بالتوفيق في عملك!"
         await interaction.response.send_message(msg, ephemeral=True)
 
     @discord.ui.button(label="تسليم المناوبة 🔴", style=discord.ButtonStyle.danger, custom_id="end_shift_btn")
@@ -51,6 +57,13 @@ class ShiftControlView(discord.ui.View):
 
         shift_data = active_shifts.pop(user_id)
         start_time = shift_data["start_time"]
+        start_voice = shift_data["voice_channel"]
+        
+        # جلب الروم الصوتي الحالي وقت التتسليم إن وجد
+        end_voice_name = "غير متواجد في روم صوتي"
+        if interaction.user.voice and interaction.user.voice.channel:
+            end_voice_name = interaction.user.voice.channel.name
+
         end_time = datetime.datetime.now()
         duration = end_time - start_time
         
@@ -65,6 +78,8 @@ class ShiftControlView(discord.ui.View):
         embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
         embed.add_field(name="👤 المشرف", value=interaction.user.mention, inline=True)
         embed.add_field(name="⏱️ مدة المناوبة", value=f"`{hours} ساعة و {minutes} دقيقة`", inline=True)
+        embed.add_field(name="🔊 الروم الصوتي عند البدء", value=f"`{start_voice}`", inline=False)
+        embed.add_field(name="🔊 الروم الصوتي عند التسليم", value=f"`{end_voice_name}`", inline=False)
         embed.add_field(name="🕒 وقت البدء", value=start_time.strftime('%Y-%m-%d %H:%M'), inline=False)
         embed.add_field(name="🏁 وقت الانتهاء", value=end_time.strftime('%Y-%m-%d %H:%M'), inline=False)
         
@@ -91,11 +106,7 @@ class StaffShiftCog(commands.Cog):
         )
         embed.set_footer(text="نظام مراقبة الدوام الإداري")
         
-        if ctx.interaction:
-            await ctx.interaction.response.send_message("✅ Done", ephemeral=True)
-            await ctx.channel.send(embed=embed, view=ShiftControlView())
-        else:
-            await ctx.send(embed=embed, view=ShiftControlView())
+        await ctx.send(embed=embed, view=ShiftControlView())
 
 async def setup(bot):
     # تسجيل الـ View بشكل مستمر لكي تعمل الأزرار حتى بعد إعادة تشغيل البوت
