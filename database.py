@@ -256,4 +256,41 @@ def delete_network(network_id):
 def leave_network(guild_id, network_id):
     network_guilds_collection.delete_one({"guild_id": str(guild_id), "network_id": str(network_id)})
   
+  # --- دوال نظام المناوبات الإدارية ---
+shifts_collection = db["staff_shifts"]
+
+def get_staff_shift_stats(guild_id, user_id):
+    g_id, u_id = str(guild_id), str(user_id)
+    row = shifts_collection.find_one({"guild_id": g_id, "user_id": u_id})
+    if row:
+        return {
+            "total_seconds": row.get("total_seconds", 0),
+            "shifts_count": row.get("shifts_count", 0),
+            "points": row.get("points", 100)
+        }
+    return {"total_seconds": 0, "shifts_count": 0, "points": 100}
+
+def update_staff_shift_stats(guild_id, user_id, add_seconds, add_shifts, new_points):
+    g_id, u_id = str(guild_id), str(user_id)
+    shifts_collection.update_one(
+        {"guild_id": g_id, "user_id": u_id},
+        {
+            "$inc": {
+                "total_seconds": add_seconds,
+                "shifts_count": add_shifts
+            },
+            "$set": {
+                "points": new_points
+            }
+        },
+        upsert=True
+    )
+
+def get_top_staff_shifts(guild_id, limit=10):
+    cursor = shifts_collection.find({"guild_id": str(guild_id)}).sort("total_seconds", -1).limit(limit)
+    rows = []
+    for doc in cursor:
+        rows.append((doc.get("user_id"), doc.get("total_seconds", 0), doc.get("shifts_count", 0), doc.get("points", 100)))
+    return rows
+
 init_db()
