@@ -4,9 +4,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-# تخزين مؤقت لبيانات المناوبات النشطة حالياً وقنوات اللوجات لكل سيرفر
+# تخزين مؤقت لبيانات المناوبات النشطة وقنوات اللوجات والإحصائيات
 active_shifts = {}
 shift_channels = {}  # {guild_id: channel_id}
+shift_stats_db = {}  # {user_id: {"total_seconds": 0, "shifts_count": 0, "points": 100}}
 
 
 def get_guild_lang(guild_id):
@@ -25,17 +26,19 @@ class ShiftControlView(discord.ui.View):
 
   def __init__(self, lang="ar"):
     super().__init__(timeout=None)
-    # تحديث نص الأزرار وألوانها ديناميكياً بناءً على لغة السيرفر
     if lang == "en":
       self.start_btn.label = "Start Shift 🟢"
+      self.pause_btn.label = "Break ⏸️"
       self.end_btn.label = "End Shift 🔴"
     else:
       self.start_btn.label = "بدء المناوبة 🟢"
+      self.pause_btn.label = "استراحة ⏸️"
       self.end_btn.label = "تسليم المناوبة 🔴"
 
   @discord.ui.button(
       style=discord.ButtonStyle.success,
       custom_id="start_shift_btn",
+      row=0,
   )
   async def start_btn(
       self, interaction: discord.Interaction, button: discord.ui.Button
@@ -88,6 +91,7 @@ class ShiftControlView(discord.ui.View):
         "violations_count": 0,
         "out_of_voice_seconds": 0,
         "last_left_timestamp": None,
+        "is_paused": False,
         "tickets_closed": 0,
         "actions_count": 0,
     }
@@ -99,9 +103,64 @@ class ShiftControlView(discord.ui.View):
 
     await interaction.response.send_message(msg, ephemeral=True)
 
+    # ميزة الإشعار الشخصي عبر الـ DM عند البدء
+    try:
+      dm_msg = (
+          f"🟢 Your shift has started in **{interaction.guild.name}** at"
+          f" {now.strftime('%H:%M')}."
+          if lang == "en"
+          else f"🟢 تم بدء مناوبتك في سيرفر **{interaction.guild.name}** الساعة"
+          f" {now.strftime('%H:%M')}."
+      )
+      await interaction.user.send(dm_msg)
+    except Exception:
+      pass
+
   @discord.ui.button(
-      style=discord.ButtonStyle.danger,
-      custom_id="end_shift_btn",
+      style=discord.ButtonStyle.secondary,
+      custom_id="pause_shift_btn",
+      row=0,
+  )
+  async def pause_btn(
+      self, interaction: discord.Interaction, button: discord.ui.Button
+  ):
+    user_id = interaction.user.id
+    guild_id = interaction.guild.id if interaction.guild else None
+    lang = get_guild_lang(guild_id)
+
+    if user_id not in active_shifts:
+      msg = (
+          "You are not currently on duty!"
+          if lang == "en"
+          else "ليس لديك مناوبة نشطة حالياً لتفعيل الاستراحة."
+      )
+      await interaction.response.send_message(msg, ephemeral=True)
+      return
+
+    shift_data = active_shifts[user_id]
+    shift_data["is_paused"] = not shift_data["is_paused"]
+
+    if shift_data["is_paused"]:
+      shift_data["last_left_timestamp"] = (
+          None  # إيقاف احتساب الخروج كمخالفة أثناء الاستراحة
+      )
+      msg = (
+          "⏸️ Shift paused. Voice warnings are temporarily suspended."
+          if lang == "en"
+          else "⏸️ تم تفعيل الاستراحة المؤقتة. لن يتم احتساب مغادرة الروم"
+          " كمخالفة حتى عودتك."
+      )
+    else:
+      msg = (
+          "▶️ Shift resumed. Welcome back!"
+          if lang == "en"
+          else "▶️ تم استئناف المناوبة. عودة ميمونة!"
+      )
+
+    await interaction.response.send_message(msg, ephemeral=True)
+
+  @discord.ui.button(
+      style=discord.ButtonStyle.danger, custom_id="end_shift_btn", row=0
   )
   async def end_btn(
       self, interaction: discord.Interaction, button: discord.ui.Button
@@ -123,7 +182,10 @@ class ShiftControlView(discord.ui.View):
     start_time = shift_data["start_time"]
     start_voice = shift_data["voice_channel"]
 
-    if shift_data["last_left_timestamp"] is not None:
+    if (
+        shift_data["last_left_timestamp"] is not None
+        and not shift_data["is_paused"]
+    ):
       extra_out = (
           datetime.datetime.now() - shift_data["last_left_timestamp"]
       ).total_seconds()
@@ -148,6 +210,25 @@ class ShiftControlView(discord.ui.View):
 
     violations = shift_data["violations_count"]
 
+    # نظام العقوبات التلقائي (خصم نقاط بناء على المخالفات)
+    if user_id not in shift_stats_db:
+      shift_stats_db[user_id] = {
+          "total_seconds": 0,
+          "shifts_count": 0,
+          "points": 100,
+      }
+
+    shift_stats_db[user_id]["total_seconds"] += total_seconds
+    shift_stats_db[user_id]["shifts_count"] += 1
+
+    penalty_points = violations * 5
+    if out_secs > 60:
+      penalty_points += int(out_secs // 60)
+    shift_stats_db[user_id]["points"] = max(
+        0, shift_stats_db[user_id]["points"] - penalty_points
+    )
+    current_points = shift_stats_db[user_id]["points"]
+
     if violations == 0 and out_secs < 5:
       left_status = (
           "✅ التزم بالروم الصوتي طوال فترة المناوبة"
@@ -156,9 +237,9 @@ class ShiftControlView(discord.ui.View):
       )
     else:
       if lang == "en":
-        left_status = f"⚠️ Left/changed voice channel {violations} times (Total away: {out_hours}h {out_mins}m)"
+        left_status = f"⚠️ Left/changed voice channel {violations} times (Total away: {out_hours}h {out_mins}m) | Penalty: -{penalty_points} pts"
       else:
-        left_status = f"⚠️ غادر/غير الروم الصوتي {violations} مرة (إجمالي الغياب: {out_hours} ساعة و {out_mins} دقيقة)"
+        left_status = f"⚠️ غادر/غير الروم الصوتي {violations} مرة (إجمالي الغياب: {out_hours} ساعة و {out_mins} دقيقة) | الخصم: -{penalty_points} نقطة"
 
     embed = discord.Embed(
         title=(
@@ -181,6 +262,11 @@ class ShiftControlView(discord.ui.View):
       embed.add_field(
           name="⏱️ Duration",
           value=f"`{hours} hours & {minutes} minutes`",
+          inline=True,
+      )
+      embed.add_field(
+          name="⭐ Evaluation Points",
+          value=f"`{current_points} / 100`",
           inline=True,
       )
       embed.add_field(
@@ -219,6 +305,11 @@ class ShiftControlView(discord.ui.View):
           inline=True,
       )
       embed.add_field(
+          name="⭐ نقاط التقييم",
+          value=f"`{current_points} / 100`",
+          inline=True,
+      )
+      embed.add_field(
           name="🔊 الروم الصوتي عند البدء",
           value=f"`{start_voice}`",
           inline=False,
@@ -252,6 +343,18 @@ class ShiftControlView(discord.ui.View):
         resp_msg, embed=embed, ephemeral=True
     )
 
+    # إرسال نسخة عبر الـ DM للمشرف بملخص الانتهاء
+    try:
+      dm_embed = embed.copy()
+      await interaction.user.send(
+          "🔴 **Shift Summary Report:**"
+          if lang == "en"
+          else "🔴 **ملخص تقرير مناوبتك المنتهية:**",
+          embed=dm_embed,
+      )
+    except Exception:
+      pass
+
     if interaction.guild:
       channel_id = shift_channels.get(interaction.guild.id)
       if channel_id:
@@ -277,6 +380,9 @@ class StaffShiftCog(commands.Cog):
       return
 
     shift_data = active_shifts[user_id]
+    if shift_data.get("is_paused", False):
+      return  # تجاهل الرقابة الصوتية أثناء الاستراحة المؤقتة
+
     target_channel_id = shift_data["voice_channel_id"]
     now = datetime.datetime.now()
 
@@ -314,15 +420,15 @@ class StaffShiftCog(commands.Cog):
     if lang == "en":
       title = "📋 Administrative Shifts Control Panel"
       description = (
-          "Click the buttons below to start your shift or end and submit your"
-          " work report easily."
+          "Click the buttons below to start your shift, take a break, or end"
+          " and submit your work report easily."
       )
       footer_text = "Administrative Attendance Monitoring System"
     else:
       title = "📋 لوحة دوام وتسليم المناوبات الإدارية"
       description = (
-          "اضغط على الأزرار في الأسفل لتسجيل بداية مناوبتك أو إنهاء وتسليم"
-          " تقرير عملك للطاقم بكل سهولة."
+          "اضغط على الأزرار في الأسفل لتسجيل بداية مناوبتك، أخذ استراحة، أو"
+          " إنهاء وتسليم تقرير عملك بكل سهولة."
       )
       footer_text = "نظام مراقبة الدوام الإداري"
 
@@ -356,6 +462,85 @@ class StaffShiftCog(commands.Cog):
         " وتسجيلات المناوبات الإدارية.",
         ephemeral=True,
     )
+
+  @app_commands.command(
+      name="shift-stats",
+      description=(
+          "عرض إحصائيات المناوبات الخاصة بك أو بمشرف آخر / View shift stats"
+      ),
+  )
+  @app_commands.describe(member="اختر المشرف / Select staff member")
+  async def shift_stats(
+      self, interaction: discord.Interaction, member: discord.Member = None
+  ):
+    target = member or interaction.user
+    guild_id = interaction.guild.id if interaction.guild else None
+    lang = get_guild_lang(guild_id)
+
+    stats = shift_stats_db.get(
+        target.id, {"total_seconds": 0, "shifts_count": 0, "points": 100}
+    )
+    total_secs = stats["total_seconds"]
+    hours, remainder = divmod(total_secs, 3600)
+    minutes, _ = divmod(remainder, 60)
+    shifts_count = stats["shifts_count"]
+    points = stats["points"]
+
+    if lang == "en":
+      desc = f"📊 **Shift Statistics for {target.mention}**:\n\n- Completed Shifts: `{shifts_count}`\n- Total Time on Duty: `{hours}h {minutes}m`\n- Evaluation Points: `{points} / 100`"
+    else:
+      desc = f"📊 **إحصائيات المناوبات للمشرف {target.mention}**:\n\n- عدد المناوبات المنجزة: `{shifts_count}`\n- إجمالي ساعات العمل: `{hours} ساعة و {minutes} دقيقة`\n- نقاط التقييم: `{points} / 100`"
+
+    embed = discord.Embed(
+        description=desc, color=discord.Color.green(), timestamp=datetime.datetime.now()
+    )
+    embed.set_author(
+        name=target.display_name, icon_url=target.display_avatar.url
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+  @app_commands.command(
+      name="shift-leaderboard",
+      description=(
+          "عرض لوحة المتصدرين لأفضل المشرفين في المناوبات / Shift Leaderboard"
+      ),
+  )
+  async def shift_leaderboard(self, interaction: discord.Interaction):
+    guild_id = interaction.guild.id if interaction.guild else None
+    lang = get_guild_lang(guild_id)
+
+    if not shift_stats_db:
+      msg = (
+          "No shift data available yet."
+          if lang == "en"
+          else "لا توجد بيانات مناوبات مسجلة حتى الآن."
+      )
+      await interaction.response.send_message(msg, ephemeral=True)
+      return
+
+    sorted_staff = sorted(
+        shift_stats_db.items(),
+        key=lambda x: x[1]["total_seconds"],
+        reverse=True,
+    )[:10]
+
+    desc = ""
+    for rank, (uid, data) in enumerate(sorted_staff, 1):
+      user = interaction.guild.get_member(uid)
+      name = user.display_name if user else f"User ID: {uid}"
+      hours = data["total_seconds"] // 3600
+      desc += f"**{rank}.** {name} — `{hours} hours` (`{data['points']} pts`)\n"
+
+    embed = discord.Embed(
+        title=(
+            "🏆 Staff Shift Leaderboard"
+            if lang == "en"
+            else "🏆 لوحة متصدرين المناوبات الإدارية"
+        ),
+        description=desc,
+        color=discord.Color.gold(),
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot):
