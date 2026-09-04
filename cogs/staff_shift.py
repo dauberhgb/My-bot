@@ -3,20 +3,18 @@ import io
 import discord
 from discord import app_commands
 from discord.ext import commands
+import database as db  # استدعاء ملف قاعدة البيانات لربط الإحصائيات به
 
-# تخزين مؤقت لبيانات المناوبات النشطة وقنوات اللوجات والإحصائيات
+# تخزين مؤقت لبيانات المناوبات النشطة وقنوات اللوجات فقط (أما البيانات الدائمة فأصبحت في قاعدة البيانات)
 active_shifts = {}
 shift_channels = {}  # {guild_id: channel_id}
-shift_stats_db = {}  # {user_id: {"total_seconds": 0, "shifts_count": 0, "points": 100}}
 
 
 def get_guild_lang(guild_id):
   if not guild_id:
     return "ar"
   try:
-    from __main__ import database
-
-    settings = database.get_settings(guild_id)
+    settings = db.get_settings(guild_id)
     return settings.get("language", "ar")
   except Exception:
     return "ar"
@@ -210,24 +208,20 @@ class ShiftControlView(discord.ui.View):
 
     violations = shift_data["violations_count"]
 
-    # نظام العقوبات التلقائي (خصم نقاط بناء على المخالفات)
-    if user_id not in shift_stats_db:
-      shift_stats_db[user_id] = {
-          "total_seconds": 0,
-          "shifts_count": 0,
-          "points": 100,
-      }
+    # 1. نجلب البيانات القديمة للمشرف من قاعدة البيانات
+    current_stats = db.get_staff_shift_stats(guild_id, user_id)
 
-    shift_stats_db[user_id]["total_seconds"] += total_seconds
-    shift_stats_db[user_id]["shifts_count"] += 1
-
+    # 2. نحسب الخصومات ونقاط التقييم الجديدة
     penalty_points = violations * 5
     if out_secs > 60:
       penalty_points += int(out_secs // 60)
-    shift_stats_db[user_id]["points"] = max(
-        0, shift_stats_db[user_id]["points"] - penalty_points
+
+    current_points = max(0, current_stats["points"] - penalty_points)
+
+    # 3. نحفظ الساعات الجديدة والنقاط في قاعدة البيانات مباشرة
+    db.update_staff_shift_stats(
+        guild_id, user_id, total_seconds, 1, current_points
     )
-    current_points = shift_stats_db[user_id]["points"]
 
     if violations == 0 and out_secs < 5:
       left_status = (
@@ -387,8 +381,7 @@ class StaffShiftCog(commands.Cog):
     now = datetime.datetime.now()
 
     left_target = (
-        before.channel
-        and before.channel.id == target_channel_id
+        before.channel and before.channel.id == target_channel_id
     ) and (not after.channel or after.channel.id != target_channel_id)
 
     returned_target = (
@@ -477,9 +470,8 @@ class StaffShiftCog(commands.Cog):
     guild_id = interaction.guild.id if interaction.guild else None
     lang = get_guild_lang(guild_id)
 
-    stats = shift_stats_db.get(
-        target.id, {"total_seconds": 0, "shifts_count": 0, "points": 100}
-    )
+    # جلب الإحصائيات من قاعدة البيانات مباشرة
+    stats = db.get_staff_shift_stats(guild_id, target.id)
     total_secs = stats["total_seconds"]
     hours, remainder = divmod(total_secs, 3600)
     minutes, _ = divmod(remainder, 60)
@@ -492,7 +484,9 @@ class StaffShiftCog(commands.Cog):
       desc = f"📊 **إحصائيات المناوبات للمشرف {target.mention}**:\n\n- عدد المناوبات المنجزة: `{shifts_count}`\n- إجمالي ساعات العمل: `{hours} ساعة و {minutes} دقيقة`\n- نقاط التقييم: `{points} / 100`"
 
     embed = discord.Embed(
-        description=desc, color=discord.Color.green(), timestamp=datetime.datetime.now()
+        description=desc,
+        color=discord.Color.green(),
+        timestamp=datetime.datetime.now(),
     )
     embed.set_author(
         name=target.display_name, icon_url=target.display_avatar.url
@@ -509,7 +503,10 @@ class StaffShiftCog(commands.Cog):
     guild_id = interaction.guild.id if interaction.guild else None
     lang = get_guild_lang(guild_id)
 
-    if not shift_stats_db:
+    # جلب المتصدرين من قاعدة البيانات مباشرة
+    top_staff = db.get_top_staff_shifts(guild_id, limit=10)
+
+    if not top_staff:
       msg = (
           "No shift data available yet."
           if lang == "en"
@@ -518,18 +515,14 @@ class StaffShiftCog(commands.Cog):
       await interaction.response.send_message(msg, ephemeral=True)
       return
 
-    sorted_staff = sorted(
-        shift_stats_db.items(),
-        key=lambda x: x[1]["total_seconds"],
-        reverse=True,
-    )[:10]
-
     desc = ""
-    for rank, (uid, data) in enumerate(sorted_staff, 1):
-      user = interaction.guild.get_member(uid)
+    for rank, (uid, total_secs, shifts_count, points) in enumerate(
+        top_staff, 1
+    ):
+      user = interaction.guild.get_member(int(uid))
       name = user.display_name if user else f"User ID: {uid}"
-      hours = data["total_seconds"] // 3600
-      desc += f"**{rank}.** {name} — `{hours} hours` (`{data['points']} pts`)\n"
+      hours = total_secs // 3600
+      desc += f"**{rank}.** {name} — `{hours} hours` (`{points} pts`)\n"
 
     embed = discord.Embed(
         title=(
