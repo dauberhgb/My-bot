@@ -23,15 +23,21 @@ def get_guild_lang(guild_id):
 
 class ShiftControlView(discord.ui.View):
 
-  def __init__(self):
+  def __init__(self, lang="ar"):
     super().__init__(timeout=None)
+    # تحديث نص الأزرار وألوانها ديناميكياً بناءً على لغة السيرفر
+    if lang == "en":
+      self.start_btn.label = "Start Shift 🟢"
+      self.end_btn.label = "End Shift 🔴"
+    else:
+      self.start_btn.label = "بدء المناوبة 🟢"
+      self.end_btn.label = "تسليم المناوبة 🔴"
 
   @discord.ui.button(
-      label="بدء المناوبة 🟢",
       style=discord.ButtonStyle.success,
       custom_id="start_shift_btn",
   )
-  async def start_shift(
+  async def start_btn(
       self, interaction: discord.Interaction, button: discord.ui.Button
   ):
     user_id = interaction.user.id
@@ -94,11 +100,10 @@ class ShiftControlView(discord.ui.View):
     await interaction.response.send_message(msg, ephemeral=True)
 
   @discord.ui.button(
-      label="تسليم المناوبة 🔴",
       style=discord.ButtonStyle.danger,
       custom_id="end_shift_btn",
   )
-  async def end_shift(
+  async def end_btn(
       self, interaction: discord.Interaction, button: discord.ui.Button
   ):
     user_id = interaction.user.id
@@ -306,7 +311,6 @@ class StaffShiftCog(commands.Cog):
     guild_id = interaction.guild.id if interaction.guild else None
     lang = get_guild_lang(guild_id)
 
-    # فصل النصوص للوحة بناءً على لغة السيرفر
     if lang == "en":
       title = "📋 Administrative Shifts Control Panel"
       description = (
@@ -327,7 +331,9 @@ class StaffShiftCog(commands.Cog):
     )
     embed.set_footer(text=footer_text)
 
-    await interaction.response.send_message(embed=embed, view=ShiftControlView())
+    await interaction.response.send_message(
+        embed=embed, view=ShiftControlView(lang=lang)
+    )
 
   @app_commands.command(
       name="shift-log-channel",
