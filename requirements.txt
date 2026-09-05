@@ -6,6 +6,6 @@ requests
 arabic-reshaper
 python-bidi
 pymongo[srv]
-yt-dlp
 PyNaCl
 static-ffmpeg
+PyNaCl==1.5.0
