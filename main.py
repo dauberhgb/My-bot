@@ -27,7 +27,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+# البروكسي المحدد لتجاوز الحظر
+PROXY_URL = "http://174.138.162.35:54337"
+
+# إنشاء البوت مع البروكسي
+bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
