@@ -50,7 +50,7 @@ def get_guild_lang(guild_id):
 
 class MusicControlView(discord.ui.View):
     """لوحة تحكم تفاعلية بأزرار للتحكم في التشغيل"""
-    def __init__(self, music_cog, guild_id: int, lang="ar"):
+    def __init__(self, music_cog=None, guild_id: int = 0, lang="ar"):
         super().__init__(timeout=None)
         self.cog = music_cog
         self.guild_id = guild_id
@@ -77,9 +77,9 @@ class MusicControlView(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.primary, custom_id="music_pause_resume", row=0)
     async def pause_resume_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = get_guild_lang(self.guild_id)
+        guild_id = interaction.guild_id
+        lang = get_guild_lang(guild_id)
         
-        # فحص Cooldown للأزرار (3 ثوانٍ)
         remaining = self.is_on_cooldown(interaction.user.id, 3.0)
         if remaining > 0:
             msg = f"⏳ Please wait {remaining:.1f}s before clicking again." if lang == "en" else f"⏳ يرجى الانتظار {remaining:.1f} ثوانٍ قبل الضغط مجدداً."
@@ -106,9 +106,9 @@ class MusicControlView(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.secondary, custom_id="music_skip", row=0)
     async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = get_guild_lang(self.guild_id)
+        guild_id = interaction.guild_id
+        lang = get_guild_lang(guild_id)
 
-        # فحص Cooldown للأزرار (3 ثوانٍ)
         remaining = self.is_on_cooldown(interaction.user.id, 3.0)
         if remaining > 0:
             msg = f"⏳ Please wait {remaining:.1f}s before clicking again." if lang == "en" else f"⏳ يرجى الانتظار {remaining:.1f} ثوانٍ قبل الضغط مجدداً."
@@ -122,15 +122,15 @@ class MusicControlView(discord.ui.View):
             await interaction.response.send_message(msg, ephemeral=True)
             return
 
-        vc.stop()  # يتسبب إيقاف التشغيل في الانتقال التلقائي للأغنية التالية عبر دالة بعد التشغيل
+        vc.stop()
         msg = "⏭️ Skipped to the next track." if lang == "en" else "⏭️ تم تخطي المقطع الحالي."
         await interaction.response.send_message(msg, ephemeral=True)
 
     @discord.ui.button(style=discord.ButtonStyle.danger, custom_id="music_stop", row=0)
     async def stop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = get_guild_lang(self.guild_id)
+        guild_id = interaction.guild_id
+        lang = get_guild_lang(guild_id)
 
-        # فحص Cooldown للأزرار (3 ثوانٍ)
         remaining = self.is_on_cooldown(interaction.user.id, 3.0)
         if remaining > 0:
             msg = f"⏳ Please wait {remaining:.1f}s before clicking again." if lang == "en" else f"⏳ يرجى الانتظار {remaining:.1f} ثوانٍ قبل الضغط مجدداً."
@@ -139,8 +139,10 @@ class MusicControlView(discord.ui.View):
 
         vc = interaction.guild.voice_client
 
-        if self.guild_id in self.cog.queues:
-            self.cog.queues[self.guild_id].clear()
+        if self.cog and guild_id in self.cog.queues:
+            self.cog.queues[guild_id].clear()
+        elif guild_id in MusicCog._global_queues:
+            MusicCog._global_queues[guild_id].clear()
 
         if vc and vc.is_connected():
             await vc.disconnect()
@@ -150,45 +152,33 @@ class MusicControlView(discord.ui.View):
 
 
 class MusicCog(commands.Cog):
+    _global_queues = {}  # مرجع عام لقوائم الانتظار
+
     def __init__(self, bot):
         self.bot = bot
-        self.queues = {}  # {guild_id: [{'url': str, 'title': str, 'requester': Member}]}
+        self.queues = MusicCog._global_queues
 
     def get_queue(self, guild_id: int):
         if guild_id not in self.queues:
             self.queues[guild_id] = []
         return self.queues[guild_id]
 
-    def play_next(self, interaction: discord.Interaction):
-        guild_id = interaction.guild_id
+    def play_next(self, guild_id: int):
         queue = self.get_queue(guild_id)
-        vc = interaction.guild.voice_client
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return
+        vc = guild.voice_client
 
         if queue and vc and vc.is_connected():
             next_track = queue.pop(0)
             try:
                 ffmpeg_path = shutil.which("ffmpeg") or "ffmpeg"
                 audio_source = discord.FFmpegPCMAudio(next_track['url'], executable=ffmpeg_path, **FFMPEG_OPTIONS)
-                vc.play(audio_source, after=lambda e: self.play_next(interaction))
-                
-                # إرسال إشعار عند بدء التشغيل القادم
-                asyncio.run_coroutine_threadsafe(
-                    self.send_now_playing_notice(interaction, next_track),
-                    self.bot.loop
-                )
+                vc.play(audio_source, after=lambda e: self.play_next(guild_id))
             except Exception as e:
                 print(f"[Music Error] play_next failed: {e}")
-                self.play_next(interaction)
-
-    async def send_now_playing_notice(self, interaction: discord.Interaction, track):
-        lang = get_guild_lang(interaction.guild_id)
-        embed = discord.Embed(
-            title="🎶 Now Playing" if lang == "en" else "🎶 جاري التشغيل الآن",
-            description=f"**[{track['title']}]**\n👤 Requested by: {track['requester'].mention}",
-            color=discord.Color.green()
-        )
-        view = MusicControlView(self, interaction.guild_id, lang=lang)
-        await interaction.channel.send(embed=embed, view=view)
+                self.play_next(guild_id)
 
     @app_commands.command(
         name="play",
@@ -201,7 +191,6 @@ class MusicCog(commands.Cog):
         guild_id = interaction.guild_id
         lang = get_guild_lang(guild_id)
 
-        # التأكد من تواجد المستخدم في روم صوتي
         if not interaction.user.voice or not interaction.user.voice.channel:
             msg = "❌ You must be in a voice channel!" if lang == "en" else "❌ يجب أن تكون متواجداً في روم صوتي أولاً!"
             await interaction.followup.send(msg, ephemeral=True)
@@ -210,26 +199,20 @@ class MusicCog(commands.Cog):
         voice_channel = interaction.user.voice.channel
         vc = interaction.guild.voice_client
 
-        # الانضمام إلى الروم الصوتي بأمان
         try:
-            if not interaction.guild.voice_client:
+            if not vc:
                 await voice_channel.connect(timeout=60.0, self_deaf=True)
-            elif vc and vc.channel != voice_channel:
+            elif vc.channel != voice_channel:
                 await vc.move_to(voice_channel)
         except Exception as e:
             print(f"[Music Error] Connection failed: {e}")
             msg = "❌ Could not connect to the voice channel." if lang == "en" else "❌ تعذر الاتصال بالروم الصوتي."
             await interaction.followup.send(msg, ephemeral=True)
             return
-            
 
-        # تحديث المرجع للاتصال
         vc = interaction.guild.voice_client
-
-        # تحديد إذا ما كان الإدخال رابطاً أم كلمة بحث
         query = search if search.startswith("http://") or search.startswith("https://") else f"ytsearch:{search}"
 
-        # البحث واستخراج الصوت من يوتيوب
         loop = asyncio.get_event_loop()
         try:
             data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
@@ -271,7 +254,7 @@ class MusicCog(commands.Cog):
             try:
                 ffmpeg_path = shutil.which("ffmpeg") or "ffmpeg"
                 audio_source = discord.FFmpegPCMAudio(stream_url, executable=ffmpeg_path, **FFMPEG_OPTIONS)
-                vc.play(audio_source, after=lambda e: self.play_next(interaction))
+                vc.play(audio_source, after=lambda e: self.play_next(guild_id))
                 
                 embed = discord.Embed(
                     title="🎶 Now Playing" if lang == "en" else "🎶 جاري التشغيل الآن",
@@ -333,9 +316,7 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """معالجة أخطاء الأوامر بشكل مخصص مع إخفاء أخطاء النظام للمستخدم وطباعتها في الـ Console"""
         lang = get_guild_lang(interaction.guild_id)
-        
         if isinstance(error, app_commands.CommandOnCooldown):
             msg = f"⏳ Please wait {error.retry_after:.1f}s before using this command again." if lang == "en" else f"⏳ يرجى الانتظار {error.retry_after:.1f} ثوانٍ قبل استخدام هذا الأمر مجدداً."
         else:
@@ -352,4 +333,5 @@ class MusicCog(commands.Cog):
 
 
 async def setup(bot):
+    bot.add_view(MusicControlView())
     await bot.add_cog(MusicCog(bot))
