@@ -1215,9 +1215,6 @@ async def on_app_command_error(
     else:
       await interaction.followup.send(msg, ephemeral=True)
 
-# تشغيل الفلاسك في الخلفية
-threading.Thread(target=run_flask).start()
-
 @bot.event
 async def on_ready():
     print(f"تم تسجيل الدخول بنجاح باسم {bot.user}")
