@@ -32,11 +32,8 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-# البروكسي لمنع حظر 429 HTTP
-PROXY_URL = "http://64.112.184.210:3128"
-
 # إنشاء البوت
-bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
+bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
