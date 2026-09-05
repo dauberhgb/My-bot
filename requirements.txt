@@ -6,3 +6,5 @@ requests
 arabic-reshaper
 python-bidi
 pymongo[srv]
+yt-dlp
+PyNaCl
