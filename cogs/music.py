@@ -19,7 +19,7 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0'
 }
 
@@ -202,15 +202,30 @@ class MusicCog(commands.Cog):
         if not vc or not vc.is_connected():
             vc = await voice_channel.connect()
 
-        # البحث واغلاق الصوت من يوتيوب
+        # البحث واستخراج الصوت من يوتيوب مع حماية ضد الأخطاء
         loop = asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+        try:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
+        except Exception:
+            msg = "❌ Could not find or play this track." if lang == "en" else "❌ لم يتم العثور على المقطع أو تعذر تشغيله."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
 
-        if 'entries' in data:
+        if not data:
+            msg = "❌ No results found." if lang == "en" else "❌ لم يتم العثور على نتائج."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
+
+        if 'entries' in data and data['entries']:
             data = data['entries'][0]
 
-        stream_url = data['url']
+        stream_url = data.get('url')
         track_title = data.get('title', 'Audio Track')
+
+        if not stream_url:
+            msg = "❌ Failed to retrieve audio stream." if lang == "en" else "❌ تعذر الحصول على رابط البث الصوتي."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
 
         track_data = {
             'url': stream_url,
@@ -284,14 +299,18 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """معالجة خطأ Cooldown بشكل خاص للأوامر التابعة لهذا الـ Cog"""
+        """معالجة الأخطاء الشاملة للأوامر في هذا الـ Cog لمنع إظهار خطأ Discord المفاجئ"""
+        lang = get_guild_lang(interaction.guild_id)
+        
         if isinstance(error, app_commands.CommandOnCooldown):
-            lang = get_guild_lang(interaction.guild_id)
             msg = f"⏳ Please wait {error.retry_after:.1f}s before using this command again." if lang == "en" else f"⏳ يرجى الانتظار {error.retry_after:.1f} ثوانٍ قبل استخدام هذا الأمر مجدداً."
-            if interaction.response.is_done():
-                await interaction.followup.send(msg, ephemeral=True)
-            else:
-                await interaction.response.send_message(msg, ephemeral=True)
+        else:
+            msg = "❌ An unexpected error occurred while processing the request." if lang == "en" else "❌ حدث خطأ غير متوقع أثناء معالجة الطلب."
+
+        if interaction.response.is_done():
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
 
 
 async def setup(bot):
