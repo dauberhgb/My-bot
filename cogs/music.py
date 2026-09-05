@@ -213,7 +213,7 @@ class MusicCog(commands.Cog):
         # الانضمام إلى الروم الصوتي بأمان
         try:
             if not interaction.guild.voice_client:
-                await voice_channel.connect(timeout=20.0, reconnect=True)
+                await voice_channel.connect(timeout=60.0, self_deaf=True)
             elif vc and vc.channel != voice_channel:
                 await vc.move_to(voice_channel)
         except Exception as e:
@@ -221,6 +221,7 @@ class MusicCog(commands.Cog):
             msg = "❌ Could not connect to the voice channel." if lang == "en" else "❌ تعذر الاتصال بالروم الصوتي."
             await interaction.followup.send(msg, ephemeral=True)
             return
+            
 
         # تحديث المرجع للاتصال
         vc = interaction.guild.voice_client
