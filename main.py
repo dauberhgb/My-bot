@@ -32,7 +32,7 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-PROXY_URL = "http://159.112.235.206:80"
+PROXY_URL = "http://162.214.159.94:3128"
 bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
 violations = {}
 
