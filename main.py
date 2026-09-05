@@ -15,6 +15,7 @@ from flask import Flask, jsonify, redirect, render_template, request, url_for
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import aiohttp
+import shutil
 
 # استيراد مكتبات تشكيل النصوص العربية للرسم على الصور
 import arabic_reshaper
