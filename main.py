@@ -1224,21 +1224,23 @@ def run_flask():
 # تشغيل الفلاسك في الخلفية
 threading.Thread(target=run_flask).start()
 
-async def setup_hook():
-    print("🔄 بدء فحص مجلد cogs...")
+@bot.event
+async def on_ready():
+    print(f"تم تسجيل الدخول بنجاح باسم {bot.user}")
+    print("🔄 بدء فحص وتحميل الأنظمة من مجلد cogs...")
+    
     if os.path.exists("./cogs"):
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
-                print(f"📂 تم العثور على ملف: {filename}")
-                try:
-                    await bot.load_extension(f"cogs.{filename[:-3]}")
-                    print(f"✅ تم تحميل النظام بنجاح: {filename[:-3]}")
-                except Exception as e:
-                    print(f"❌ خطأ تفصيلي في {filename[:-3]}: {e}")
+                extension_name = f"cogs.{filename[:-3]}"
+                if extension_name not in bot.extensions:
+                    try:
+                        await bot.load_extension(extension_name)
+                        print(f"✅ تم تحميل النظام بنجاح: {filename[:-3]}")
+                    except Exception as e:
+                        print(f"❌ خطأ تفصيلي في تحميل {filename[:-3]}: {e}")
     else:
         print("⚠️ مجلد cogs غير موجود أصلاً!")
-
-bot.setup_hook = setup_hook
 
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
