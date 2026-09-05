@@ -15,6 +15,7 @@ from flask import Flask, jsonify, redirect, render_template, request, url_for
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import aiohttp
+from aiohttp_socks import ProxyConnector
 import shutil
 
 # استيراد مكتبات تشكيل النصوص العربية للرسم على الصور
@@ -32,7 +33,10 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+connector = ProxyConnector.from_url('socks5://198.199.120.45:1080')
+session = aiohttp.ClientSession(connector=connector)
+
+bot = commands.Bot(command_prefix="!", intents=intents, http_client=session)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
