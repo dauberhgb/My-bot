@@ -1,6 +1,7 @@
 discord.py[voice]
 Flask
 Pillow
+aiohttp-socks
 aiohttp
 requests
 arabic-reshaper
