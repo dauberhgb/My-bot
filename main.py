@@ -1225,13 +1225,12 @@ def run_flask():
 threading.Thread(target=run_flask).start()
 
 async def setup_hook():
-    
     if os.path.exists("./cogs"):
         for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
                 try:
                     await bot.load_extension(f"cogs.{filename[:-3]}")
-                    print(f"📦 تم تحميل النظام: {filename[:-3]}")
+                    print(f"✅ تم تحميل النظام: {filename[:-3]}")
                 except Exception as e:
                     print(f"❌ خطأ في تحميل {filename[:-3]}: {e}")
 
