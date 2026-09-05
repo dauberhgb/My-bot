@@ -31,9 +31,6 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-# البروكسي المحدد لتجاوز الحظر
-PROXY_URL = "http://64.112.184.210:3128"
-
 # إنشاء البوت مع البروكسي
 bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
 violations = {}
