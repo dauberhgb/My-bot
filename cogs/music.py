@@ -5,6 +5,7 @@ import yt_dlp
 import asyncio
 import time
 import database as db
+import shutil
 
 # إعدادات yt-dlp للاستخراج السريع بدون تحميل الملف كاملاً
 YTDL_OPTIONS = {
