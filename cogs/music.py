@@ -160,7 +160,8 @@ class MusicCog(commands.Cog):
         if queue and vc and vc.is_connected():
             next_track = queue.pop(0)
             try:
-                audio_source = discord.FFmpegPCMAudio(next_track['url'], **FFMPEG_OPTIONS)
+                ffmpeg_path = shutil.which("ffmpeg") or "ffmpeg"
+                audio_source = discord.FFmpegPCMAudio(next_track['url'], executable=ffmpeg_path, **FFMPEG_OPTIONS)
                 vc.play(audio_source, after=lambda e: self.play_next(interaction))
                 
                 # إرسال إشعار عند بدء التشغيل القادم
@@ -260,7 +261,8 @@ class MusicCog(commands.Cog):
             await interaction.followup.send(msg)
         else:
             try:
-                audio_source = discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS)
+                ffmpeg_path = shutil.which("ffmpeg") or "ffmpeg"
+                audio_source = discord.FFmpegPCMAudio(stream_url, executable=ffmpeg_path, **FFMPEG_OPTIONS)
                 vc.play(audio_source, after=lambda e: self.play_next(interaction))
                 
                 embed = discord.Embed(
