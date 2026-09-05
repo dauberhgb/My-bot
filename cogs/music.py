@@ -27,7 +27,7 @@ YTDL_OPTIONS = {
         'youtube': {
             'player_client': ['android', 'web']
         }
-    }
+    },
     'proxy': 'socks5://198.199.120.45:1080'
 }
 
