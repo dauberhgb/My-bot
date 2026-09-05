@@ -33,10 +33,7 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-connector = ProxyConnector.from_url('socks5://198.199.120.45:1080')
-session = aiohttp.ClientSession(connector=connector)
-
-bot = commands.Bot(command_prefix="!", intents=intents, http_client=session)
+bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
@@ -1237,4 +1234,8 @@ async def on_ready():
         print("⚠️ مجلد cogs غير موجود أصلاً!")
 
 TOKEN = os.getenv("TOKEN")
+
+os.environ["HTTP_PROXY"] = "socks5://198.199.120.45:1080"
+os.environ["HTTPS_PROXY"] = "socks5://198.199.120.45:1080"
+
 bot.run(TOKEN)
