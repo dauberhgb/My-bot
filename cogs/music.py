@@ -159,14 +159,18 @@ class MusicCog(commands.Cog):
 
         if queue and vc and vc.is_connected():
             next_track = queue.pop(0)
-            audio_source = discord.FFmpegPCMAudio(next_track['url'], **FFMPEG_OPTIONS)
-            vc.play(audio_source, after=lambda e: self.play_next(interaction))
-            
-            # إرسال إشعار عند بدء التشغيل القادم
-            asyncio.run_coroutine_threadsafe(
-                self.send_now_playing_notice(interaction, next_track),
-                self.bot.loop
-            )
+            try:
+                audio_source = discord.FFmpegPCMAudio(next_track['url'], **FFMPEG_OPTIONS)
+                vc.play(audio_source, after=lambda e: self.play_next(interaction))
+                
+                # إرسال إشعار عند بدء التشغيل القادم
+                asyncio.run_coroutine_threadsafe(
+                    self.send_now_playing_notice(interaction, next_track),
+                    self.bot.loop
+                )
+            except Exception as e:
+                print(f"[Music Error] play_next failed: {e}")
+                self.play_next(interaction)
 
     async def send_now_playing_notice(self, interaction: discord.Interaction, track):
         lang = get_guild_lang(interaction.guild_id)
@@ -198,16 +202,28 @@ class MusicCog(commands.Cog):
         voice_channel = interaction.user.voice.channel
         vc = interaction.guild.voice_client
 
-        # الانضمام إلى الروم الصوتي إذا لم يكن متصلاً
-        if not vc or not vc.is_connected():
-            vc = await voice_channel.connect()
+        # الانضمام إلى الروم الصوتي بأمان
+        try:
+            if not vc or not vc.is_connected():
+                vc = await voice_channel.connect(timeout=15.0, reconnect=True)
+            elif vc.channel != voice_channel:
+                await vc.move_to(voice_channel)
+        except Exception as e:
+            print(f"[Music Error] Connection failed: {e}")
+            msg = "❌ Could not connect to the voice channel." if lang == "en" else "❌ تعذر الاتصال بالروم الصوتي."
+            await interaction.followup.send(msg, ephemeral=True)
+            return
 
-        # البحث واستخراج الصوت من يوتيوب مع حماية ضد الأخطاء
+        # تحديد إذا ما كان الإدخال رابطاً أم كلمة بحث
+        query = search if search.startswith("http://") or search.startswith("https://") else f"ytsearch:{search}"
+
+        # البحث واستخراج الصوت من يوتيوب
         loop = asyncio.get_event_loop()
         try:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False))
-        except Exception:
-            msg = "❌ Could not find or play this track." if lang == "en" else "❌ لم يتم العثور على المقطع أو تعذر تشغيله."
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
+        except Exception as e:
+            print(f"[Music Error] yt_dlp extraction error: {e}")
+            msg = "❌ Could not find or play this track." if lang == "en" else "❌ لم يتم العثور على المقطع أو تعذر استخراجه."
             await interaction.followup.send(msg, ephemeral=True)
             return
 
@@ -240,16 +256,21 @@ class MusicCog(commands.Cog):
             msg = f"⏳ Added to queue: **{track_title}**" if lang == "en" else f"⏳ تم إضافتها لقائمة الانتظار: **{track_title}**"
             await interaction.followup.send(msg)
         else:
-            audio_source = discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS)
-            vc.play(audio_source, after=lambda e: self.play_next(interaction))
-            
-            embed = discord.Embed(
-                title="🎶 Now Playing" if lang == "en" else "🎶 جاري التشغيل الآن",
-                description=f"**{track_title}**\n👤 Requested by: {interaction.user.mention}",
-                color=discord.Color.purple()
-            )
-            view = MusicControlView(self, guild_id, lang=lang)
-            await interaction.followup.send(embed=embed, view=view)
+            try:
+                audio_source = discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS)
+                vc.play(audio_source, after=lambda e: self.play_next(interaction))
+                
+                embed = discord.Embed(
+                    title="🎶 Now Playing" if lang == "en" else "🎶 جاري التشغيل الآن",
+                    description=f"**{track_title}**\n👤 Requested by: {interaction.user.mention}",
+                    color=discord.Color.purple()
+                )
+                view = MusicControlView(self, guild_id, lang=lang)
+                await interaction.followup.send(embed=embed, view=view)
+            except Exception as e:
+                print(f"[Music Error] Playback start failed: {e}")
+                msg = "❌ Failed to play audio." if lang == "en" else "❌ حدث خطأ أثناء بدء تشغيل الصوت."
+                await interaction.followup.send(msg, ephemeral=True)
 
     @app_commands.command(
         name="stop",
@@ -299,18 +320,22 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
-        """معالجة الأخطاء الشاملة للأوامر في هذا الـ Cog لمنع إظهار خطأ Discord المفاجئ"""
+        """معالجة أخطاء الأوامر بشكل مخصص مع إخفاء أخطاء النظام للمستخدم وطباعتها في الـ Console"""
         lang = get_guild_lang(interaction.guild_id)
         
         if isinstance(error, app_commands.CommandOnCooldown):
             msg = f"⏳ Please wait {error.retry_after:.1f}s before using this command again." if lang == "en" else f"⏳ يرجى الانتظار {error.retry_after:.1f} ثوانٍ قبل استخدام هذا الأمر مجدداً."
         else:
+            print(f"[Command Error]: {error}")
             msg = "❌ An unexpected error occurred while processing the request." if lang == "en" else "❌ حدث خطأ غير متوقع أثناء معالجة الطلب."
 
-        if interaction.response.is_done():
-            await interaction.followup.send(msg, ephemeral=True)
-        else:
-            await interaction.response.send_message(msg, ephemeral=True)
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
 
 
 async def setup(bot):
