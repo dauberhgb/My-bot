@@ -29,6 +29,7 @@ from translations import _
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.voice_states = True
 
 # البروكسي المحدد لتجاوز الحظر
 PROXY_URL = "http://64.112.184.210:3128"
