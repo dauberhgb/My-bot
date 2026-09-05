@@ -32,8 +32,7 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-PROXY_URL = "http://199.7.149.96:3128"
-bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
+bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
