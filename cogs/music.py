@@ -204,15 +204,18 @@ class MusicCog(commands.Cog):
 
         # الانضمام إلى الروم الصوتي بأمان
         try:
-            if not vc or not vc.is_connected():
-                vc = await voice_channel.connect(timeout=15.0, reconnect=True)
-            elif vc.channel != voice_channel:
+            if not interaction.guild.voice_client:
+                await voice_channel.connect(timeout=20.0, reconnect=True)
+            elif vc and vc.channel != voice_channel:
                 await vc.move_to(voice_channel)
         except Exception as e:
             print(f"[Music Error] Connection failed: {e}")
             msg = "❌ Could not connect to the voice channel." if lang == "en" else "❌ تعذر الاتصال بالروم الصوتي."
             await interaction.followup.send(msg, ephemeral=True)
             return
+
+        # تحديث المرجع للاتصال
+        vc = interaction.guild.voice_client
 
         # تحديد إذا ما كان الإدخال رابطاً أم كلمة بحث
         query = search if search.startswith("http://") or search.startswith("https://") else f"ytsearch:{search}"
@@ -251,7 +254,7 @@ class MusicCog(commands.Cog):
 
         queue = self.get_queue(guild_id)
 
-        if vc.is_playing() or vc.is_paused():
+        if vc and (vc.is_playing() or vc.is_paused()):
             queue.append(track_data)
             msg = f"⏳ Added to queue: **{track_title}**" if lang == "en" else f"⏳ تم إضافتها لقائمة الانتظار: **{track_title}**"
             await interaction.followup.send(msg)
