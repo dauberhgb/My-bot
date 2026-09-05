@@ -1215,12 +1215,6 @@ async def on_app_command_error(
     else:
       await interaction.followup.send(msg, ephemeral=True)
 
-import threading
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
 # تشغيل الفلاسك في الخلفية
 threading.Thread(target=run_flask).start()
 
