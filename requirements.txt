@@ -8,3 +8,5 @@ python-bidi
 pymongo[srv]
 yt-dlp
 PyNaCl
+ffmpy
+ffmpeg-downloader
