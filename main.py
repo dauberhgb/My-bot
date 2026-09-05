@@ -32,7 +32,7 @@ intents.members = True
 intents.voice_states = True
 
 # إنشاء البوت مع البروكسي
-bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
+bot = commands.Bot(command_prefix="!", intents=intents)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
