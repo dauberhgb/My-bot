@@ -32,8 +32,8 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-# إنشاء البوت
-bot = commands.Bot(command_prefix="!", intents=intents)
+PROXY_URL = "http://12.50.107.217:80"
+bot = commands.Bot(command_prefix="!", intents=intents, proxy=PROXY_URL)
 violations = {}
 
 # معرف حسابك في ديسكورد (User ID)
