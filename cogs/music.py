@@ -9,7 +9,7 @@ import shutil
 
 # إعدادات yt-dlp للاستخراج السريع بدون تحميل الملف كاملاً
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'best',
     'extractaudio': True,
     'audioformat': 'mp3',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
