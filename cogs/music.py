@@ -219,38 +219,28 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-                # معالجة روابط سبوتيفاي والبحث المباشر عبر ytmusicapi
+                # معالجة التشغيل عبر ytmusicapi مباشرة بدون مشاكل يوتيوب التقليدية أو سبوتيفاي
         if "spotify.com" in search:
             try:
                 track_info = sp.track(search)
                 query_str = f"{track_info['name']} {track_info['artists'][0]['name']}"
             except Exception as e:
-                print(f"[Spotify Error] {e}")
+                print(f"[Spotify API Error]: {e}")
                 query_str = search
-            
-            try:
-                search_results = ytmusic.search(query_str, filter="songs", limit=1)
-                if search_results:
-                    video_id = search_results[0]['videoId']
-                    query = f"https://www.youtube.com/watch?v={video_id}"
-                else:
-                    query = f"ytsearch1:{query_str}"
-            except Exception as ex:
-                print(f"[YTMusic Error] {ex}")
-                query = f"ytsearch1:{query_str}"
-                
-        elif search.startswith(("http://", "https://")):
-            query = search
         else:
-            try:
-                search_results = ytmusic.search(search, filter="songs", limit=1)
-                if search_results:
-                    video_id = search_results[0]['videoId']
-                    query = f"https://www.youtube.com/watch?v={video_id}"
-                else:
-                    query = f"ytsearch1:{search}"
-            except Exception:
-                query = f"ytsearch1:{search}"
+            query_str = search
+
+        # البحث المباشر واستخراج الرابط الآمن عبر يوتيوب ميوزك
+        try:
+            search_results = ytmusic.search(query_str, filter="songs", limit=1)
+            if search_results:
+                video_id = search_results[0]['videoId']
+                query = f"https://www.youtube.com/watch?v={video_id}"
+            else:
+                query = f"ytsearch1:{query_str}"
+        except Exception as ex:
+            print(f"[Search Error]: {ex}")
+            query = f"ytsearch1:{query_str}"
 
         loop = asyncio.get_event_loop()
         try:
