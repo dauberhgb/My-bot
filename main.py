@@ -17,6 +17,14 @@ from PIL import Image, ImageDraw, ImageFont
 import aiohttp
 from aiohttp_socks import ProxyConnector
 import shutil
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+
+# تهيئة مصادقة سبوتيفاي
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+    client_id="c526360042e4402c837500029d1d58ba",
+    client_secret="708172dcd79145a7b5bbe2a914fe984f"
+))
 
 # استيراد مكتبات تشكيل النصوص العربية للرسم على الصور
 import arabic_reshaper
