@@ -27,7 +27,7 @@ YTDL_OPTIONS = {
     'socket_timeout': 15,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web' ,'ios']
+            'player_client': ['android', 'web']
         }
     }
 }
