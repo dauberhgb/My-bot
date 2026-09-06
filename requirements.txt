@@ -9,4 +9,4 @@ python-bidi
 pymongo[srv]
 static-ffmpeg
 PyNaCl==1.5.0
-yt-dlp>=2024.03.10
+yt-dlp>=2026.0.0
