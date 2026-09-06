@@ -9,6 +9,8 @@ import shutil
 import os
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from ytmusicapi import YTMusic
+ytmusic = YTMusic()
 
 # إعدادات مصادقة سبوتيفاي
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
@@ -217,18 +219,38 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-        # معالجة روابط سبوتيفاي والبحث المباشر عبر يوتيوب
+                # معالجة روابط سبوتيفاي والبحث المباشر عبر ytmusicapi
         if "spotify.com" in search:
             try:
                 track_info = sp.track(search)
-                query = f"ytsearch1:{track_info['name']} {track_info['artists'][0]['name']}"
+                query_str = f"{track_info['name']} {track_info['artists'][0]['name']}"
             except Exception as e:
                 print(f"[Spotify Error] {e}")
-                query = f"ytsearch1:{search}"
+                query_str = search
+            
+            try:
+                search_results = ytmusic.search(query_str, filter="songs", limit=1)
+                if search_results:
+                    video_id = search_results[0]['videoId']
+                    query = f"https://www.youtube.com/watch?v={video_id}"
+                else:
+                    query = f"ytsearch1:{query_str}"
+            except Exception as ex:
+                print(f"[YTMusic Error] {ex}")
+                query = f"ytsearch1:{query_str}"
+                
         elif search.startswith(("http://", "https://")):
             query = search
         else:
-            query = f"ytsearch1:{search}"
+            try:
+                search_results = ytmusic.search(search, filter="songs", limit=1)
+                if search_results:
+                    video_id = search_results[0]['videoId']
+                    query = f"https://www.youtube.com/watch?v={video_id}"
+                else:
+                    query = f"ytsearch1:{search}"
+            except Exception:
+                query = f"ytsearch1:{search}"
 
         loop = asyncio.get_event_loop()
         try:
