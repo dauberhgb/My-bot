@@ -7,8 +7,16 @@ import time
 import database as db
 import shutil
 import os
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
-# إعدادات yt-dlp للبحث والتشغيل عبر SoundCloud لتجنب مشاكل وحظر يوتيوب
+# إعدادات مصادقة سبوتيفاي
+sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+    client_id="c526360042e4402c837500029d1d58ba",
+    client_secret="708172dcd79145a7b5bbe2a914fe984f"
+))
+
+# إعدادات yt-dlp للبحث والتشغيل عبر يوتيوب مباشرة لتجنب مشاكل ساوند كلاود
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -17,7 +25,7 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'scsearch',
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'socket_timeout': 15,
     'postprocessors': [{
@@ -181,7 +189,7 @@ class MusicCog(commands.Cog):
         name="play",
         description="تشغيل مقطع صوتي أو إضافته لقائمة الانتظار / Play a song or add to queue"
     )
-    @app_commands.describe(search="اسم الأغنية أو رابط ساوند كلاود / Song name or SoundCloud URL")
+    @app_commands.describe(search="اسم الأغنية أو رابط سبوتيفاي/يوتيوب / Song name or Spotify/YouTube URL")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id)
     async def play(self, interaction: discord.Interaction, search: str):
         await interaction.response.defer()
@@ -209,21 +217,18 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-                # معالجة الروابط المباشرة والمختصرة والبحث النصي بشكل صحيح
+        # معالجة روابط سبوتيفاي والبحث المباشر عبر يوتيوب
         if "spotify.com" in search:
             try:
                 track_info = sp.track(search)
-                query = f"{track_info['name']} {track_info['artists'][0]['name']}"
+                query = f"ytsearch1:{track_info['name']} {track_info['artists'][0]['name']}"
             except Exception as e:
                 print(f"[Spotify Error] {e}")
-                query = search
+                query = f"ytsearch1:{search}"
         elif search.startswith(("http://", "https://")):
             query = search
-        elif "soundcloud.com" in search or "on.soundcloud.com" in search:
-            query = f"https://{search}"
         else:
-            query = f"scsearch:{search}"
-
+            query = f"ytsearch1:{search}"
 
         loop = asyncio.get_event_loop()
         try:
