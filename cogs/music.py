@@ -6,6 +6,7 @@ import asyncio
 import time
 import database as db
 import shutil
+import os
 
 # إعدادات yt-dlp للاستخراج السريع بدون تحميل الملف كاملاً
 YTDL_OPTIONS = {
@@ -22,7 +23,7 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
-    'cookiefile': 'cookies.txt',
+    'cookiefile': os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'cookies.txt')),
     'socket_timeout': 15,
     'extractor_args': {
         'youtube': {
