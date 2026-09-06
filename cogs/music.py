@@ -23,8 +23,8 @@ YTDL_OPTIONS = {
 }
 
 FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
+    'options': '-vn -b:a 192k'
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
