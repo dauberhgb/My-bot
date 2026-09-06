@@ -1234,8 +1234,4 @@ async def on_ready():
         print("⚠️ مجلد cogs غير موجود أصلاً!")
 
 TOKEN = os.getenv("TOKEN")
-
-os.environ["HTTP_PROXY"] = "socks5://198.199.120.45:1080"
-os.environ["HTTPS_PROXY"] = "socks5://198.199.120.45:1080"
-
 bot.run(TOKEN)
