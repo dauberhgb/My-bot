@@ -11,7 +11,7 @@ import database
 from discord import app_commands
 from discord.ext import commands
 import discord
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import aiohttp
