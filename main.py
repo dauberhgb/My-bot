@@ -295,8 +295,9 @@ def guild_list():
   current_lang = "ar"
 
   for guild in bot.guilds:
-    # التحقق مما إذا كان السيرفر ضمن قائمة سيرفرات المشرف الموثقة في الجلسة
-    if str(guild.id) in admin_guilds or int(user_id) == OWNER_ID or int(user_id) == guild.owner_id:
+    # 🛠️ التعديل هنا: يتم عرض السيرفر فقط إذا كان البوت موجوداً فيه
+    # وكانت آية الـ ID موجودة ضمن قائمة الـ admin_guilds (التي يملك فيها صلاحية الإدارة أو مالكها)
+    if str(guild.id) in admin_guilds:
       if not bot_guilds:
         settings = database.get_settings(guild.id)
         current_lang = settings.get("language", "ar")
@@ -313,7 +314,6 @@ def guild_list():
       user_id=user_id,
       current_lang=current_lang,
   )
-
 
 @app.route("/dashboard/<guild_id>")
 @admin_required
