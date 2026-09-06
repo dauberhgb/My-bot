@@ -10,6 +10,4 @@ pymongo[srv]
 static-ffmpeg
 PyNaCl==1.5.0
 yt-dlp>=2026.0.0
-spotipy
 urllib3
-ytmusicapi
