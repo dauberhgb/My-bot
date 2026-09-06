@@ -19,12 +19,17 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'scsearch',
     'source_address': '0.0.0.0',
-    'socket_timeout': 15
+    'socket_timeout': 15,
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '320',
+    }]
 }
 
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
-    'options': '-vn -b:a 192k'
+    'options': '-vn -b:a 320k'
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
