@@ -7,8 +7,6 @@ import time
 import database as db
 import shutil
 import os
-from ytmusicapi import YTMusic
-ytmusic = YTMusic()
 
 # إعدادات yt-dlp للبحث والتشغيل عبر يوتيوب مباشرة لتجنب مشاكل ساوند كلاود
 YTDL_OPTIONS = {
