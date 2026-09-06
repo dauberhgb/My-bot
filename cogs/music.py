@@ -23,9 +23,10 @@ YTDL_OPTIONS = {
     'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'cookiefile': 'cookies.txt',
+    'socket_timeout': 15,
     'extractor_args': {
         'youtube': {
-            'player_client': ['mweb', 'ios', 'android']
+            'player_client': ['android', 'web']
         }
     }
 }
