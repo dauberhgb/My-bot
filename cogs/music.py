@@ -210,13 +210,13 @@ class MusicCog(commands.Cog):
         vc = interaction.guild.voice_client
         
                 # معالجة الروابط المباشرة والمختصرة والبحث النصي بشكل صحيح
-        if search.startswith("http://") or search.startswith("https://") or "soundcloud.com" in search:
-            if not search.startswith("http://") and not search.startswith("https://"):
-                query = f"https://{search}"
-            else:
-                query = search
+        if search.startswith(("http://", "https://")):
+            query = search
+        elif "soundcloud.com" in search or "on.soundcloud.com" in search:
+            query = f"https://{search}"
         else:
             query = f"scsearch:{search}"
+
 
         loop = asyncio.get_event_loop()
         try:
