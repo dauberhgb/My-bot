@@ -76,10 +76,141 @@ AVAILABLE_FRAMES = {
 }
 
 # ==========================================
-# 2. إعداد خادم الويب (Flask Dashboard)
+# 2. إعداد خادم الويب (Flask Dashboard مع Discord OAuth2)
 # ==========================================
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "A_VERY_SECRET_KEY_FOR_SESSIONS_12345")
 
+# إعدادات ديسكورد OAuth2 (تأكد من إضافتها في متغيرات البيئة Environment Variables)
+CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
+CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "")
+# ضع رابط الـ Callback الخاص بموقعك هنا أو اجعله يعتمده تلقائياً
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "")
+
+
+def get_base_url():
+  base_url = os.getenv("DASHBOARD_URL", "").rstrip("/")
+  if not base_url:
+    return f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com"
+  return base_url
+
+
+# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف والمالك (عبر الـ Session الآمنة لمنع ثغرات Top.gg)
+def admin_required(f):
+  @wraps(f)
+  def decorated_function(guild_id, *args, **kwargs):
+    guild = bot.get_guild(int(guild_id))
+    if not guild:
+      if request.path.startswith("/save/"):
+        return (
+            jsonify({
+                "status": "error",
+                "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!",
+            }),
+            404,
+        )
+      return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
+
+    # التحقق الآمن من جلسة المستخدم عبر OAuth2 وسيرفراته المسموحة
+    admin_guilds = session.get("admin_guilds", [])
+    user_id = session.get("user_id")
+
+    is_authorized = False
+    if user_id:
+      u_id = int(user_id)
+      if u_id == OWNER_ID or u_id == guild.owner_id:
+        is_authorized = True
+      elif str(guild_id) in admin_guilds:
+        is_authorized = True
+
+    if not is_authorized:
+      if request.path.startswith("/save/"):
+        return (
+            jsonify({
+                "status": "error",
+                "message": (
+                    "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا"
+                    " الإجراء!"
+                ),
+            }),
+            403,
+        )
+      return (
+          "عذراً، يجب تسجيل الدخول بحساب ديسكورد وامتلاك صلاحية إدارة السيرفر"
+          " للدخول إلى هذه اللوحة!",
+          403,
+      )
+
+    return f(guild_id, *args, **kwargs)
+
+  return decorated_function
+
+
+@app.route("/login")
+def login():
+  base_url = get_base_url()
+  redirect_uri = REDIRECT_URI or f"{base_url}/auth/callback"
+  discord_login_url = (
+      f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}"
+      f"&redirect_uri={requests.utils.quote(redirect_uri, safe='')}"
+      "&response_type=code&scope=identify+guilds"
+  )
+  return redirect(discord_login_url)
+
+
+@app.route("/auth/callback")
+def auth_callback():
+  code = request.args.get("code")
+  if not code:
+    return "فشل تسجيل الدخول: لم يتم استلام رمز المصادقة.", 400
+
+  base_url = get_base_url()
+  redirect_uri = REDIRECT_URI or f"{base_url}/auth/callback"
+
+  token_data = {
+      "client_id": CLIENT_ID,
+      "client_secret": CLIENT_SECRET,
+      "grant_type": "authorization_code",
+      "code": code,
+      "redirect_uri": redirect_uri,
+  }
+  headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+  try:
+    r = requests.post(
+        "https://discord.com/api/oauth2/token", data=token_data, headers=headers
+    )
+    res_json = r.json()
+    access_token = res_json.get("access_token")
+    if not access_token:
+      return "فشل جلب رمز الوصول من ديسكورد.", 400
+
+    user_headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # جلب معلومات المستخدم
+    user_res = requests.get(
+        "https://discord.com/api/users/@me", headers=user_headers
+    )
+    user_data = user_res.json()
+    session["user_id"] = str(user_data.get("id"))
+
+    # جلب سيرفرات المستخدم
+    guilds_res = requests.get(
+        "https://discord.com/api/users/@me/guilds", headers=user_headers
+    )
+    guilds = guilds_res.json()
+
+    admin_guilds = []
+    for guild in guilds:
+      permissions = int(guild.get("permissions", 0))
+      # التحقق من صلاحية الإدارة (Administrator = 0x8) أو مالك السيرفر
+      if guild.get("owner") or (permissions & 0x8) == 0x8:
+        admin_guilds.append(str(guild.get("id")))
+
+    session["admin_guilds"] = admin_guilds
+    return redirect(url_for("guild_list"))
+  except Exception as e:
+    return f"حدث خطأ أثناء المصادقة: {e}", 500
 
 # دالة مساعدة لجلب لغة السيرفر
 def get_guild_lang(guild_id):
@@ -147,31 +278,33 @@ def admin_required(f):
 
 @app.route("/")
 def home():
-  user_id = request.args.get("user_id")
-  if user_id:
-    return redirect(url_for("guild_list", user_id=user_id))
-  return redirect(url_for("guild_list"))
+  if "user_id" in session:
+    return redirect(url_for("guild_list"))
+  return redirect(url_for("login"))
 
 
 @app.route("/guilds")
 def guild_list():
-  user_id = request.args.get("user_id")
+  user_id = session.get("user_id")
+  if not user_id:
+    return redirect(url_for("login"))
+
+  admin_guilds = session.get("admin_guilds", [])
   bot_guilds = []
   current_lang = "ar"
 
   for guild in bot.guilds:
-    if user_id and user_id.isdigit():
-      member = guild.get_member(int(user_id))
-      if member and member.guild_permissions.manage_guild:
-        if not bot_guilds:
-          settings = database.get_settings(guild.id)
-          current_lang = settings.get("language", "ar")
+    # التحقق مما إذا كان السيرفر ضمن قائمة سيرفرات المشرف الموثقة في الجلسة
+    if str(guild.id) in admin_guilds or int(user_id) == OWNER_ID or int(user_id) == guild.owner_id:
+      if not bot_guilds:
+        settings = database.get_settings(guild.id)
+        current_lang = settings.get("language", "ar")
 
-        bot_guilds.append({
-            "id": str(guild.id),
-            "name": guild.name,
-            "icon": guild.icon.url if guild.icon else None,
-        })
+      bot_guilds.append({
+          "id": str(guild.id),
+          "name": guild.name,
+          "icon": guild.icon.url if guild.icon else None,
+      })
 
   return render_template(
       "guilds.html",
@@ -198,15 +331,16 @@ def dashboard(guild_id):
   icon_url = guild.icon.url if guild.icon else None
   current_lang = settings.get("language", "ar")
 
-  # جلب معرف المستخدم لمعرفة هل هو أدمن أم لا
-  user_id = request.args.get("user_id")
+  user_id = session.get("user_id")
   is_admin = False
-  if user_id and user_id.isdigit():
+  if user_id:
     u_id = int(user_id)
     member = guild.get_member(u_id)
     if u_id == OWNER_ID or u_id == guild.owner_id:
       is_admin = True
     elif member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+      is_admin = True
+    elif str(guild_id) in session.get("admin_guilds", []):
       is_admin = True
 
   return render_template(
@@ -516,24 +650,19 @@ async def language_command(interaction: discord.Interaction, lang: app_commands.
 
 @bot.tree.command(
     name="setup",
-    description="الانتقال إلى صفحة سيرفراتك في لوحة التحكم",
+    description="الانتقال إلى لوحة التحكم الآمنة",
 )
 @app_commands.checks.has_permissions(manage_guild=True)
 @app_commands.checks.cooldown(1, 5.0, key=lambda i: (i.guild_id, i.user.id))
 async def setup(interaction: discord.Interaction):
-  user_id = str(interaction.user.id)
   lang = get_guild_lang(interaction.guild.id)
-
-  base_url = os.getenv("DASHBOARD_URL", "").rstrip("/")
-  if not base_url:
-    guilds_link = f"https://{os.getenv('RENDER_SERVICE_NAME', 'app')}.onrender.com/guilds?user_id={user_id}"
-  else:
-    guilds_link = f"{base_url}/guilds?user_id={user_id}"
+  base_url = get_base_url()
+  login_link = f"{base_url}/login"
 
   view = discord.ui.View()
   button = discord.ui.Button(
-      label="View My Servers ⚙️" if lang == "en" else "عرض سيرفراتي ⚙️",
-      url=guilds_link,
+      label="Open Control Panel ⚙️" if lang == "en" else "فتح لوحة التحكم ⚙️",
+      url=login_link,
       style=discord.ButtonStyle.link,
   )
   view.add_item(button)
@@ -541,13 +670,13 @@ async def setup(interaction: discord.Interaction):
   if lang == "en":
     embed = discord.Embed(
         title="🛠️ Bot Control Panel",
-        description="Welcome! You can manage all your servers where you have management permissions by clicking the button below:",
+        description="Click the button below to log in securely with Discord and manage your servers:",
         color=discord.Color.blue(),
     )
   else:
     embed = discord.Embed(
         title="🛠️ لوحة تحكم البوت",
-        description="مرحباً بك! يمكنك إدارة جميع سيرفراتك التي تمتلك صلاحية إدارتها عبر الضغط على الزر أدناه:",
+        description="اضغط على الزر أدناه لتسجيل الدخول بأمان عبر ديسكورد وإدارة سيرفراتك:",
         color=discord.Color.blue(),
     )
 
