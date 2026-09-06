@@ -8,7 +8,7 @@ import database as db
 import shutil
 import os
 
-# إعدادات yt-dlp للاستخراج السريع بدون تحميل الملف كاملاً
+# إعدادات yt-dlp للبحث والتشغيل عبر SoundCloud لتجنب مشاكل وحظر يوتيوب
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -17,15 +17,9 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'ytsearch',
+    'default_search': 'scsearch',
     'source_address': '0.0.0.0',
-    'cookiefile': os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'cookies.txt')),
-    'socket_timeout': 15,
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['android', 'web']
-        }
-    }
+    'socket_timeout': 15
 }
 
 FFMPEG_OPTIONS = {
@@ -182,7 +176,7 @@ class MusicCog(commands.Cog):
         name="play",
         description="تشغيل مقطع صوتي أو إضافته لقائمة الانتظار / Play a song or add to queue"
     )
-    @app_commands.describe(search="اسم الأغنية أو رابط يوتيوب / Song name or YouTube URL")
+    @app_commands.describe(search="اسم الأغنية أو رابط ساوند كلاود / Song name or SoundCloud URL")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id)
     async def play(self, interaction: discord.Interaction, search: str):
         await interaction.response.defer()
@@ -209,7 +203,12 @@ class MusicCog(commands.Cog):
             return
 
         vc = interaction.guild.voice_client
-        query = search if search.startswith("http://") or search.startswith("https://") else f"ytsearch:{search}"
+        
+        # التعديل هنا: الاعتماد على روابط مباشرة أو البحث التلقائي عبر ساوند كلاود (scsearch)
+        if search.startswith("http://") or search.startswith("https://"):
+            query = search
+        else:
+            query = f"scsearch:{search}"
 
         loop = asyncio.get_event_loop()
         try:
