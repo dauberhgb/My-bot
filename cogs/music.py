@@ -210,7 +210,14 @@ class MusicCog(commands.Cog):
         vc = interaction.guild.voice_client
         
                 # معالجة الروابط المباشرة والمختصرة والبحث النصي بشكل صحيح
-        if search.startswith(("http://", "https://")):
+        if "spotify.com" in search:
+            try:
+                track_info = sp.track(search)
+                query = f"{track_info['name']} {track_info['artists'][0]['name']}"
+            except Exception as e:
+                print(f"[Spotify Error] {e}")
+                query = search
+        elif search.startswith(("http://", "https://")):
             query = search
         elif "soundcloud.com" in search or "on.soundcloud.com" in search:
             query = f"https://{search}"
