@@ -8,7 +8,7 @@ import database as db
 import shutil
 import os
 
-# إعدادات yt-dlp للبحث والتشغيل عبر يوتيوب مباشرة لتجنب مشاكل ساوند كلاود
+# إعدادات yt-dlp للبحث والتشغيل عبر Jamendo حصرياً
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -179,11 +179,11 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(
         name="play",
-        description="تشغيل مقطع صوتي أو إضافته لقائمة الانتظار / Play a song or add to queue"
+        description="تشغيل مقطع صوتي أو إضافته لقائمة الانتظار"
     )
-    @app_commands.describe(search="اسم الأغنية أو رابط سبوتيفاي/يوتيوب / Song name or Spotify/YouTube URL")
+    @app_commands.describe(song="اكتب اسم الأغنية أو الرابط مباشرة")
     @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.user.id)
-    async def play(self, interaction: discord.Interaction, search: str):
+    async def play(self, interaction: discord.Interaction, song: str):
         await interaction.response.defer()
         guild_id = interaction.guild_id
         lang = get_guild_lang(guild_id)
@@ -210,10 +210,10 @@ class MusicCog(commands.Cog):
         vc = interaction.guild.voice_client
         
         # البحث والتشغيل المباشر عبر Jamendo لتجنب أي قيود أو حظر
-        if search.startswith(("http://", "https://")):
-            query = search
+        if song.startswith(("http://", "https://")):
+            query = song
         else:
-            query = f"jamendo:search:{search}"
+            query = f"jamendo:search:{song}"
 
         loop = asyncio.get_event_loop()
         try:
