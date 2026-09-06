@@ -211,7 +211,7 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-                # البحث والتشغيل المباشر عبر Jamendo لتجنب أي قيود أو حظر
+        # البحث والتشغيل المباشر عبر Jamendo لتجنب أي قيود أو حظر
         if search.startswith(("http://", "https://")):
             query = search
         else:
