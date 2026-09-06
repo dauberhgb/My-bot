@@ -83,10 +83,10 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "A_VERY_SECRET_KEY_FOR_SESSIONS_12345")
 
 # إعدادات ديسكورد OAuth2 (تأكد من إضافتها في متغيرات البيئة Environment Variables)
-CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
-CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "")
+CLIENT_ID = os.getenv("CLIENT_ID", "")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET", "")
 # ضع رابط الـ Callback الخاص بموقعك هنا أو اجعله يعتمده تلقائياً
-REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "")
 
 
 def get_base_url():
