@@ -23,6 +23,7 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
+    'cookiefile': os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'cookies.txt')),
     'socket_timeout': 15,
     'extractor_args': {
         'youtube': {
