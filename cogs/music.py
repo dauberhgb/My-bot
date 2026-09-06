@@ -7,16 +7,8 @@ import time
 import database as db
 import shutil
 import os
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
 from ytmusicapi import YTMusic
 ytmusic = YTMusic()
-
-# إعدادات مصادقة سبوتيفاي
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id="c526360042e4402c837500029d1d58ba",
-    client_secret="708172dcd79145a7b5bbe2a914fe984f"
-))
 
 # إعدادات yt-dlp للبحث والتشغيل عبر يوتيوب مباشرة لتجنب مشاكل ساوند كلاود
 YTDL_OPTIONS = {
@@ -27,7 +19,7 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'ytsearch',
+    'default_search': 'jamendo:search',
     'source_address': '0.0.0.0',
     'socket_timeout': 15,
     'postprocessors': [{
@@ -219,28 +211,11 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-                # معالجة التشغيل عبر ytmusicapi مباشرة بدون مشاكل يوتيوب التقليدية أو سبوتيفاي
-        if "spotify.com" in search:
-            try:
-                track_info = sp.track(search)
-                query_str = f"{track_info['name']} {track_info['artists'][0]['name']}"
-            except Exception as e:
-                print(f"[Spotify API Error]: {e}")
-                query_str = search
+                # البحث والتشغيل المباشر عبر Jamendo لتجنب أي قيود أو حظر
+        if search.startswith(("http://", "https://")):
+            query = search
         else:
-            query_str = search
-
-        # البحث المباشر واستخراج الرابط الآمن عبر يوتيوب ميوزك
-        try:
-            search_results = ytmusic.search(query_str, filter="songs", limit=1)
-            if search_results:
-                video_id = search_results[0]['videoId']
-                query = f"https://www.youtube.com/watch?v={video_id}"
-            else:
-                query = f"ytsearch1:{query_str}"
-        except Exception as ex:
-            print(f"[Search Error]: {ex}")
-            query = f"ytsearch1:{query_str}"
+            query = f"jamendo:search:{search}"
 
         loop = asyncio.get_event_loop()
         try:
