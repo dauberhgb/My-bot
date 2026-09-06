@@ -209,9 +209,12 @@ class MusicCog(commands.Cog):
 
         vc = interaction.guild.voice_client
         
-        # التعديل هنا: الاعتماد على روابط مباشرة أو البحث التلقائي عبر ساوند كلاود (scsearch)
-        if search.startswith("http://") or search.startswith("https://"):
-            query = search
+                # معالجة الروابط المباشرة والمختصرة والبحث النصي بشكل صحيح
+        if search.startswith("http://") or search.startswith("https://") or "soundcloud.com" in search:
+            if not search.startswith("http://") and not search.startswith("https://"):
+                query = f"https://{search}"
+            else:
+                query = search
         else:
             query = f"scsearch:{search}"
 
