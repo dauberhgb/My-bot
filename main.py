@@ -1117,6 +1117,17 @@ async def help_command(interaction: discord.Interaction):
         inline=False,
     )
 
+    Embed.add_field(
+        name="🛡️ Staff Shifts & Management",
+        value=(
+            "`/shift-panel` — Send shift control panel to start, pause, or end shifts.\n"
+            "`/shift-log-channel` — Set the official shift logs report channel.\n"
+            "`/shift-stats [member]` — View shift stats and hours for yourself or another staff member.\n"
+            "`/shift-leaderboard` — Display the top staff members leaderboard based on shifts and points."
+        ),
+        inline=False,
+    )
+
     embed.add_field(
         name="📊 Leveling & Leaderboard",
         value=(
@@ -1178,6 +1189,17 @@ async def help_command(interaction: discord.Interaction):
             " 1 إلى 100 رسالة من القناة الحالية.\n`/userinfo` & `/serverinfo` —"
             " عرض معلومات تفصيلية عن العضو أو السيرفر.\n`/ping` & `/botinfo` —"
             " عرض سرعة الاستجابة ومعلومات الدعم."
+        ),
+        inline=False,
+    )
+
+    Embed.add_field(
+        name="🛡️ مناوبات وطاقم الإدارة",
+        value=(
+            "`/shift-panel` — إرسال لوحة التحكم لبدء، إيقاف مؤقت، أو إنهاء المناوبات.\n"
+            "`/shift-log-channel` — تحديد قناة تقارير سجلات المناوبات الرسمية.\n"
+            "`/shift-stats [member]` — عرض إحصائيات المناوبات والساعات الخاصة بك أو بمشرف آخر.\n"
+            "`/shift-leaderboard` — عرض قائمة المتصدرين لأفضل المشرفين بناءً على المناوبات والنقاط."
         ),
         inline=False,
     )
