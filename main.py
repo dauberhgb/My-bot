@@ -1117,7 +1117,7 @@ async def help_command(interaction: discord.Interaction):
         inline=False,
     )
 
-    Embed.add_field(
+    embed.add_field(
         name="🛡️ Staff Shifts & Management",
         value=(
             "`/shift-panel` — Send shift control panel to start, pause, or end shifts.\n"
@@ -1193,7 +1193,7 @@ async def help_command(interaction: discord.Interaction):
         inline=False,
     )
 
-    Embed.add_field(
+    embed.add_field(
         name="🛡️ مناوبات وطاقم الإدارة",
         value=(
             "`/shift-panel` — إرسال لوحة التحكم لبدء، إيقاف مؤقت، أو إنهاء المناوبات.\n"
