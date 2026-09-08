@@ -263,15 +263,76 @@ class NetworkCog(commands.Cog):
                 files = [await attachment.to_file() for attachment in message.attachments]
                 avatar_url = message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
 
-                await webhook.send(
+                sent_msg = await webhook.send(
                     content=message.content or "",
                     username=f"{message.author.display_name} ({message.guild.name})",
                     avatar_url=avatar_url,
-                    files=files
+                    files=files,
+                    wait=True
                 )
+                
+                # تخزين معرفات الرسائل المترابطة لمزامنة الرياكشنات لاحقاً
+                if not hasattr(self, "synced_messages"):
+                    self.synced_messages = {}
+                self.synced_messages[message.id] = sent_msg.id
+                self.synced_messages[sent_msg.id] = message.id
             except Exception as e:
                 print(f"خطأ في نقل الرسالة إلى {target_guild.name}: {e}")
                 
+    # --- حدث مزامنة التفاعلات (Reactions) ---
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        if payload.member and payload.member.bot:
+            return
+
+        # التحقق مما إذا كانت الرسالة مسجلة كرسالة متزامنة
+        if not hasattr(self, "synced_messages") or payload.message_id not in self.synced_messages:
+            return
+
+        current_guild_id = str(payload.guild_id)
+        guild_networks = db.get_guild_networks(current_guild_id)
+        if not guild_networks:
+            return
+
+        current_channel_id = str(payload.channel_id)
+        active_network_id = None
+        for g_data in guild_networks:
+            if str(g_data.get("bound_channel_id")) == current_channel_id:
+                active_network_id = str(g_data.get("network_id"))
+                break
+
+        if not active_network_id:
+            return
+
+        all_network_guilds = db.get_network_guilds(active_network_id)
+        
+        for g_data in all_network_guilds:
+            target_guild_id = str(g_data.get("guild_id"))
+            target_channel_id = str(g_data.get("bound_channel_id"))
+
+            if target_guild_id == current_guild_id:
+                continue
+
+            target_guild = self.bot.get_guild(int(target_guild_id))
+            if not target_guild:
+                continue
+
+            target_channel = target_guild.get_channel(int(target_channel_id))
+            if not target_channel:
+                continue
+
+            try:
+                # جلب الرسالة المرتبطة في السيرفر الآخر عبر الـ Webhook أو الذاكرة
+                target_msg_id = self.synced_messages.get(payload.message_id)
+                if not target_msg_id:
+                    continue
+                
+                target_message = await target_channel.fetch_message(target_msg_id)
+                if target_message:
+                    await target_message.add_reaction(payload.emoji)
+            except Exception as e:
+                print(f"خطأ في مزامنة التفاعل: {e}")
+
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         current_guild_id = str(guild.id)
