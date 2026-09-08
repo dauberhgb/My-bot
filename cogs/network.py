@@ -4,6 +4,15 @@ import discord
 from discord.ext import commands
 import database as db
 
+def get_guild_lang(guild_id):
+    if not guild_id:
+        return "ar"
+    try:
+        settings = db.get_settings(guild_id)
+        return settings.get("language", "ar")
+    except Exception:
+        return "ar"
+
 class NetworkCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -12,51 +21,89 @@ class NetworkCog(commands.Cog):
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def network(self, ctx):
-        await ctx.send(
-            "تنسيق الأوامر المتاحة:\n"
-            "`!network create <اسم_الشبكة>`\n"
-            "`!network join <معرف_الشبكة>`\n"
-            "`!network leave <معرف_الشبكة>`\n"
-            "`!network del [معرف_الشبكة]`\n"
-            "`!network broadcast <الرسالة>`\n"
-            "`!network stats [معرف_الشبكة]`"
-        )
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
+        if lang == "en":
+            help_text = (
+                "Available Network Commands:\n"
+                "`!network create <network_name>`\n"
+                "`!network join <network_id>`\n"
+                "`!network leave <network_id>`\n"
+                "`!network del [network_id]`\n"
+                "`!network broadcast <message>`\n"
+                "`!network stats [network_id]`"
+            )
+        else:
+            help_text = (
+                "تنسيق الأوامر المتاحة:\n"
+                "`!network create <اسم_الشبكة>`\n"
+                "`!network join <معرف_الشبكة>`\n"
+                "`!network leave <معرف_الشبكة>`\n"
+                "`!network del [معرف_الشبكة]`\n"
+                "`!network broadcast <الرسالة>`\n"
+                "`!network stats [معرف_الشبكة]`"
+            )
+        await ctx.send(help_text)
 
     @network.command(name="create")
     @commands.has_permissions(administrator=True)
     async def network_create(self, ctx, *, network_name: str):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+        
         network_id = f"net_{str(ctx.guild.id)}"
         existing = db.get_network(network_id)
         
         if existing:
-            await ctx.send(f"⚠️ هذا السيرفر قام بإنشاء شبكة مسبقاً بهذا المعرف: `{network_id}`.")
+            msg = f"⚠️ This server has already created a network with this ID: `{network_id}`." if lang == "en" else f"⚠️ هذا السيرفر قام بإنشاء شبكة مسبقاً بهذا المعرف: `{network_id}`."
+            await ctx.send(msg)
             return
 
         db.create_network(network_id, network_name, str(ctx.author.id))
         db.join_network(str(ctx.guild.id), network_id, str(ctx.channel.id))
 
-        await ctx.send(f"✅ تم إنشاء الشبكة **{network_name}** بنجاح!\nمعرف الشبكة الخاص بك هو:\n`{network_id}`\nتم ربط هذا الروم (`#{ctx.channel.name}`) تلقائياً للشبكة.")
+        if lang == "en":
+            msg = f"✅ Network **{network_name}** created successfully!\nYour network ID is:\n`{network_id}`\nThis channel (`#{ctx.channel.name}`) has been automatically linked to the network."
+        else:
+            msg = f"✅ تم إنشاء الشبكة **{network_name}** بنجاح!\nمعرف الشبكة الخاص بك هو:\n`{network_id}`\nتم ربط هذا الروم (`#{ctx.channel.name}`) تلقائياً للشبكة."
+        await ctx.send(msg)
 
     @network.command(name="join")
     @commands.has_permissions(administrator=True)
     async def network_join(self, ctx, network_id: str):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
         network = db.get_network(str(network_id))
         if not network:
-            await ctx.send("❌ عذراً، لم يتم العثور على شبكة بهذا المعرف!")
+            msg = "❌ Sorry, no network found with this ID!" if lang == "en" else "❌ عذراً، لم يتم العثور على شبكة بهذا المعرف!"
+            await ctx.send(msg)
             return
 
         db.join_network(str(ctx.guild.id), str(network_id), str(ctx.channel.id))
-        await ctx.send(f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل الخاصة بهذه الشبكة.")
+        if lang == "en":
+            msg = f"✅ This server has successfully joined the network: **{network['network_name']}**!\nThis channel (`#{ctx.channel.name}`) has been linked to relay messages for this network."
+        else:
+            msg = f"✅ تم انضمام هذا السيرفر بنجاح إلى شبكة: **{network['network_name']}**!\nتم ربط هذا الروم (`#{ctx.channel.name}`) لنقل الرسائل الخاصة بهذه الشبكة."
+        await ctx.send(msg)
 
     @network.command(name="leave")
     @commands.has_permissions(administrator=True)
     async def network_leave(self, ctx, network_id: str):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
         db.leave_network(str(ctx.guild.id), str(network_id))
-        await ctx.send(f"✅ تم قطع اتصال السيرفر بالشبكة `{network_id}` بنجاح.")
+        msg = f"✅ Successfully disconnected the server from network `{network_id}`." if lang == "en" else f"✅ تم قطع اتصال السيرفر بالشبكة `{network_id}` بنجاح."
+        await ctx.send(msg)
 
     @network.command(name="del", aliases=["delete"])
     @commands.has_permissions(administrator=True)
     async def network_delete(self, ctx, network_id: str = None):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
         if not network_id:
             network_id = f"net_{str(ctx.guild.id)}"
         else:
@@ -64,21 +111,27 @@ class NetworkCog(commands.Cog):
 
         network = db.get_network(network_id)
         if not network:
-            await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
+            msg = "❌ No network found with this ID!" if lang == "en" else "❌ لم يتم العثور على شبكة بهذا المعرف!"
+            await ctx.send(msg)
             return
 
         db.delete_network(network_id)
-        await ctx.send(f"🗑️ تم حذف الشبكة `{network_id}` وإغلاق جميع اتصالاتها بنجاح.")
+        msg = f"🗑️ Network `{network_id}` has been deleted and all its connections closed successfully." if lang == "en" else f"🗑️ تم حذف الشبكة `{network_id}` وإغلاق جميع اتصالاتها بنجاح."
+        await ctx.send(msg)
 
     @network.command(name="broadcast")
     @commands.has_permissions(administrator=True)
     async def network_broadcast(self, ctx, *, message_content: str):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
         current_guild_id = str(ctx.guild.id)
         current_channel_id = str(ctx.channel.id)
 
         guild_networks = db.get_guild_networks(current_guild_id)
         if not guild_networks:
-            await ctx.send("❌ هذا السيرفر غير متصل بأي شبكة لإرسال تعميم!")
+            msg = "❌ This server is not connected to any network to send a broadcast!" if lang == "en" else "❌ هذا السيرفر غير متصل بأي شبكة لإرسال تعميم!"
+            await ctx.send(msg)
             return
 
         active_network_id = None
@@ -88,28 +141,40 @@ class NetworkCog(commands.Cog):
                 break
 
         if not active_network_id:
-            await ctx.send("❌ يرجى تنفيذ هذا الأمر داخل الروم المربوط بالشبكة!")
+            msg = "❌ Please run this command inside the channel bound to the network!" if lang == "en" else "❌ يرجى تنفيذ هذا الأمر داخل الروم المربوط بالشبكة!"
+            await ctx.send(msg)
             return
 
         network = db.get_network(active_network_id)
         if not network:
-            await ctx.send("❌ لم يتم العثور على بيانات الشبكة!")
+            msg = "❌ Network data not found!" if lang == "en" else "❌ لم يتم العثور على بيانات الشبكة!"
+            await ctx.send(msg)
             return
 
         owner_id = str(network.get("owner_id", ""))
         if str(ctx.author.id) != owner_id:
-            await ctx.send("🚫 هذا الأمر مخصص لمالك الشبكة فقط!")
+            msg = "🚫 This command is restricted to the network owner only!" if lang == "en" else "🚫 هذا الأمر مخصص لمالك الشبكة فقط!"
+            await ctx.send(msg)
             return
 
         all_network_guilds = db.get_network_guilds(active_network_id)
         
-        embed = discord.Embed(
-            title=f"📢 تعميم رسمي من شبكة: {network.get('network_name', 'الشبكة')}",
-            description=message_content,
-            color=discord.Color.gold()
-        )
+        if lang == "en":
+            embed = discord.Embed(
+                title=f"📢 Official Broadcast from Network: {network.get('network_name', 'Network')}",
+                description=message_content,
+                color=discord.Color.gold()
+            )
+            embed.set_footer(text=f"Sent from server: {ctx.guild.name}")
+        else:
+            embed = discord.Embed(
+                title=f"📢 تعميم رسمي من شبكة: {network.get('network_name', 'الشبكة')}",
+                description=message_content,
+                color=discord.Color.gold()
+            )
+            embed.set_footer(text=f"تم الإرسال من سيرفر: {ctx.guild.name}")
+
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-        embed.set_footer(text=f"تم الإرسال من سيرفر: {ctx.guild.name}")
 
         sent_count = 0
         for g_data in all_network_guilds:
@@ -131,11 +196,15 @@ class NetworkCog(commands.Cog):
             except Exception as e:
                 print(f"فشل إرسال التعميم إلى {target_guild.name}: {e}")
 
-        await ctx.send(f"✅ تم إرسال التعميم بنجاح إلى **{sent_count}** سيرفر/قناة متصلة بالشبكة.")
+        msg = f"✅ Broadcast sent successfully to **{sent_count}** connected servers/channels." if lang == "en" else f"✅ تم إرسال التعميم بنجاح إلى **{sent_count}** سيرفر/قناة متصلة بالشبكة."
+        await ctx.send(msg)
 
     @network.command(name="stats", aliases=["list"])
     @commands.has_permissions(administrator=True)
     async def network_stats(self, ctx, network_id: str = None):
+        guild_id = ctx.guild.id if ctx.guild else None
+        lang = get_guild_lang(guild_id)
+
         current_guild_id = str(ctx.guild.id)
         current_channel_id = str(ctx.channel.id)
 
@@ -153,17 +222,19 @@ class NetworkCog(commands.Cog):
 
         network = db.get_network(str(network_id))
         if not network:
-            await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
+            msg = "❌ No network found with this ID!" if lang == "en" else "❌ لم يتم العثور على شبكة بهذا المعرف!"
+            await ctx.send(msg)
             return
 
         network_guilds = db.get_network_guilds(str(network_id))
         is_server_in_network = any(str(g.get("guild_id")) == current_guild_id for g in network_guilds)
         
         if str(ctx.author.id) != str(network.get("owner_id")) and not is_server_in_network:
-            await ctx.send("🚫 ليس لديك صلاحية لعرض إحصائيات هذه الشبكة لأن سيرفرك غير مرتبط بها!")
+            msg = "🚫 You do not have permission to view stats for this network because your server is not linked to it!" if lang == "en" else "🚫 ليس لديك صلاحية لعرض إحصائيات هذه الشبكة لأن سيرفرك غير مرتبط بها!"
+            await ctx.send(msg)
             return
 
-        owner_user = await self.bot.fetch_user(int(network.get("owner_id", 0))) if network.get("owner_id") else "غير معروف"
+        owner_user = await self.bot.fetch_user(int(network.get("owner_id", 0))) if network.get("owner_id") else ("Unknown" if lang == "en" else "غير معروف")
 
         description = ""
         total_members = 0
@@ -173,23 +244,40 @@ class NetworkCog(commands.Cog):
             if target_guild:
                 member_count = target_guild.member_count
                 total_members += member_count
-                description += f"**{idx}. {target_guild.name}** — 👥 `{member_count}` عضو\n"
+                if lang == "en":
+                    description += f"**{idx}. {target_guild.name}** — 👥 `{member_count}` members\n"
+                else:
+                    description += f"**{idx}. {target_guild.name}** — 👥 `{member_count}` عضو\n"
             else:
-                description += f"**{idx}. سيرفر معرف (`{g_data.get('guild_id')}`)** — *(غير متصل)*\n"
+                if lang == "en":
+                    description += f"**{idx}. Server ID (`{g_data.get('guild_id')}`)** — *(Disconnected)*\n"
+                else:
+                    description += f"**{idx}. سيرفر معرف (`{g_data.get('guild_id')}`)** — *(غير متصل)*\n"
 
         if not description:
-            description = "⚠️ لا يوجد سيرفرات مرتبطة بهذه الشبكة حالياً."
+            description = "⚠️ No servers linked to this network currently." if lang == "en" else "⚠️ لا يوجد سيرفرات مرتبطة بهذه الشبكة حالياً."
 
-        embed = discord.Embed(
-            title=f"📊 إحصائيات وقائمة شبكة: {network.get('network_name')}",
-            description=description,
-            color=discord.Color.green()
-        )
-        embed.add_field(name="🆔 معرف الشبكة", value=f"`{network_id}`", inline=True)
-        embed.add_field(name="👑 المالك", value=f"{owner_user}", inline=True)
-        embed.add_field(name="🏰 عدد السيرفرات المربوطة", value=f"`{len(network_guilds)}`", inline=True)
-        
-        embed.set_footer(text=f"إجمالي الأعضاء في الشبكة: {total_members} عضو")
+        if lang == "en":
+            embed = discord.Embed(
+                title=f"📊 Statistics & List for Network: {network.get('network_name')}",
+                description=description,
+                color=discord.Color.green()
+            )
+            embed.add_field(name="🆔 Network ID", value=f"`{network_id}`", inline=True)
+            embed.add_field(name="👑 Owner", value=f"{owner_user}", inline=True)
+            embed.add_field(name="🏰 Linked Servers", value=f"`{len(network_guilds)}`", inline=True)
+            embed.set_footer(text=f"Total members in network: {total_members} members")
+        else:
+            embed = discord.Embed(
+                title=f"📊 إحصائيات وقائمة شبكة: {network.get('network_name')}",
+                description=description,
+                color=discord.Color.green()
+            )
+            embed.add_field(name="🆔 معرف الشبكة", value=f"`{network_id}`", inline=True)
+            embed.add_field(name="👑 المالك", value=f"{owner_user}", inline=True)
+            embed.add_field(name="🏰 عدد السيرفرات المربوطة", value=f"`{len(network_guilds)}`", inline=True)
+            embed.set_footer(text=f"إجمالي الأعضاء في الشبكة: {total_members} عضو")
+
         await ctx.send(embed=embed)
 
     # --- حدث مزامنة الرسائل بين السيرفرات ---
@@ -271,7 +359,6 @@ class NetworkCog(commands.Cog):
                     wait=True
                 )
                 
-                # تخزين معرفات الرسائل المترابطة لمزامنة الرياكشنات لاحقاً
                 if not hasattr(self, "synced_messages"):
                     self.synced_messages = {}
                 self.synced_messages[message.id] = sent_msg.id
@@ -285,7 +372,6 @@ class NetworkCog(commands.Cog):
         if payload.member and payload.member.bot:
             return
 
-        # التحقق مما إذا كانت الرسالة مسجلة كرسالة متزامنة
         if not hasattr(self, "synced_messages") or payload.message_id not in self.synced_messages:
             return
 
@@ -322,7 +408,6 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
-                # جلب الرسالة المرتبطة في السيرفر الآخر عبر الـ Webhook أو الذاكرة
                 target_msg_id = self.synced_messages.get(payload.message_id)
                 if not target_msg_id:
                     continue
