@@ -176,6 +176,13 @@ class NetworkCog(commands.Cog):
 
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
 
+        # التحقق من وجود مرفق (صورة) لدمجه مباشرة داخل الـ Embed
+        if ctx.message.attachments:
+            first_attachment = ctx.message.attachments[0]
+            # التأكد أن المرفق عبارة عن صورة
+            if any(first_attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                embed.set_image(url=first_attachment.url)
+
         sent_count = 0
         for g_data in all_network_guilds:
             target_guild_id = str(g_data.get("guild_id"))
@@ -190,8 +197,8 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
-                refreshed_files = [await attachment.to_file() for attachment in ctx.message.attachments]
-                await target_channel.send(embed=embed, files=refreshed_files)
+                # إرسال الـ Embed فقط بعد تضمين الصورة داخله
+                await target_channel.send(embed=embed)
                 sent_count += 1
                 await asyncio.sleep(0.2)
             except Exception as e:
