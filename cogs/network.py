@@ -19,8 +19,7 @@ class NetworkCog(commands.Cog):
             "`!network leave <معرف_الشبكة>`\n"
             "`!network del [معرف_الشبكة]`\n"
             "`!network broadcast <الرسالة>`\n"
-            "`!network list <معرف_الشبكة>`\n"
-            "`!network stats <معرف_الشبكة>`"
+            "`!network stats [معرف_الشبكة]`"
         )
 
     @network.command(name="create")
@@ -134,15 +133,23 @@ class NetworkCog(commands.Cog):
 
         await ctx.send(f"✅ تم إرسال التعميم بنجاح إلى **{sent_count}** سيرفر/قناة متصلة بالشبكة.")
 
-    @network.command(name="list")
+    @network.command(name="stats", aliases=["list"])
     @commands.has_permissions(administrator=True)
-    async def network_list(self, ctx, network_id: str = None):
+    async def network_stats(self, ctx, network_id: str = None):
+        current_guild_id = str(ctx.guild.id)
+        current_channel_id = str(ctx.channel.id)
+
         if not network_id:
-            guild_networks = db.get_guild_networks(str(ctx.guild.id))
+            guild_networks = db.get_guild_networks(current_guild_id)
             if guild_networks:
-                network_id = guild_networks[0].get("network_id")
+                for g_data in guild_networks:
+                    if str(g_data.get("bound_channel_id")) == current_channel_id:
+                        network_id = str(g_data.get("network_id"))
+                        break
+                if not network_id:
+                    network_id = guild_networks[0].get("network_id")
             else:
-                network_id = f"net_{str(ctx.guild.id)}"
+                network_id = f"net_{current_guild_id}"
 
         network = db.get_network(str(network_id))
         if not network:
@@ -150,9 +157,13 @@ class NetworkCog(commands.Cog):
             return
 
         network_guilds = db.get_network_guilds(str(network_id))
-        if not network_guilds:
-            await ctx.send("⚠️ لا يوجد سيرفرات مرتبطة بهذه الشبكة حالياً.")
+        is_server_in_network = any(str(g.get("guild_id")) == current_guild_id for g in network_guilds)
+        
+        if str(ctx.author.id) != str(network.get("owner_id")) and not is_server_in_network:
+            await ctx.send("🚫 ليس لديك صلاحية لعرض إحصائيات هذه الشبكة لأن سيرفرك غير مرتبط بها!")
             return
+
+        owner_user = await self.bot.fetch_user(int(network.get("owner_id", 0))) if network.get("owner_id") else "غير معروف"
 
         description = ""
         total_members = 0
@@ -166,40 +177,19 @@ class NetworkCog(commands.Cog):
             else:
                 description += f"**{idx}. سيرفر معرف (`{g_data.get('guild_id')}`)** — *(غير متصل)*\n"
 
+        if not description:
+            description = "⚠️ لا يوجد سيرفرات مرتبطة بهذه الشبكة حالياً."
+
         embed = discord.Embed(
-            title=f"🌐 السيرفرات المتصلة بشبكة: {network.get('network_name')}",
+            title=f"📊 إحصائيات وقائمة شبكة: {network.get('network_name')}",
             description=description,
-            color=discord.Color.blue()
-        )
-        embed.add_official = embed.set_footer(text=f"إجمالي الأعضاء في الشبكة: {total_members} | عدد السيرفرات: {len(network_guilds)}")
-        await ctx.send(embed=embed)
-
-    @network.command(name="stats")
-    @commands.has_permissions(administrator=True)
-    async def network_stats(self, ctx, network_id: str = None):
-        if not network_id:
-            guild_networks = db.get_guild_networks(str(ctx.guild.id))
-            if guild_networks:
-                network_id = guild_networks[0].get("network_id")
-            else:
-                network_id = f"net_{str(ctx.guild.id)}"
-
-        network = db.get_network(str(network_id))
-        if not network:
-            await ctx.send("❌ لم يتم العثور على شبكة بهذا المعرف!")
-            return
-
-        network_guilds = db.get_network_guilds(str(network_id))
-        owner_user = await self.bot.fetch_user(int(network.get("owner_id", 0))) if network.get("owner_id") else "غير معروف"
-
-        embed = discord.Embed(
-            title=f"📊 إحصائيات شبكة: {network.get('network_name')}",
             color=discord.Color.green()
         )
         embed.add_field(name="🆔 معرف الشبكة", value=f"`{network_id}`", inline=True)
         embed.add_field(name="👑 المالك", value=f"{owner_user}", inline=True)
         embed.add_field(name="🏰 عدد السيرفرات المربوطة", value=f"`{len(network_guilds)}`", inline=True)
         
+        embed.set_footer(text=f"إجمالي الأعضاء في الشبكة: {total_members} عضو")
         await ctx.send(embed=embed)
 
     # --- حدث مزامنة الرسائل بين السيرفرات ---
@@ -212,7 +202,6 @@ class NetworkCog(commands.Cog):
         if isinstance(prefix, str) and message.content.startswith(prefix):
             return
 
-        # --- بداية نظام الحظر الزمني لمنع التكرار ---
         current_time = time.time()
         self.processed_messages = {
             k: v
@@ -228,7 +217,6 @@ class NetworkCog(commands.Cog):
             return
 
         self.processed_messages[msg_signature] = current_time
-        # --- نهاية نظام الحظر الزمني ---
 
         current_guild_id = str(message.guild.id)
         current_channel_id = str(message.channel.id)
