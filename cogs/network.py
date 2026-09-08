@@ -190,7 +190,8 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
-                await target_channel.send(embed=embed)
+                refreshed_files = [await attachment.to_file() for attachment in ctx.message.attachments]
+                await target_channel.send(embed=embed, files=refreshed_files)
                 sent_count += 1
                 await asyncio.sleep(0.2)
             except Exception as e:
