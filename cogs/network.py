@@ -13,10 +13,61 @@ def get_guild_lang(guild_id):
     except Exception:
         return "ar"
 
+class ReactorsView(discord.ui.View):
+    def __init__(self, bot, original_message_id, lang="ar"):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.original_message_id = original_message_id
+        self.lang = lang
+        
+        # تحديث نص الزر بناءً على لغة السيرفر
+        if lang == "en":
+            self.reactors_button.label = "👥 View Reactors"
+        else:
+            self.reactors_button.label = "👥 عرض المتفاعلين"
+
+    @discord.ui.button(style=discord.ButtonStyle.secondary, custom_id="view_reactors_btn")
+    async def reactors_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cog = self.bot.get_cog("NetworkCog")
+        if not cog or not hasattr(cog, "reaction_logs") or self.original_message_id not in cog.reaction_logs:
+            msg = "No reactors recorded yet." if self.lang == "en" else "لا توجد تفاعلات مسجلة حتى الآن."
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        logs = cog.reaction_logs[self.original_message_id]
+        if not logs:
+            msg = "No reactors recorded yet." if self.lang == "en" else "لا توجد تفاعلات مسجلة حتى الآن."
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        description = ""
+        for idx, entry in enumerate(logs, 1):
+            description += f"{idx}. {entry['emoji']} **{entry['name']}** (`{entry['server']}`)\n"
+            if len(description) > 3800: # تجنب تجاوز حدود الـ Embed Description
+                description += "\n...and more." if self.lang == "en" else "\n...والمزيد."
+                break
+
+        if self.lang == "en":
+            embed = discord.Embed(
+                title="📊 Network Reactors List",
+                description=description,
+                color=discord.Color.blue()
+            )
+        else:
+            embed = discord.Embed(
+                title="📊 قائمة المتفاعلين في الشبكة",
+                description=description,
+                color=discord.Color.blue()
+            )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 class NetworkCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.processed_messages = {} 
+        self.reaction_logs = {}  # لتخزين تفاصيل المتفاعلين لكل رسالة (تدعم مئات الأشخاص)
         
     @commands.group(name="network", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
@@ -176,10 +227,9 @@ class NetworkCog(commands.Cog):
 
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
 
-        # التحقق من وجود مرفق (صورة) لدمجه مباشرة داخل الـ Embed
+        # دمج الصورة داخل الـ Embed في الأسفل إذا وجدت
         if ctx.message.attachments:
             first_attachment = ctx.message.attachments[0]
-            # التأكد أن المرفق عبارة عن صورة
             if any(first_attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
                 embed.set_image(url=first_attachment.url)
 
@@ -197,8 +247,17 @@ class NetworkCog(commands.Cog):
                 continue
 
             try:
-                # إرسال الـ Embed فقط بعد تضمين الصورة داخله
-                await target_channel.send(embed=embed)
+                # إرسال الرسالة مع زر عرض المتفاعلين ودعم لغة السيرفر المستهدف
+                target_lang = get_guild_lang(int(target_guild_id))
+                view = ReactorsView(self.bot, ctx.message.id, lang=target_lang)
+                
+                sent_msg = await target_channel.send(embed=embed, view=view)
+                
+                if not hasattr(self, "synced_messages"):
+                    self.synced_messages = {}
+                self.synced_messages[ctx.message.id] = sent_msg.id
+                self.synced_messages[sent_msg.id] = ctx.message.id
+
                 sent_count += 1
                 await asyncio.sleep(0.2)
             except Exception as e:
@@ -359,12 +418,16 @@ class NetworkCog(commands.Cog):
                 files = [await attachment.to_file() for attachment in message.attachments]
                 avatar_url = message.author.avatar.url if message.author.avatar else message.author.default_avatar.url
 
+                target_lang = get_guild_lang(int(target_guild_id))
+                view = ReactorsView(self.bot, message.id, lang=target_lang)
+
                 sent_msg = await webhook.send(
                     content=message.content or "",
                     username=f"{message.author.display_name} ({message.guild.name})",
                     avatar_url=avatar_url,
                     files=files,
-                    wait=True
+                    wait=True,
+                    view=view
                 )
                 
                 if not hasattr(self, "synced_messages"):
@@ -374,7 +437,7 @@ class NetworkCog(commands.Cog):
             except Exception as e:
                 print(f"خطأ في نقل الرسالة إلى {target_guild.name}: {e}")
                 
-    # --- حدث مزامنة التفاعلات (Reactions) مع تتبع أسماء المتفاعلين ---
+    # --- حدث مزامنة التفاعلات (Reactions) وحفظها للتعامل مع أكثر من 100 شخص ---
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         if payload.member and payload.member.bot:
@@ -397,6 +460,21 @@ class NetworkCog(commands.Cog):
 
         if not active_network_id:
             return
+
+        # تسجيل تفاصيل المتفاعل في ذاكرة البوت (تستوعب مئات الأشخاص)
+        original_msg_id = self.synced_messages.get(payload.message_id)
+        if original_msg_id:
+            if original_msg_id not in self.reaction_logs:
+                self.reaction_logs[original_msg_id] = []
+            
+            reactor_name = payload.member.display_name if payload.member else "User"
+            server_name = payload.member.guild.name if payload.member and payload.member.guild else "Server"
+            emoji_str = str(payload.emoji)
+            
+            # منع تكرار نفس المتفاعل بنفس الإيموجي
+            existing_entry = {"emoji": emoji_str, "name": reactor_name, "server": server_name}
+            if existing_entry not in self.reaction_logs[original_msg_id]:
+                self.reaction_logs[original_msg_id].append(existing_entry)
 
         all_network_guilds = db.get_network_guilds(active_network_id)
         
@@ -422,28 +500,10 @@ class NetworkCog(commands.Cog):
                 
                 target_message = await target_channel.fetch_message(target_msg_id)
                 if target_message:
-                    # 1. وضع التفاعل شكلياً عبر البوت للتزامن البصري
+                    # إضافة التفاعل شكلياً عبر البوت للتزامن البصري
                     await target_message.add_reaction(payload.emoji)
-                    
-                    # 2. تحديث تذييل الرسالة (Footer) أو محتواها لتضمين اسم المستخدم الحقيقي وسيرفره لتجاوز مشكلة علامة الـ APP
-                    reactor_name = payload.member.display_name if payload.member else "User"
-                    server_name = payload.member.guild.name if payload.member and payload.member.guild else target_guild.name
-                    emoji_str = str(payload.emoji)
-                    
-                    if target_message.embeds:
-                        embed = target_message.embeds[0]
-                        current_footer = embed.footer.text or ""
-                        new_footer_text = f"{current_footer} | {emoji_str} بواسطة: {reactor_name} ({server_name})" if current_footer else f"{emoji_str} بواسطة: {reactor_name} ({server_name})"
-                        if len(new_footer_text) <= 2048:
-                            embed.set_footer(text=new_footer_text)
-                            await target_message.edit(embed=embed)
-                    else:
-                        current_content = target_message.content or ""
-                        append_text = f"\n{emoji_str} بواسطة: {reactor_name} ({server_name})"
-                        if len(current_content) + len(append_text) <= 2000:
-                            await target_message.edit(content=current_content + append_text)
             except Exception as e:
-                print(f"خطأ في مزامنة وتحديث تفاعلات الأسماء: {e}")
+                print(f"خطأ في مزامنة التفاعلات الشكلية: {e}")
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
