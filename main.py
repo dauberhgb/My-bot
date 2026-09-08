@@ -980,6 +980,9 @@ async def serverinfo(interaction: discord.Interaction):
     embed.add_field(name="Channels Count:", value=len(guild.channels), inline=True)
     embed.add_field(name="Roles Count:", value=len(guild.roles), inline=True)
     embed.add_field(name="Creation Date:", value=guild.created_at.strftime("%Y-%m-%d"), inline=False)
+    
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label="Support", url="https://top.gg/discord/servers/876867145879965696?s=03defad4113ee", emoji="🛠️"))
   else:
     embed = discord.Embed(title=f"إحصائيات {guild.name}", color=discord.Color.purple())
     if guild.icon:
@@ -990,8 +993,11 @@ async def serverinfo(interaction: discord.Interaction):
     embed.add_field(name="عدد القنوات:", value=len(guild.channels), inline=True)
     embed.add_field(name="عدد الرولات:", value=len(guild.roles), inline=True)
     embed.add_field(name="تاريخ الإنشاء:", value=guild.created_at.strftime("%Y-%m-%d"), inline=False)
+    
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(label="دعم", url="https://top.gg/discord/servers/876867145879965696?s=03defad4113ee", emoji="🛠️"))
 
-  await interaction.response.send_message(embed=embed)
+  await interaction.response.send_message(embed=embed, view=view)
 
 
 @bot.tree.command(
