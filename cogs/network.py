@@ -366,7 +366,7 @@ class NetworkCog(commands.Cog):
             except Exception as e:
                 print(f"خطأ في نقل الرسالة إلى {target_guild.name}: {e}")
                 
-    # --- حدث مزامنة التفاعلات (Reactions) ---
+    # --- حدث مزامنة التفاعلات (Reactions) مع تتبع أسماء المتفاعلين ---
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         if payload.member and payload.member.bot:
@@ -414,9 +414,28 @@ class NetworkCog(commands.Cog):
                 
                 target_message = await target_channel.fetch_message(target_msg_id)
                 if target_message:
+                    # 1. وضع التفاعل شكلياً عبر البوت للتزامن البصري
                     await target_message.add_reaction(payload.emoji)
+                    
+                    # 2. تحديث تذييل الرسالة (Footer) أو محتواها لتضمين اسم المستخدم الحقيقي وسيرفره لتجاوز مشكلة علامة الـ APP
+                    reactor_name = payload.member.display_name if payload.member else "User"
+                    server_name = payload.member.guild.name if payload.member and payload.member.guild else target_guild.name
+                    emoji_str = str(payload.emoji)
+                    
+                    if target_message.embeds:
+                        embed = target_message.embeds[0]
+                        current_footer = embed.footer.text or ""
+                        new_footer_text = f"{current_footer} | {emoji_str} بواسطة: {reactor_name} ({server_name})" if current_footer else f"{emoji_str} بواسطة: {reactor_name} ({server_name})"
+                        if len(new_footer_text) <= 2048:
+                            embed.set_footer(text=new_footer_text)
+                            await target_message.edit(embed=embed)
+                    else:
+                        current_content = target_message.content or ""
+                        append_text = f"\n{emoji_str} بواسطة: {reactor_name} ({server_name})"
+                        if len(current_content) + len(append_text) <= 2000:
+                            await target_message.edit(content=current_content + append_text)
             except Exception as e:
-                print(f"خطأ في مزامنة التفاعل: {e}")
+                print(f"خطأ في مزامنة وتحديث تفاعلات الأسماء: {e}")
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
