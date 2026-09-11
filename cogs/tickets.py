@@ -191,9 +191,27 @@ class TicketControlView(discord.ui.View):
         super().__init__(timeout=None)
         self.lang = lang
 
-    @discord.ui.button(label="Claim 🙋‍♂️", style=discord.ButtonStyle.primary, custom_id="claim_ticket_btn")
+        @discord.ui.button(label="Claim 🙋‍♂️", style=discord.ButtonStyle.primary, custom_id="claim_ticket_btn")
     async def claim_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = self.lang
+        guild = interaction.guild
+        settings = database.get_settings(guild.id)
+        lang = settings.get("language", "ar")
+        
+        support_role_id = settings.get("ticket_support_role")
+        support_role = guild.get_role(int(support_role_id)) if support_role_id and str(support_role_id).isdigit() else None
+        
+        # التحقق مما إذا كان لدى المستخدم رتبة الدعم الفني أو صلاحيات الإدارة (Administrator)
+        has_support_permission = False
+        if support_role and support_role in interaction.user.roles:
+            has_support_permission = True
+        elif interaction.user.guild_permissions.administrator:
+            has_support_permission = True
+            
+        if not has_support_permission:
+            err_msg = "You don't have permission to claim this ticket. Required support role is missing." if lang == "en" else "عذراً، لا تمتلك رتبة الدعم الفني المحددة لاستلام هذه التذكرة."
+            await interaction.response.send_message(err_msg, ephemeral=True)
+            return
+
         button.disabled = True
         button.label = f"Claimed by {interaction.user.display_name}"[:80]
         button.style = discord.ButtonStyle.secondary
