@@ -191,7 +191,7 @@ class TicketControlView(discord.ui.View):
         super().__init__(timeout=None)
         self.lang = lang
 
-        @discord.ui.button(label="Claim 🙋‍♂️", style=discord.ButtonStyle.primary, custom_id="claim_ticket_btn")
+    @discord.ui.button(label="Claim 🙋‍♂️", style=discord.ButtonStyle.primary, custom_id="claim_ticket_btn")
     async def claim_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
         settings = database.get_settings(guild.id)
