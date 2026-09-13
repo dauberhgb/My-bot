@@ -1,9 +1,12 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import database
+import database as db
+import time
 
 audit_channels_map = {}
+# تخزين مؤقت للتحقق من سبام أحداث السجل لوقف التكرار اللحظي العنيف (Rate limit safeguard)
+event_cooldowns = {}
 
 TRANSLATIONS = {
     "ar": {
@@ -32,9 +35,11 @@ TRANSLATIONS = {
     }
 }
 
-def get_lang(guild_id):
+def get_guild_lang(guild_id):
+    if not guild_id:
+        return "ar"
     try:
-        settings = database.get_settings(guild_id)
+        settings = db.get_settings(guild_id)
         if isinstance(settings, dict):
             return settings.get("language", "ar")
     except Exception:
@@ -45,12 +50,19 @@ class AuditLogsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def _is_rate_limited(self, key: str, limit_seconds: float = 1.0) -> bool:
+        now = time.time()
+        if key in event_cooldowns and now - event_cooldowns[key] < limit_seconds:
+            return True
+        event_cooldowns[key] = now
+        return False
+
     @app_commands.command(name="set_audit_channel", description="تحديد قناة سجل التدقيق الموسع")
     @app_commands.describe(channel="القناة المخصصة لسجل التدقيق")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_audit_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         audit_channels_map[interaction.guild.id] = channel.id
-        lang = get_lang(interaction.guild.id)
+        lang = get_guild_lang(interaction.guild.id)
         msg = TRANSLATIONS[lang]["set_success"].format(channel=channel.mention)
         await interaction.response.send_message(msg, ephemeral=True)
 
@@ -66,12 +78,16 @@ class AuditLogsCog(commands.Cog):
         if channel:
             try:
                 await channel.send(embed=embed)
+            except discord.HTTPException:
+                pass  # حماية تفادية عند حظر الحساب مؤقتاً أو Rate limit من ديسكورد
             except Exception:
                 pass
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel):
-        lang = get_lang(channel.guild.id)
+        if self._is_rate_limited(f"ch_create_{channel.guild.id}_{channel.id}", 0.5):
+            return
+        lang = get_guild_lang(channel.guild.id)
         t = TRANSLATIONS[lang]
         embed = discord.Embed(title=t["ch_create_title"], color=discord.Color.green(), timestamp=discord.utils.utcnow())
         embed.add_field(name=t["name"], value=channel.name, inline=True)
@@ -81,7 +97,9 @@ class AuditLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
-        lang = get_lang(channel.guild.id)
+        if self._is_rate_limited(f"ch_delete_{channel.guild.id}_{channel.id}", 0.5):
+            return
+        lang = get_guild_lang(channel.guild.id)
         t = TRANSLATIONS[lang]
         embed = discord.Embed(title=t["ch_delete_title"], color=discord.Color.red(), timestamp=discord.utils.utcnow())
         embed.add_field(name=t["name"], value=channel.name, inline=True)
@@ -91,7 +109,9 @@ class AuditLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_create(self, role):
-        lang = get_lang(role.guild.id)
+        if self._is_rate_limited(f"role_create_{role.guild.id}_{role.id}", 0.5):
+            return
+        lang = get_guild_lang(role.guild.id)
         t = TRANSLATIONS[lang]
         embed = discord.Embed(title=t["role_create_title"], color=discord.Color.blue(), timestamp=discord.utils.utcnow())
         embed.add_field(name=t["name"], value=role.name, inline=True)
@@ -100,7 +120,9 @@ class AuditLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role):
-        lang = get_lang(role.guild.id)
+        if self._is_rate_limited(f"role_delete_{role.guild.id}_{role.id}", 0.5):
+            return
+        lang = get_guild_lang(role.guild.id)
         t = TRANSLATIONS[lang]
         embed = discord.Embed(title=t["role_delete_title"], color=discord.Color.orange(), timestamp=discord.utils.utcnow())
         embed.add_field(name=t["name"], value=role.name, inline=True)
@@ -109,7 +131,9 @@ class AuditLogsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        lang = get_lang(member.guild.id)
+        if self._is_rate_limited(f"member_remove_{member.guild.id}_{member.id}", 0.5):
+            return
+        lang = get_guild_lang(member.guild.id)
         t = TRANSLATIONS[lang]
         embed = discord.Embed(title=t["member_remove_title"], color=discord.Color.dark_grey(), timestamp=discord.utils.utcnow())
         embed.set_thumbnail(url=member.display_avatar.url)
