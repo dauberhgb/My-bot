@@ -739,6 +739,30 @@ async def on_member_join(member):
 
 
 @bot.event
+async def on_guild_join(guild):
+    owner = bot.get_user(OWNER_ID)
+    if not owner:
+        try:
+            owner = await bot.fetch_user(OWNER_ID)
+        except Exception as e:
+            print(f"❌ تعذر جلب صاحب البوت: {e}")
+            return
+
+    if owner:
+        embed = discord.Embed(
+            title="📥 تم إضافة البوت إلى سيرفر جديد!",
+            description=f"**اسم السيرفر:** {guild.name}\n**أيدي السيرفر:** `{guild.id}`\n**عدد الأعضاء:** `{guild.member_count}`",
+            color=discord.Color.green()
+        )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        try:
+            await owner.send(embed=embed)
+        except Exception as e:
+            print(f"❌ تعذر إرسال إشعار الانضمام في الخاص: {e}")
+            
+
+@bot.event
 async def on_member_remove(member):
   settings = database.get_settings(member.guild.id)
   if not settings or not settings.get("farewell_enabled", True) or not settings.get("farewell_channel"):
@@ -933,7 +957,35 @@ async def sync_commands(ctx):
         await msg.edit(content=f"✅ تم تنظيف ديسكورد ومزامنة **{len(synced)}** أمر سلاش بنجاح!")
     except Exception as e:
         await msg.edit(content=f"❌ حدث خطأ أثناء المزامنة: {e}")
+        
 
+@bot.command(name="servers")
+async def list_servers(ctx):
+    # التأكد أن المستخدم هو صاحب البوت فقط
+    if ctx.author.id != OWNER_ID:
+        return  # يتجاهل الأمر كلياً كأن البوت لا يستجيب للآخرين
+
+    servers_list = []
+    for guild in bot.guilds:
+        servers_list.append(f"• **{guild.name}** (`{guild.id}`) - الأعضاء: `{guild.member_count}`")
+    
+    desc = "\n".join(servers_list) if servers_list else "لا توجد سيرفرات مرتبطة."
+    
+    embed = discord.Embed(
+        title=f"📊 السيرفرات المرتبطة بالبوت ({len(bot.guilds)})",
+        description=desc,
+        color=discord.Color.blue()
+    )
+    
+    try:
+        # إرسال القائمة في رسالتك الخاصة (DM) للحفاظ على السرية التامة
+        await ctx.author.send(embed=embed)
+        # حذف رسالتك الأصلية من الشات حتى لا يلاحظ أحد أنك كتبت شيئاً
+        if ctx.guild:
+            await ctx.message.delete()
+    except Exception as e:
+        await ctx.send(embed=embed, delete_after=10)
+        
 
 @bot.tree.command(name="userinfo", description="عرض معلومات تفصيلية عن عضويتك أو عضو آخر")
 @app_commands.describe(member="العضو المراد عرض معلوماته (اختياري)")
