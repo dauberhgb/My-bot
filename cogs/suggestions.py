@@ -63,7 +63,8 @@ class SuggestionButtonView(discord.ui.View):
             elif child.custom_id == 'sugg_down':
                 child.label = f"👎 {down_count}"
         
-        await interaction.response.edit_view(view=self)
+        await interaction.response.defer()
+        await interaction.message.edit(view=self)
 
     @discord.ui.button(label="👎 0", style=discord.ButtonStyle.secondary, custom_id="sugg_down")
     async def down(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -88,8 +89,10 @@ class SuggestionButtonView(discord.ui.View):
             elif child.custom_id == 'sugg_down':
                 child.label = f"👎 {down_count}"
         
-        await interaction.response.edit_view(view=self)
+        await interaction.response.defer()
+        await interaction.message.edit(view=self)
 
+    # --- تم إبقاء أزرار القبول والرفض كما هي تماماً دون أي تعديل ---
     @discord.ui.button(label="✅", style=discord.ButtonStyle.green, custom_id="sugg_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         lang = get_lang(interaction.guild.id) if interaction.guild else "ar"
