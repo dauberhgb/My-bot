@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import database
+import database as db
 
 suggestion_votes = {}  # {message_id: {'up': set(), 'down': set()}}
 
@@ -26,9 +26,11 @@ TRANSLATIONS = {
     }
 }
 
-def get_lang(guild_id):
+def get_guild_lang(guild_id):
+    if not guild_id:
+        return "ar"
     try:
-        settings = database.get_settings(guild_id)
+        settings = db.get_settings(guild_id)
         if isinstance(settings, dict):
             return settings.get("language", "ar")
     except Exception:
@@ -92,10 +94,9 @@ class SuggestionButtonView(discord.ui.View):
         await interaction.response.defer()
         await interaction.message.edit(view=self)
 
-    # --- تم إبقاء أزرار القبول والرفض كما هي تماماً دون أي تعديل ---
     @discord.ui.button(label="✅", style=discord.ButtonStyle.green, custom_id="sugg_accept")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = get_lang(interaction.guild.id) if interaction.guild else "ar"
+        lang = get_guild_lang(interaction.guild.id if interaction.guild else None)
         t = TRANSLATIONS[lang]
         if not interaction.user.guild_permissions.manage_guild:
             return await interaction.response.send_message(t["no_perm"], ephemeral=True)
@@ -108,7 +109,7 @@ class SuggestionButtonView(discord.ui.View):
 
     @discord.ui.button(label="❌", style=discord.ButtonStyle.red, custom_id="sugg_reject")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = get_lang(interaction.guild.id) if interaction.guild else "ar"
+        lang = get_guild_lang(interaction.guild.id if interaction.guild else None)
         t = TRANSLATIONS[lang]
         if not interaction.user.guild_permissions.manage_guild:
             return await interaction.response.send_message(t["no_perm"], ephemeral=True)
@@ -125,8 +126,10 @@ class SuggestionsCog(commands.Cog):
 
     @app_commands.command(name="suggestion", description="إرسال اقتراح جديد للسيرفر")
     @app_commands.describe(text="نص الاقتراح")
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: (i.guild_id, i.user.id))  # حماية من السبام (استخدام كل 10 ثوانٍ)
     async def suggestion(self, interaction: discord.Interaction, text: str):
-        lang = get_lang(interaction.guild.id) if interaction.guild else "ar"
+        guild_id = interaction.guild.id if interaction.guild else None
+        lang = get_guild_lang(guild_id)
         t = TRANSLATIONS[lang]
         
         embed = discord.Embed(
@@ -138,8 +141,20 @@ class SuggestionsCog(commands.Cog):
         embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.display_avatar.url)
         embed.set_footer(text=f"ID: {interaction.user.id}")
         
-        view = SuggestionButtonView(guild_id=interaction.guild.id if interaction.guild else None)
+        view = SuggestionButtonView(guild_id=guild_id)
         await interaction.response.send_message(embed=embed, view=view)
+
+    @suggestion.error
+    async def suggestion_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            lang = get_guild_lang(interaction.guild.id if interaction.guild else None)
+            msg = f"⏳ Please wait {error.retry_after:.1f}s before sending another suggestion." if lang == "en" else f"⏳ يرجى الانتظار {error.retry_after:.1f} ثانية قبل إرسال اقتراح آخر."
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        else:
+            raise error
 
 async def setup(bot):
     await bot.add_cog(SuggestionsCog(bot))
