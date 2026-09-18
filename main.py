@@ -823,7 +823,6 @@ async def on_message(message):
     await bot.process_commands(message)
     return
 
-
   settings = database.get_settings(message.guild.id)
   if not settings:
     await bot.process_commands(message)
