@@ -817,8 +817,12 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_message(message):
-  if message.author.bot or not message.guild:
+  if message.author.bot:
     return
+  if message.guild is None:
+    await bot.process_commands(message)
+    return
+
 
   settings = database.get_settings(message.guild.id)
   if not settings:
