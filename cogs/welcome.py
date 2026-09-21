@@ -37,189 +37,142 @@ class Welcome(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def _draw_card_sync(self, avatar_bytes, bg_bytes, t1_text, t2_text, t3_text, c1, c2, c3, lang, frame_key):
-        """رسم الصورة داخل Thread منفصل لعدم تجميد البوت"""
-        width, height = 1536, 1024
-        base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+# ==========================================
+# 3. دالة توليد بطاقة الترحيب الشفافة مع النصوص والإطار
+# ==========================================
+async def generate_welcome_card(member, bg_url=None, lang="ar", frame_key=None, guild_id=None):
+  try:
+    width, height = 1536, 1024
+    # إنشاء خلفية شفافة بالكامل
+    base = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+      
+    settings = database.get_settings(guild_id) if guild_id else {}
+    
+    raw_t1 = settings.get("text_1", "WELCOME TO THE SERVER")
+    raw_t2 = settings.get("text_2", "{user_name}")
+    raw_t3 = settings.get("text_3", "MEMBER #{count}")
+    
+    c1 = settings.get("color_1", "#FFFFFF")
+    c2 = settings.get("color_2", "#93C5FD")
+    c3 = settings.get("color_3", "#D1D5DB")
 
-        # 1. رسم الخلفية المخصصة إن وجدت
-        if bg_bytes:
-            try:
-                custom_bg = Image.open(io.BytesIO(bg_bytes)).convert("RGBA")
-                custom_bg = custom_bg.resize((width, height))
-                base.paste(custom_bg, (0, 0))
-            except Exception as e:
-                print(f"❌ خطأ تحميل الخلفية: {e}")
-
-        # 2. تجهيز الخطوط
-        font_path = "tajawal.ttf"
+    t1_text = raw_t1.replace("{server}", member.guild.name)
+    t2_text = raw_t2.replace("{user_name}", member.display_name).replace("{user}", member.display_name)
+    t3_text = raw_t3.replace("{count}", str(member.guild.member_count))
+    
+    # بداية كود تحميل الخلفية المخصصة
+    if bg_url and bg_url.startswith("http"):
         try:
-            font_title = ImageFont.truetype(font_path, 38)
-            font_name = ImageFont.truetype(font_path, 48)
-            font_sub = ImageFont.truetype(font_path, 28)
-        except Exception:
-            font_title = font_name = font_sub = ImageFont.load_default()
-
-        avatar_size = 380
-        is_ar = (str(lang).lower().strip() == "ar")
-
-        # 3. تحديد الإحداثيات والنصوص حسب اللغة
-        if is_ar:
-            avatar_x, avatar_y = 960, 320
-            name_x, title_x, sub_x = 600, 500, 360
-            t1_processed = get_display(arabic_reshaper.reshape(t1_text))
-            t2_processed = get_display(arabic_reshaper.reshape(t2_text[:18]))
-            t3_processed = get_display(arabic_reshaper.reshape(t3_text))
-        else:
-            avatar_x, avatar_y = 145, 320
-            name_x, title_x, sub_x = 650, 650, 650
-            t1_processed = t1_text
-            t2_processed = t2_text[:18]
-            t3_processed = t3_text
-
-        # 4. رسم البروفايل أولاً (خلف الإطار)
-        if avatar_bytes:
-            try:
-                avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
-                avatar = avatar.resize((avatar_size, avatar_size))
-                
-                mask = Image.new("L", (avatar_size, avatar_size), 0)
-                mask_draw = ImageDraw.Draw(mask)
-                mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
-
-                base.paste(avatar, (avatar_x, avatar_y), mask)
-            except Exception as ae:
-                print(f"❌ خطأ رسم البروفايل: {ae}")
-
-        # 5. تركيب صورة الإطار فوق البروفايل
-        if frame_key and frame_key in AVAILABLE_FRAMES:
-            frame_info = AVAILABLE_FRAMES[frame_key]
-            frame_path = frame_info["ar_file"] if is_ar else frame_info["en_file"]
-            
-            if os.path.exists(frame_path):
-                try:
-                    frame_img = Image.open(frame_path).convert("RGBA")
-                    frame_img = frame_img.resize((width, height))
-                    base = Image.alpha_composite(base, frame_img)
-                except Exception as fe:
-                    print(f"❌ خطأ دمج الإطار: {fe}")
-
-        # 6. رسم النصوص
-        draw = ImageDraw.Draw(base)
-        draw.text((name_x, 390), t2_processed, fill=c2, font=font_name, anchor="mm")
-        draw.text((title_x, 500), t1_processed, fill=c1, font=font_title, anchor="mm")
-        draw.text((sub_x, 610), t3_processed, fill=c3, font=font_sub, anchor="mm")
-
-        final_buffer = io.BytesIO()
-        base.save(final_buffer, format="PNG")
-        final_buffer.seek(0)
-        return final_buffer
-
-    async def generate_welcome_card(self, member):
-        """جلب البيانات وتمرير المعالجة للـ Thread"""
-        settings = db.get_settings(member.guild.id) or {}
-        
-        raw_t1 = settings.get("text_1", "WELCOME TO THE SERVER")
-        raw_t2 = settings.get("text_2", "{user_name}")
-        raw_t3 = settings.get("text_3", "MEMBER #{count}")
-
-        c1 = settings.get("color_1", "#FFFFFF")
-        c2 = settings.get("color_2", "#93C5FD")
-        c3 = settings.get("color_3", "#D1D5DB")
-        
-        lang = settings.get("language", "ar")
-        frame_key = settings.get("welcome_frame")
-
-        t1_text = raw_t1.replace("{server}", member.guild.name)
-        t2_text = raw_t2.replace("{user_name}", member.display_name).replace("{user}", member.display_name)
-        t3_text = raw_t3.replace("{count}", str(member.guild.member_count))
-
-        bg_bytes = None
-        avatar_bytes = None
-        bg_url = settings.get("welcome_img", "")
-
-        async with aiohttp.ClientSession() as session:
-            if bg_url and bg_url.startswith("http"):
-                try:
-                    async with session.get(bg_url) as resp:
-                        if resp.status == 200:
-                            bg_bytes = await resp.read()
-                except Exception as e:
-                    print(f"❌ خطأ جلب الخلفية: {e}")
-
-            try:
-                avatar_target = member.display_avatar.url
-                async with session.get(avatar_target) as resp:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(bg_url) as resp:
                     if resp.status == 200:
-                        avatar_bytes = await resp.read()
-            except Exception as e:
-                print(f"❌ خطأ جلب الصورة الشخصية: {e}")
+                        bg_data = await resp.read()
+                        custom_bg = Image.open(BytesIO(bg_data)).convert("RGBA")
+                        custom_bg = custom_bg.resize((width, height))
+                        base.paste(custom_bg, (0, 0))
+        except Exception as e:
+            print(f"❌ خطأ في تحميل الصورة: {e}")
+    # نهاية كود تحميل الخلفية المخصصة
 
-        buffer = await asyncio.to_thread(
-            self._draw_card_sync,
-            avatar_bytes, bg_bytes, t1_text, t2_text, t3_text, c1, c2, c3, lang, frame_key
-        )
-        return discord.File(buffer, filename="welcome_card.png")
+    user_lang = str(lang).lower().strip()
+    
+    # 1. دمج الإطار الشفاف أولاً (ليكون في الخلفية)
+    if frame_key and frame_key in AVAILABLE_FRAMES:
+      frame_info = AVAILABLE_FRAMES[frame_key]
+      frame_path = frame_info["ar_file"] if user_lang == "ar" else frame_info["en_file"]
+      
+      if os.path.exists(frame_path):
+        try:
+          frame_img = Image.open(frame_path).convert("RGBA")
+          frame_img = frame_img.resize((width, height))
+          base = Image.alpha_composite(base, frame_img)
+        except Exception as fe:
+          print(f"❌ خطأ أثناء دمج إطار البطاقة: {fe}")
+            
+    # 2. جلب وتجهيز الخط
+    font_path = "tajawal.ttf"
+    if not os.path.exists(font_path):
+      font_url = "https://github.com/google/fonts/raw/main/ofl/cairo/Cairo-Bold.ttf"
+      async with aiohttp.ClientSession() as session:
+        async with session.get(font_url) as resp:
+          if resp.status == 200:
+            font_data = await resp.read()
+            with open(font_path, "wb") as f:
+              f.write(font_data)
 
-    @commands.Cog.listener()
-    #async def on_member_join(self, member):
-        """إرسال البطاقة عند انضمام عضو جديد"""
-        settings = db.get_settings(member.guild.id) or {}
-        if not settings.get("welcome_enabled", True):
-            return
+    try:
+      font_title = ImageFont.truetype(font_path, 41)
+      font_name = ImageFont.truetype(font_path, 55)
+      font_sub = ImageFont.truetype(font_path, 30)
+    except Exception:
+      font_title = font_name = font_sub = ImageFont.load_default()
 
-        channel_id = settings.get("welcome_channel")
-        if not channel_id:
-            return
+    avatar_size = 440
+    avatar_y = ((height - avatar_size) // 2) - 20
 
-        channel = member.guild.get_channel(int(channel_id))
-        if not channel:
-            return
+    # 3. معالجة النصوص وتعديل الاتجاه والـ X للأماكن الصحيحة (من اليمين لليسار)
+    if user_lang == "ar":
+      avatar_x = width - avatar_size - 96  # البروفايل على اليمين
+      title_x = width - 780
+      name_x = width - 870
+      sub_x = width - 870
+      title_y = 529
+      name_y = 305
+      sub_y = 731
+      
+      welcome_title = arabic_reshaper.reshape(t1_text)
+      member_count_text = arabic_reshaper.reshape(t3_text)
+      display_name = arabic_reshaper.reshape(t2_text[:18])
 
-        welcome_file = await self.generate_welcome_card(member)
-        lang = settings.get("language", "ar")
+    else:
+      avatar_x = 96
+      title_x = 775
+      name_x = 870
+      sub_x = 870
+      title_y = 550
+      name_y = 330
+      sub_y = 750
+
+      welcome_title = t1_text
+      member_count_text = t3_text
+      display_name = t2_text[:18]
         
-        custom_msg = settings.get("welcome_msg", "").strip()
-        if custom_msg:
-            msg_text = custom_msg.replace("{user}", member.mention).replace("{server}", member.guild.name)
-        else:
-            if lang == "en":
-                msg_text = f"Welcome {member.mention} to {member.guild.name}! 🎉"
-            else:
-                msg_text = f"أهلاً بك يا {member.mention} في سيرفر {member.guild.name}! 🎉"
 
-        await channel.send(content=msg_text, file=welcome_file)
+    # إنشاء أداة الرسم للعمليات العلوية (البروفايل والنصوص)
+    draw = ImageDraw.Draw(base)
 
-    @commands.command(name="set_texts")
-    @commands.has_permissions(administrator=True)
-    async def set_texts(self, ctx, t1: str, t2: str, t3: str):
-        """تعديل النصوص الثلاثة المطبوعة على الإطار"""
-        settings = db.get_settings(ctx.guild.id) or {}
-        settings.update({
-            "text_1": t1,
-            "text_2": t2,
-            "text_3": t3
-        })
-        db.save_settings(ctx.guild.id, settings)
-        await ctx.send("✅ تم تحديث النصوص المطبوعة على الإطار بنجاح!")
+    # 4. رسم صورة البروفايل
+    avatar_url = member.display_avatar.url
+    async with aiohttp.ClientSession() as session:
+      async with session.get(avatar_url) as resp:
+        if resp.status == 200:
+          avatar_data = await resp.read()
+          avatar = Image.open(BytesIO(avatar_data)).convert("RGBA")
+          avatar = avatar.resize((avatar_size, avatar_size))
 
-    @commands.command(name="set_colors")
-    @commands.has_permissions(administrator=True)
-    async def set_colors(self, ctx, c1: str, c2: str, c3: str):
-        """تعديل ألوان النصوص الثلاثة المطبوعة بصيغة Hex"""
-        for color in [c1, c2, c3]:
-            if not color.startswith("#") or len(color) != 7:
-                await ctx.send("❌ يرجى إدخال ألوان بصيغة Hex صحيحة مثل: `#FFFFFF`")
-                return
+          mask = Image.new("L", (avatar_size, avatar_size), 0)
+          mask_draw = ImageDraw.Draw(mask)
+          mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
 
-        settings = db.get_settings(ctx.guild.id) or {}
-        settings.update({
-            "color_1": c1,
-            "color_2": c2,
-            "color_3": c3
-        })
-        db.save_settings(ctx.guild.id, settings)
-        await ctx.send("🎨 تم تحديث ألوان النصوص الثلاثة بنجاح!")
+          draw.ellipse(
+              (avatar_x - 5, avatar_y - 5, avatar_x + avatar_size + 5, avatar_y + avatar_size + 5),
+              outline=(59, 130, 246, 255),
+              width=5
+          )
+          base.paste(avatar, (avatar_x, avatar_y), mask)
+
+    # 5. رسم النصوص في النهاية (لتظهر فوق كل شيء بما فيها الإطار)
+    draw.text((title_x, title_y), welcome_title, fill=c1, font=font_title, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((name_x, name_y), display_name, fill=c2, font=font_name, anchor="ra" if user_lang == "ar" else "lm")
+    draw.text((sub_x, sub_y), member_count_text, fill=c3, font=font_sub, anchor="ra" if user_lang == "ar" else "lm")
+
+    final_buffer = BytesIO()
+    base.save(final_buffer, format="PNG")
+    final_buffer.seek(0)
+    return discord.File(final_buffer, filename="welcome_card.png")
+  except Exception as e:
+    print(f"❌ خطأ عام في توليد بطاقة الترحيب: {e}")
+    return None
 
 async def setup(bot):
     await bot.add_cog(Welcome(bot))
