@@ -60,7 +60,6 @@ def get_base_url():
   return base_url
 
 
-# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف والمالك (عبر الـ Session الآمنة لمنع ثغرات Top.gg)
 def admin_required(f):
   @wraps(f)
   def decorated_function(guild_id, *args, **kwargs):
@@ -76,16 +75,29 @@ def admin_required(f):
         )
       return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
 
-    # التحقق الآمن من جلسة المستخدم عبر OAuth2 وسيرفراته المسموحة
+    # 1. التحقق عبر الـ Session (لوحة الويب)
     admin_guilds = session.get("admin_guilds", [])
     user_id = session.get("user_id")
+
+    # 2. التحقق عبر الـ Request parameters (إن وجدت)
+    req_user_id = (
+        request.args.get("user_id")
+        or request.headers.get("X-User-ID")
+        or request.form.get("user_id")
+    )
+    if req_user_id and req_user_id.isdigit():
+      user_id = req_user_id
 
     is_authorized = False
     if user_id:
       u_id = int(user_id)
+      member = guild.get_member(u_id)
+      
       if u_id == OWNER_ID or u_id == guild.owner_id:
         is_authorized = True
       elif str(guild_id) in admin_guilds:
+        is_authorized = True
+      elif member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
         is_authorized = True
 
     if not is_authorized:
@@ -94,15 +106,13 @@ def admin_required(f):
             jsonify({
                 "status": "error",
                 "message": (
-                    "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا"
-                    " الإجراء!"
+                    "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا الإجراء!"
                 ),
             }),
             403,
         )
       return (
-          "عذراً، يجب تسجيل الدخول بحساب ديسكورد وامتلاك صلاحية إدارة السيرفر"
-          " للدخول إلى هذه اللوحة!",
+          "عذراً، يجب تسجيل الدخول وامتلاك صلاحية إدارة السيرفر للدخول إلى هذه اللوحة!",
           403,
       )
 
@@ -183,62 +193,6 @@ def get_guild_lang(guild_id):
     return "ar"
   settings = database.get_settings(guild_id)
   return settings.get("language", "ar")
-
-
-# دالة ديكوراتور للتحقق من هوية وصلاحية المشرف والمالك
-def admin_required(f):
-  @wraps(f)
-  def decorated_function(guild_id, *args, **kwargs):
-    guild = bot.get_guild(int(guild_id))
-    if not guild:
-      if request.path.startswith("/save/"):
-        return (
-            jsonify({
-                "status": "error",
-                "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!",
-            }),
-            404,
-        )
-      return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
-
-    user_id = (
-        request.args.get("user_id")
-        or request.headers.get("X-User-ID")
-        or request.form.get("user_id")
-    )
-
-    if user_id and user_id.isdigit():
-      u_id = int(user_id)
-      # محاولة جلب العضو من الذاكرة أو من الديسكورد مباشرة
-      member = guild.get_member(u_id)
-      
-      # التحقق الشامل: المالك صاحب البوت أو مالك السيرفر أو أدمن السيرفر
-      is_authorized = False
-      if u_id == OWNER_ID or u_id == guild.owner_id:
-        is_authorized = True
-      elif member:
-        is_authorized = member.guild_permissions.administrator or member.guild_permissions.manage_guild
-
-      if not is_authorized:
-        if request.path.startswith("/save/"):
-          return (
-              jsonify({
-                  "status": "error",
-                  "message": (
-                      "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا"
-                      " الإجراء!"
-                  ),
-              }),
-              403,
-          )
-        return (
-            "عذراً، لا تملك صلاحية (إدارة السيرفر) للدخول إلى هذه اللوحة!",
-            403,
-        )
-
-    return f(guild_id, *args, **kwargs)
-
-  return decorated_function
 
 
 @app.route("/")
@@ -432,25 +386,34 @@ def run_web_server():
 threading.Thread(target=run_web_server, daemon=True).start()
 
 
-# ==========================================
-# 4. أحداث وأوامر البوت (Discord Events & Commands)
-# ==========================================
 @bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        remaining = round(error.retry_after, 1)
-        msg = f"⏳ يرجى الانتظار {remaining} ثانية قبل استخدام هذا الأمر مرة أخرى."
-        if interaction.response.is_done():
-            await interaction.followup.send(msg, ephemeral=True)
-        else:
-            await interaction.response.send_message(msg, ephemeral=True)
+async def on_app_command_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
+  lang = get_guild_lang(interaction.guild_id) if interaction.guild_id else "ar"
+
+  if isinstance(error, app_commands.MissingPermissions):
+    if lang == "en":
+      msg = "❌ **Sorry! This command is only for members with (Manage Server) permission.**"
     else:
-        # لطباعة الأخطاء الأخرى في الكونسول لمعالجتها
-        print(f"⚠️ خطأ في أمر السلاش: {error}")
-        
-@bot.event
-async def on_ready():
-  print(f"تم تشغيل البوت بنجاح باسم: {bot.user}")
+      msg = "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة السيرفر - Manage Server).**"
+  elif isinstance(error, app_commands.CommandOnCooldown):
+    remaining = round(error.retry_after, 1)
+    if lang == "en":
+      msg = f"⏳ Please wait! You can use this command again in {remaining} seconds."
+    else:
+      msg = f"⏳ انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {remaining} ثانية."
+  else:
+    print(f"⚠️ خطأ غير متوقع في أمر السلاش: {error}")
+    if lang == "en":
+      msg = "An unexpected error occurred while executing the command."
+    else:
+      msg = "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
+
+  if not interaction.response.is_done():
+    await interaction.response.send_message(msg, ephemeral=True)
+  else:
+    await interaction.followup.send(msg, ephemeral=True)
 
 
 @bot.tree.command(
@@ -1167,56 +1130,23 @@ async def leaderboard(interaction: discord.Interaction):
   await interaction.response.send_message(embed=embed)
 
 
-@bot.tree.error
-async def on_app_command_error(
-    interaction: discord.Interaction, error: app_commands.AppCommandError
-):
-  lang = get_guild_lang(interaction.guild_id) if interaction.guild_id else "ar"
-
-  if isinstance(error, app_commands.MissingPermissions):
-    if lang == "en":
-      msg = "❌ **Sorry! This command is only for members with (Manage Server) permission.**"
-    else:
-      msg = "❌ **عذراً! هذا الأمر مخصص فقط للأعضاء الذين يمتلكون صلاحية (إدارة السيرفر - Manage Server).**"
-
-    if not interaction.response.is_done():
-      await interaction.response.send_message(msg, ephemeral=True)
-    else:
-      await interaction.followup.send(msg, ephemeral=True)
-  elif isinstance(error, app_commands.CommandOnCooldown):
-    if lang == "en":
-      msg = f"⏳ Please wait! You can use this command again in {round(error.retry_after, 1)} seconds."
-    else:
-      msg = f"⏳ انتظر قليلاً! يمكنك استخدام الأمر مجدداً بعد {round(error.retry_after, 1)} ثانية."
-
-    if not interaction.response.is_done():
-      await interaction.response.send_message(msg, ephemeral=True)
-    else:
-      await interaction.followup.send(msg, ephemeral=True)
-  else:
-    msg = "An unexpected error occurred while executing the command." if lang == "en" else "حدث خطأ غير متوقع أثناء تنفيذ الأمر."
-    if not interaction.response.is_done():
-      await interaction.response.send_message(msg, ephemeral=True)
-    else:
-      await interaction.followup.send(msg, ephemeral=True)
-
 @bot.event
 async def on_ready():
-    print(f"تم تسجيل الدخول بنجاح باسم {bot.user}")
-    print("🔄 بدء فحص وتحميل الأنظمة من مجلد cogs...")
-    
-    if os.path.exists("./cogs"):
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
-                extension_name = f"cogs.{filename[:-3]}"
-                if extension_name not in bot.extensions:
-                    try:
-                        await bot.load_extension(extension_name)
-                        print(f"✅ تم تحميل النظام بنجاح: {filename[:-3]}")
-                    except Exception as e:
-                        print(f"❌ خطأ تفصيلي في تحميل {filename[:-3]}: {e}")
-    else:
-        print("⚠️ مجلد cogs غير موجود أصلاً!")
+  print(f"تم تسجيل الدخول بنجاح باسم {bot.user}")
+  print("🔄 بدء فحص وتحميل الأنظمة من مجلد cogs...")
+  
+  if os.path.exists("./cogs"):
+      for filename in os.listdir("./cogs"):
+          if filename.endswith(".py"):
+              extension_name = f"cogs.{filename[:-3]}"
+              if extension_name not in bot.extensions:
+                  try:
+                      await bot.load_extension(extension_name)
+                      print(f"✅ تم تحميل النظام بنجاح: {filename[:-3]}")
+                  except Exception as e:
+                      print(f"❌ خطأ تفصيلي في تحميل {filename[:-3]}: {e}")
+  else:
+      print("⚠️ مجلد cogs غير موجود أصلاً!")
 
 TOKEN = os.getenv("TOKEN")
 bot.run(TOKEN)
