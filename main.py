@@ -61,102 +61,65 @@ def get_base_url():
 
 
 def admin_required(f):
-    @wraps(f)
-    def decorated_function(guild_id, *args, **kwargs):
-        try:
-            guild_id_int = int(guild_id)
-        except (TypeError, ValueError):
-            if request.path.startswith("/save/"):
-                return (
-                    jsonify({
-                        "status": "error",
-                        "message": "معرف السيرفر غير صالح!",
-                    }),
-                    400,
-                )
+  @wraps(f)
+  def decorated_function(guild_id, *args, **kwargs):
+    guild = bot.get_guild(int(guild_id))
+    if not guild:
+      if request.path.startswith("/save/"):
+        return (
+            jsonify({
+                "status": "error",
+                "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!",
+            }),
+            404,
+        )
+      return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
 
-            return "معرف السيرفر غير صالح!", 400
+    # 1. التحقق عبر الـ Session (لوحة الويب)
+    admin_guilds = session.get("admin_guilds", [])
+    user_id = session.get("user_id")
 
-        guild = bot.get_guild(guild_id_int)
+    # 2. التحقق عبر الـ Request parameters (إن وجدت)
+    req_user_id = (
+        request.args.get("user_id")
+        or request.headers.get("X-User-ID")
+        or request.form.get("user_id")
+    )
+    if req_user_id and req_user_id.isdigit():
+      user_id = req_user_id
 
-        if not guild:
-            if request.path.startswith("/save/"):
-                return (
-                    jsonify({
-                        "status": "error",
-                        "message": "السيرفر غير موجود أو البوت ليس عضواً فيه!",
-                    }),
-                    404,
-                )
+    is_authorized = False
+    if user_id:
+      u_id = int(user_id)
+      member = guild.get_member(u_id)
+      
+      if u_id == OWNER_ID or u_id == guild.owner_id:
+        is_authorized = True
+      elif str(guild_id) in admin_guilds:
+        is_authorized = True
+      elif member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+        is_authorized = True
 
-            return "السيرفر غير موجود أو البوت ليس عضواً فيه!", 404
+    if not is_authorized:
+      if request.path.startswith("/save/"):
+        return (
+            jsonify({
+                "status": "error",
+                "message": (
+                    "عذراً، لا تملك صلاحية (إدارة السيرفر) للقيام بهذا الإجراء!"
+                ),
+            }),
+            403,
+        )
+      return (
+          "عذراً، يجب تسجيل الدخول وامتلاك صلاحية إدارة السيرفر للدخول إلى هذه اللوحة!",
+          403,
+      )
 
-        # الهوية الموثوقة تأتي من Session فقط.
-        # لا نسمح لـ user_id القادم من URL/Header/Form بتغيير هوية المستخدم.
-        user_id = session.get("user_id")
+    return f(guild_id, *args, **kwargs)
 
-        if not user_id or not str(user_id).isdigit():
-            if request.path.startswith("/save/"):
-                return (
-                    jsonify({
-                        "status": "error",
-                        "message": "يجب تسجيل الدخول أولاً.",
-                    }),
-                    401,
-                )
+  return decorated_function
 
-            return redirect(url_for("login"))
-
-        u_id = int(user_id)
-
-        is_authorized = False
-
-        # صاحب البوت
-        if u_id == OWNER_ID:
-            is_authorized = True
-
-        # مالك السيرفر
-        elif u_id == guild.owner_id:
-            is_authorized = True
-
-        else:
-            # التحقق من قائمة السيرفرات التي حصل عليها المستخدم
-            # من Discord OAuth2
-            admin_guilds = session.get("admin_guilds", [])
-
-            if str(guild_id_int) in admin_guilds:
-                is_authorized = True
-
-            else:
-                # تحقق إضافي من العضو وصلاحياته الحالية
-                member = guild.get_member(u_id)
-
-                if member and (
-                    member.guild_permissions.administrator
-                    or member.guild_permissions.manage_guild
-                ):
-                    is_authorized = True
-
-        if not is_authorized:
-            if request.path.startswith("/save/"):
-                return (
-                    jsonify({
-                        "status": "error",
-                        "message": (
-                            "عذراً، لا تملك صلاحية إدارة هذا السيرفر."
-                        ),
-                    }),
-                    403,
-                )
-
-            return (
-                "عذراً، لا تملك صلاحية إدارة هذا السيرفر.",
-                403,
-            )
-
-        return f(guild_id, *args, **kwargs)
-
-    return decorated_function
 
 @app.route("/login")
 def login():
@@ -315,59 +278,24 @@ def dashboard(guild_id):
 
 @app.route("/update_language", methods=["POST"])
 def update_language():
-    user_id = session.get("user_id")
-    new_lang = request.form.get("language")
+  user_id = request.form.get("user_id")
+  new_lang = request.form.get("language")
 
-    if not user_id or not str(user_id).isdigit():
-        return (
-            jsonify({
-                "status": "error",
-                "message": "يجب تسجيل الدخول أولاً.",
-            }),
-            401,
-        )
+  if not user_id or not user_id.isdigit() or not new_lang:
+    return jsonify({"status": "error", "message": "بيانات غير صالحة!"}), 400
 
-    if not new_lang or new_lang not in ["ar", "en"]:
-        return (
-            jsonify({
-                "status": "error",
-                "message": "اللغة المحددة غير صالحة!",
-            }),
-            400,
-        )
+  for guild in bot.guilds:
+    try:
+      member = guild.get_member(int(user_id))
+      if member and member.guild_permissions.manage_guild:
+        settings = database.get_settings(guild.id)
+        settings["language"] = new_lang
+        database.save_settings(guild.id, settings)
+    except Exception as e:
+      print(f"Error saving language for guild {guild.id}: {e}")
 
-    user_id_int = int(user_id)
-    updated_count = 0
+  return jsonify({"status": "success", "message": "تم تحديث اللغة بنجاح"})
 
-    for guild in bot.guilds:
-        try:
-            member = guild.get_member(user_id_int)
-
-            if not member:
-                continue
-
-            if (
-                user_id_int == OWNER_ID
-                or user_id_int == guild.owner_id
-                or member.guild_permissions.administrator
-                or member.guild_permissions.manage_guild
-            ):
-                settings = database.get_settings(guild.id)
-                settings["language"] = new_lang
-                database.save_settings(guild.id, settings)
-                updated_count += 1
-
-        except Exception as e:
-            print(
-                f"Error saving language for guild {guild.id}: {e}"
-            )
-
-    return jsonify({
-        "status": "success",
-        "message": "تم تحديث اللغة بنجاح",
-        "updated_guilds": updated_count,
-    })
-  
 
 @app.route("/save/<guild_id>", methods=["POST"])
 @admin_required
