@@ -26,6 +26,16 @@ from bidi.algorithm import get_display
 # استيراد نظام الترجمات ودالة الترجمة
 from translations import _
 
+
+from openai import OpenAI
+
+def get_omni_client():
+    return OpenAI(
+        base_url=os.getenv("OMNIROUTE_BASE_URL"),
+        api_key=os.getenv("OMNIROUTE_API_KEY")
+    )
+
+
 # ==========================================
 # 1. إعداد وتشغيل بوت ديسكورد
 # ==========================================
