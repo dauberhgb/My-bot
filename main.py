@@ -868,6 +868,7 @@ async def botinfo(interaction: discord.Interaction):
     embed.add_field(name="Serving Servers:", value=f"{total_guilds} servers", inline=True)
     embed.add_field(name="Total Users:", value=f"{total_users} members", inline=True)
     btn_label = "Support Bot on Top.gg"
+    support_label = "Bot Support Server"
   else:
     embed = discord.Embed(
         title="معلومات البوت ورابط الدعم",
@@ -877,8 +878,11 @@ async def botinfo(interaction: discord.Interaction):
     embed.add_field(name="السيرفرات الخادمة:", value=f"{total_guilds} سيرفر", inline=True)
     embed.add_field(name="إجمالي المستخدمين:", value=f"{total_users} عضو", inline=True)
     btn_label = "دعم البوت على Top.gg"
+    support_label = "سيرفر دعم البوت"
 
   view = discord.ui.View()
+
+  # زر دعم البوت على Top.gg
   view.add_item(
       discord.ui.Button(
           label=btn_label,
@@ -887,8 +891,17 @@ async def botinfo(interaction: discord.Interaction):
       )
   )
 
-  await interaction.response.send_message(embed=embed, view=view)
+  # زر سيرفر الدعم
+  view.add_item(
+      discord.ui.Button(
+          label=support_label,
+          url="https://top.gg/discord/servers/876867145879965696?s=008bd27cf8dcf",
+          style=discord.ButtonStyle.link,
+      )
+  )
 
+  await interaction.response.send_message(embed=embed, view=view)
+    
 # ==========================================
 # ضع دالة /help الجديدة هنا مباشرةً
 # ==========================================
