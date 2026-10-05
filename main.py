@@ -882,7 +882,7 @@ async def botinfo(interaction: discord.Interaction):
   view.add_item(
       discord.ui.Button(
           label=btn_label,
-          url="https://top.gg/discord/servers/876867145879965696?s=0cb418225bcb1",
+          url="https://top.gg/bot/1537586278831362148?s=0991107b1fec4",
           style=discord.ButtonStyle.link,
       )
   )
